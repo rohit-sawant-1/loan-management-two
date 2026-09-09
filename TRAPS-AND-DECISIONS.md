@@ -122,6 +122,67 @@ unknown. And Cortex XDR is running as the corporate endpoint protection; nothing
 tested it against a live dev server or against a folder filling with `node_modules`.
 Both are first-run risks, not blockers.
 
+**T-87 · Two separate LangSmith problems, only the first one was ever about
+certificates — found and partly fixed 2026-09-09.**
+
+**Problem one, fixed: Python's own certificate list, not a corporate block.**
+A plain `requests.get("https://smith.langchain.com")` failed with
+`SSLCertVerificationError: unable to get local issuer certificate`, while every
+other HTTPS call this project makes (Gemini included) worked fine. Before
+assuming a corporate proxy and giving up, this got tested properly: PowerShell's
+`Invoke-WebRequest` to the exact same URL succeeded, which means **Windows'
+own trust store already trusts the site fine** — only Python's separate,
+bundled certificate list (`certifi`) didn't. Not a network block at all, and
+not something admin rights would even be relevant to. Fixed by installing
+`pip-system-certs` into `backend/venv` — it makes Python defer to the OS trust
+store instead of carrying its own. One-time, no admin, done. Not yet added to
+`requirements.txt`; small enough that it can be, once confirmed it does not
+slow down every other HTTPS call in the app (initial evidence says no — the
+real Gemini calls during this same run took normal time).
+
+**Problem two, fixed: the API key itself had a typo.** With the certificate
+check out of the way, `GET /sessions` against LangSmith's API came back `403
+Forbidden` — which looked exactly like a permissions or workspace problem on
+the LangSmith account, and cost an expensive lesson finding that out:
+LangSmith's tracing client queues trace uploads on a background thread and
+retries hard when refused, and pytest waits for that queue to drain before the
+process can exit. The single test file `tests/phase2/test_observability.py`
+took **68 minutes** to finish 3 tests because of this — nothing was frozen, it
+was retrying the entire time. The actual cause was much simpler: Rohit had
+mistyped one digit in `LANGCHAIN_API_KEY`. Corrected, then verified cheaply
+first — a direct `client.list_runs(limit=1)` call with no retry loop around it,
+confirming the key before spending another hour re-running the test file. Once
+confirmed, `tests/phase2` ran clean: **22/22 in 66 seconds.**
+
+**Worth keeping as a general habit:** when a slow, retry-heavy client fails,
+verify the fix with the cheapest possible direct call first, not by re-running
+the expensive thing that found the problem.
+
+**T-86 · This laptop's Node was 18.20.3; the front-end needs 20+ — found and
+fixed 2026-09-09.** `npm run dev` failed immediately with a `node:util` import
+error, because Vite 8 (and its bundler, rolldown) requires Node ^20.19.0 or
+>=22.12.0. `nvm-windows` was already on the machine, but `nvm use` silently
+failed to switch the active version — nvm-windows needs either Administrator
+rights or Windows "Developer Mode" to create the symlink it switches on, and
+neither was available. Rohit installed **Node JS v22.17.1** through the Wipro
+self-service software catalog instead (those installs run elevated already, so
+no admin prompt on his side), which lands in `C:\Program Files\nodejs` without
+touching the existing Node 18 install or needing PATH changes system-wide.
+`node_modules` had to be deleted and reinstalled once Node 22 was active, because
+the native `rolldown` binding npm had fetched under Node 18 was for the wrong
+platform target. `start-app.ps1` puts `C:\Program Files\nodejs` first on PATH
+for its own windows only, so the system default Node is never touched.
+
+**T-85 · `setuptools` 81+ deletes `pkg_resources`, and `opentelemetry-instrumentation`
+still imports it — found and fixed 2026-09-09.** A clean `pip install -r
+requirements.txt` on a fresh venv pulled setuptools 84.0.0 (nothing in the file
+pins it), and the backend failed to start at all:
+`ModuleNotFoundError: No module named 'pkg_resources'`. `pkg_resources` was
+deprecated for years and setuptools finally dropped it. Fixed by pinning
+`setuptools<81` in `requirements.txt`, which still bundles it. Same lesson as
+T-78's numpy finding: an unpinned transitive dependency is a ticking clock, not
+a fixed fact, and it only goes off on a fresh install.
+
 **T-84 · The provider fallback is automatic for chat and deliberately manual for
 embeddings — 2026-09-09.** Rohit asked for the Gemini-to-Ollama switch to happen
 by itself, because editing `.env` and restarting mid-demo is not possible. Built

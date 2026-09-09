@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-09 — Session: actually setting it up on the Wipro laptop
+
+**Asked for:** get the project running on this machine, follow `SETUP-WIPRO.md`, use Python 3.12 since several versions are installed here, and end with a single script Rohit can double-click to start everything.
+**Built:** followed the guide step by step — venv, `pip install`, `.env` files from the `.wipro` templates, seeded the database, ingested the manual into Gemini's ChromaDB collection. Ended with `start-app.ps1` (and a `start-app.bat` wrapper for double-clicking) that checks the setup is complete, opens three windows for the backend, React and Streamlit, and opens the browser once they're up.
+**Found:** three real bugs, none of them things the guide could have predicted, because nobody had run these exact commands on this exact machine before today. `setuptools` 84.0.0 (nothing pins it) dropped `pkg_resources`, which `opentelemetry-instrumentation` still imports, so the backend failed to start at all — pinned `setuptools<81` (T-85). This laptop's Node is 18.20.3 but Vite 8 needs 20+, and `nvm-windows`'s version switch needs admin rights we don't have — Rohit installed Node 22.17.1 through the Wipro software catalog instead, which lands in `Program Files` without touching the system default (T-86). And Gemini works fine here but `smith.langchain.com` fails its own certificate check over this network — left alone since it only affects two optional tracing tests, not the product, and the real fix needs an admin-level certificate change (T-87).
+**Realised:** the Wipro laptop's `py -0p` output matches `SETUP-WIPRO.md`'s prediction exactly (3.14 default, 3.13 and 3.12 both present), and Ollama already has the two models the guide names — so this is genuinely the machine that guide was written for, not a look-alike.
+**Next:** Rohit to open http://localhost:5173 and click around as each of the three demo logins. Phase 2 tests are 20/22 (the two LangSmith ones fail on T-87, not on anything in the app).
+
+---
+
 ## 2026-09-09 — Getting the project ready for the Wipro laptop
 
 **Asked for:** a survey prompt for the restricted work machine, then — once its answers came back — do as much of the setup work here as possible, because there will be no more round trips. Copilot finishes it over there.
