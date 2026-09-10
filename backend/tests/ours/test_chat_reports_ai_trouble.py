@@ -37,7 +37,7 @@ def broken_agent(monkeypatch):
 
         import agent.agent as agent_module
         monkeypatch.setattr(agent_module, "run_agent", fake_run_agent)
-        monkeypatch.setattr(chat_router, "get_agent", lambda: None)
+        monkeypatch.setattr(chat_router, "get_agent", lambda role=None: None)
 
     return _break_with
 
@@ -69,7 +69,7 @@ def test_a_normal_answer_says_nothing_at_all(client, auth_token, monkeypatch):
 
     import agent.agent as agent_module
     monkeypatch.setattr(agent_module, "run_agent", fine)
-    monkeypatch.setattr(chat_router, "get_agent", lambda: None)
+    monkeypatch.setattr(chat_router, "get_agent", lambda role=None: None)
     monkeypatch.setattr(chat_router, "_policy_sources", lambda calls: [])
 
     body = _ask(client, auth_token).json()
@@ -170,3 +170,4 @@ def test_the_code_is_written_to_the_activity_log(client, auth_token,
 
     assert row is not None
     assert details["ai_status"] == llm_provider.AI_QUOTA_EXHAUSTED
+

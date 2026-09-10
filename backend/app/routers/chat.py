@@ -38,7 +38,7 @@ from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.chat import ChatRequest, ChatResponse, ChatSource, ChatToolCall
-from app.services import activity_service
+from app.services import activity_service, pending_actions
 from app.services.loan_api_client import acting_as
 
 logger = structlog.get_logger()
@@ -56,20 +56,24 @@ POLICY_TOOL = "search_loan_policy"
 # dropped from what the screen sees.
 INTERNAL_STEPS = {"_Exception"}
 
-# The agent, built once and reused. Building it sets up the model, the five
-# tools and the ReAct prompt — cheap, but not free, and it would otherwise
-# happen on every single message. Same idea as `get_chain()` in Phase 2.
-_agent = None
+# One agent per role, built on first use and reused. Building one sets up the
+# model, the tools and the ReAct prompt — cheap, but not free, and it would
+# otherwise happen on every single message.
+#
+# Keyed by role rather than shared, because staff and customers genuinely get
+# different tools now: a customer's agent must not even have a way to propose
+# changing a record. One agent for everyone would mean either handing customers
+# the write tools or denying them to staff.
+_agents: dict[str | None, object] = {}
 
 
-def get_agent():
-    """The shared agent executor, built on first use."""
-    global _agent
-    if _agent is None:
+def get_agent(role: str | None = None):
+    """The shared agent executor for this role, built on first use."""
+    if role not in _agents:
         from agent.agent import build_agent
 
-        _agent = build_agent()
-    return _agent
+        _agents[role] = build_agent(role)
+    return _agents[role]
 
 
 def _tool_calls(intermediate_steps) -> list[ChatToolCall]:
@@ -172,6 +176,50 @@ def chat(
             duration_ms=0.0,
         )
 
+    # Is this person answering a "reply YES to go ahead"? Checked before the
+    # agent is involved at all, and deliberately so: the confirmed change runs
+    # from the arguments recorded when it was proposed, so the model never gets
+    # a second chance to decide which application it meant.
+    waiting = pending_actions.peek(user.email)
+    if waiting is not None:
+        if pending_actions.looks_like_yes(question):
+            pending_actions.clear(user.email)
+            with acting_as(user.email, user.role.value):
+                worked, sentence = pending_actions.run(waiting)
+
+            activity_service.record(
+                db, action="chat_action_confirmed",
+                actor_id=user.email, actor_role=user.role.value,
+                entity_type="chat",
+                details={"tool": waiting["tool"], "arguments": waiting["arguments"],
+                         "worked": worked},
+                **activity_service.request_meta(request),
+            )
+            db.commit()
+
+            return ChatResponse(
+                answer=sentence,
+                mode="action",
+                sources=[],
+                duration_ms=round((time.perf_counter() - started) * 1000, 2),
+                tools_used=[ChatToolCall(tool=waiting["tool"],
+                                         tool_input=str(waiting["arguments"])[:200])],
+            )
+
+        if pending_actions.looks_like_no(question):
+            pending_actions.clear(user.email)
+            return ChatResponse(
+                answer="Cancelled — nothing was changed.",
+                mode="action",
+                sources=[],
+                duration_ms=round((time.perf_counter() - started) * 1000, 2),
+            )
+
+        # Anything else is a new instruction, not an answer. The old proposal is
+        # dropped rather than left waiting, so a later stray "yes" cannot land
+        # on something they have already moved on from.
+        pending_actions.clear(user.email)
+
     mode = "agent"
     tools_used: list[ChatToolCall] = []
     ai_status = llm_provider.AI_OK
@@ -179,9 +227,10 @@ def chat(
     try:
         from agent.agent import run_agent
 
-        # Everything inside this block calls the loan API as the person asking.
-        with acting_as(user.email, user.role.value):
-            result = run_agent(question, get_agent())
+        # Everything inside this block calls the loan API as the person asking,
+        # and any change the agent proposes is recorded against them.
+        with acting_as(user.email, user.role.value), pending_actions.owned_by(user.email):
+            result = run_agent(question, get_agent(user.role.value))
 
         answer = result.get("output") or ""
         tools_used = _tool_calls(result.get("intermediate_steps", []))
@@ -204,6 +253,11 @@ def chat(
                        ai_status=ai_status)
         mode = "rag"
         tools_used = []
+
+        # The agent may have proposed a change before it fell over. The person
+        # is about to get a manual answer that says nothing about it, so a
+        # "yes" later would confirm something they were never actually shown.
+        pending_actions.clear(user.email)
 
         try:
             answer, sources = _answer_with_rag(question)

@@ -84,6 +84,24 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-89 · A Gemini API key is 39 characters starting `AIza`. An `AQ.` value is not a key.**
+Found 2026-09-10. Three keys had been pasted into `GOOGLE_API_KEY` as one
+comma-separated string, so the whole 147-character blob went to Google as a
+single key and every live AI call failed with `400 API key not valid` — which
+looked like a broken key but was really a formatting mistake. Two of the three
+were also the wrong kind of value entirely: 53 characters starting `AQ.Ab8RN`,
+which is a Google **OAuth token**, not an API key. AI Studio offers both, and
+copying the wrong field is easy.
+
+How to tell in one line: a real key is exactly 39 characters and starts `AIza`.
+Anything longer, or starting `AQ.`, will be refused no matter where it is put.
+
+Spare keys belong on their own line, `GOOGLE_API_KEYS=`, comma-separated —
+never appended to `GOOGLE_API_KEY`, which takes exactly one. Worth knowing that
+the rotation code cannot save you here: it splits `GOOGLE_API_KEYS` but treats
+`GOOGLE_API_KEY` as a single value, which is correct, since a key containing a
+comma is not a thing.
+
 **T-88 · `PyJWT` is missing from `requirements.txt`, so two of our own tests cannot be collected.**
 Found 2026-09-10 on a clean install. `tests/ours/test_chat_uses_agent.py:15` and
 `tests/ours/test_agent_acts_as_caller.py` both `import jwt`, which is **PyJWT** —

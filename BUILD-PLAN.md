@@ -1085,6 +1085,79 @@ Only then do Piece 22 steps 4 and 5 get built on top.
 
 ---
 
+# PIECE 22 STEP 4 — Phase 4's tools in the chat, staff only, with a confirmation
+
+Planned 2026-09-10. This is the step with teeth: three of Phase 4's six tools
+change real records, and one of them can reject or disburse a loan.
+
+### What changes
+
+`build_agent()` learns a role. Today it always builds the same five read-only
+tools; now the toolset depends on who is asking:
+
+| Role | Tools |
+|---|---|
+| Customer | the five read-only Phase 3 tools, exactly as today |
+| Loan officer | those five **plus** Phase 4's write tools |
+| Branch manager | the same as an officer |
+
+Officer and manager get the same list on purpose. The difference between them
+is disbursement, and that is **already enforced by the API**
+(`application_service.py:271` refuses it to anyone who is not a manager). Adding
+a second rule here would be a second place to get it wrong, and the two could
+drift. The officer's disburse attempt comes back as a 403 the agent reads aloud.
+
+### The gate is nearly free, and that is the point
+
+Phase 4's MCP tools already call the API through `app.services.loan_api_client`,
+the same client Phase 3's tools use, and `service_token()` already reads the
+`acting_as()` ContextVar. The chat endpoint already wraps the agent call in
+`acting_as(user.email, user.role.value)`. So the moment those tools are in the
+list, they run as the person who typed the question and inherit every
+owner-scoping and role check Phase 1 was tested on. No new permission logic.
+
+### The confirmation, chosen by Rohit on 2026-09-10
+
+Type the change, then confirm in the chat:
+
+1. Staff types "reject application 5, income too low".
+2. The assistant does **not** act. It replies: *"I am about to reject
+   application 5, with the reason 'income too low'. Reply YES to go ahead."*
+3. Only the next message carrying a yes performs it.
+
+So the endpoint has to remember one pending action per person between two
+messages. Kept server-side, keyed by user email, never in the browser
+(Rule 13). One pending action per person, replaced if they type a different
+instruction — no queue, nothing to get out of order.
+
+**A pending action expires.** Five minutes, so an abandoned "reply YES" cannot
+be completed by accident an hour later when the screen has scrolled and nobody
+remembers what #5 was.
+
+**Only writes are gated.** Reading is free and instant, as now. Wrapping reads
+in a confirmation would make the assistant tedious and teach staff to type YES
+without reading it, which is worse than no confirmation at all.
+
+### How the write actually happens
+
+The confirmation cannot be left to the model. If the agent were asked to
+remember the pending change and re-issue it on "yes", a model that hallucinates
+a different application number disburses the wrong loan. So the pending action
+is captured as **plain data** — tool name and arguments — and on confirmation
+that exact recorded call is executed directly, with no second visit to the LLM.
+The model decides *what to propose*; Python decides *what runs*.
+
+### The build order
+
+1. Role-aware `build_agent(role)` and a per-role agent cache in the router.
+2. The pending-action store, with its expiry.
+3. The write tools, which propose rather than act.
+4. Confirmation handling in `/api/v1/chat`.
+5. Tests: a customer cannot see the write tools at all; an officer's disburse
+   is refused by the API; a write needs a yes; an expired action does nothing.
+
+---
+
 ## Done
 
 | # | Piece | Finished | Commit |

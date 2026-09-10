@@ -24,6 +24,8 @@ from langchain_core.prompts import PromptTemplate
 
 from agent.prompts import LOAN_AGENT_SYSTEM_PROMPT
 from agent.tools import ALL_TOOLS
+from agent.write_tools import WRITE_TOOLS
+from app.domain import rules
 from app.utils.logging_config import configure_logging
 from app.utils.otel_config import get_tracer, setup_telemetry
 from llm_provider import enable_langsmith, get_llm
@@ -59,28 +61,96 @@ Begin!
 Question: {input}
 Thought: {agent_scratchpad}"""
 
+# Staff get the same prompt plus the rules for changing records. The extra
+# paragraph exists because a write tool returns "CONFIRMATION NEEDED" rather
+# than a result, and without being told what that means the model tends to
+# treat it as a failure and try again — which would propose the same change
+# twice.
+STAFF_EXTRA = """
 
-def build_agent() -> AgentExecutor:
+You are talking to bank staff, so you also have tools that change records.
+
+Three rules about those, which you must follow exactly:
+
+- When a change tool answers with CONFIRMATION NEEDED, the change has NOT
+  happened yet. Give the person that exact description and ask them to reply
+  YES. Then stop and give your Final Answer. Do not call the tool again, and do
+  not call a different tool to check whether it worked — it has not.
+- Never guess an application number, an amount, or a status. If the person has
+  not said which application they mean, ask them.
+- A status change always needs a reason. If they have not given one, ask for it
+  before proposing the change."""
+
+STAFF_REACT_TEMPLATE = LOAN_AGENT_SYSTEM_PROMPT + STAFF_EXTRA + """
+
+You have access to the following tools:
+
+{tools}
+
+Use the following format exactly:
+
+Question: the input question you must answer
+Thought: you should always think about what to do
+Action: the action to take, must be one of [{tool_names}]
+Action Input: the input to the action
+Observation: the result of the action
+... (this Thought/Action/Action Input/Observation can repeat)
+Thought: I now know the final answer
+Final Answer: the final answer to the original question
+
+Begin!
+
+Question: {input}
+Thought: {agent_scratchpad}"""
+
+
+def tools_for(role: str | None) -> list:
     """
-    Build the agent executor.
+    Which tools this person's assistant is allowed to have.
+
+    Staff get the three write tools on top of the five read-only ones; a
+    customer gets exactly what they got before. The difference matters more
+    than it looks: a tool that is not in the list cannot be called at all, so
+    a customer's agent has no way to even propose changing a record.
+
+    Officers and managers get the **same** list. The one thing that separates
+    them is disbursement, and the API already refuses that to anyone who is not
+    a manager (`application_service.py:271`). Repeating that rule here would be
+    a second place to keep in step, and two copies of a permission rule are how
+    they drift apart.
+    """
+    if role in rules.STAFF_ROLES:
+        return [*ALL_TOOLS, *WRITE_TOOLS]
+    return list(ALL_TOOLS)
+
+
+def build_agent(role: str | None = None) -> AgentExecutor:
+    """
+    Build the agent executor for someone in this role.
 
     `max_iterations=8` caps how many Thought/Action rounds the agent may take,
     so a confused loop cannot run forever. `handle_parsing_errors=True` means a
     single malformed step is reported back to the model to correct rather than
     crashing the whole conversation. `return_intermediate_steps=True` is what
     lets `run_agent` (and the trainer's tests) see which tools actually ran.
+
+    `role` defaults to None, which builds the read-only agent — the shape the
+    trainer's Phase 3 tests call with no arguments.
     """
     configure_logging()
     setup_telemetry()
     enable_langsmith(LANGSMITH_PROJECT)
 
+    tools = tools_for(role)
+    template = REACT_TEMPLATE if role not in rules.STAFF_ROLES else STAFF_REACT_TEMPLATE
+
     llm = get_llm(temperature=0)   # fully predictable: the same question picks the same tool
-    prompt = PromptTemplate.from_template(REACT_TEMPLATE)
-    agent = create_react_agent(llm, ALL_TOOLS, prompt)
+    prompt = PromptTemplate.from_template(template)
+    agent = create_react_agent(llm, tools, prompt)
 
     return AgentExecutor(
         agent=agent,
-        tools=ALL_TOOLS,
+        tools=tools,
         max_iterations=MAX_ITERATIONS,
         handle_parsing_errors=True,
         return_intermediate_steps=True,

@@ -50,7 +50,7 @@ def fake_agent(monkeypatch):
     import agent.agent as agent_module
     monkeypatch.setattr(agent_module, "run_agent", fake_run_agent)
     # The endpoint builds the agent on first use; a stand-in needs no building.
-    monkeypatch.setattr(chat_router, "get_agent", lambda: None)
+    monkeypatch.setattr(chat_router, "get_agent", lambda role=None: None)
     # Sources come from the vector store, which we are not exercising here.
     monkeypatch.setattr(chat_router, "_policy_sources", lambda calls: [])
     return seen
@@ -126,7 +126,7 @@ def test_a_broken_agent_falls_back_to_the_manual(client, auth_token, monkeypatch
         raise RuntimeError("quota exhausted")
 
     monkeypatch.setattr(agent_module, "run_agent", boom)
-    monkeypatch.setattr(chat_router, "get_agent", lambda: None)
+    monkeypatch.setattr(chat_router, "get_agent", lambda role=None: None)
     monkeypatch.setattr(chat_router, "_answer_with_rag",
                         lambda q: ("From the manual.", []))
 
@@ -157,9 +157,10 @@ def test_langchains_retry_marker_is_not_shown_as_a_tool(client, auth_token, monk
         }
 
     monkeypatch.setattr(agent_module, "run_agent", run)
-    monkeypatch.setattr(chat_router, "get_agent", lambda: None)
+    monkeypatch.setattr(chat_router, "get_agent", lambda role=None: None)
     monkeypatch.setattr(chat_router, "_policy_sources", lambda calls: [])
 
     body = _ask(client, auth_token, "Show me application 3").json()
 
     assert [t["tool"] for t in body["tools_used"]] == ["get_application_details"]
+

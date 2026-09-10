@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-10 — Piece 22 step 4: staff can change records by chatting, after confirming
+
+**Asked for:** put Phase 4's record-changing tools into the React chat, staff only, and explain where to paste the new API keys.
+**Built:** the agent's toolset now depends on who is asking. A customer gets the same five read-only tools as before; staff get three more that can create an application, move its status, or record a document. Those three do **not** act when called — they describe what they are about to do and wait for the person to reply YES. Officers and managers get an identical list on purpose, because the API already refuses disbursement to anyone who is not a manager, and a second copy of that rule here would be a second thing to keep in step. 26 new tests, 128 passing overall, none of them spending quota.
+**Found:** your new API keys are the problem, not the code. All three had been pasted into `GOOGLE_API_KEY` as one comma-separated blob, so Gemini was being sent a 147-character string and rejecting the lot — which is why Phase 3's live tests failed. Worse, two of the three are not API keys at all: they are 53 characters starting `AQ.`, which is an OAuth token, where a real Gemini key is 39 characters starting `AIza`. Put the one good key back and Phase 3 passes again.
+**Realised:** the confirmation cannot be left to the model. If the agent were asked to remember the pending change and re-issue it on "yes", a model that misreads one digit would disburse the wrong loan, confidently. So the proposed change is recorded as plain data and that exact recorded call is what runs — the model decides what to propose, Python decides what runs.
+**Next:** Piece 22 step 5, the last one — "assess application 7" runs Phase 5's four-agent review in the chat. `Assistant.jsx` already has the `review` slot waiting for it.
+
+---
+
 ## 2026-09-10 — Piece 23 step 3: the chat now says what went wrong
 
 **Asked for:** finish the error-code work so the codes actually reach a person, and fix the PyJWT problem myself.
