@@ -10,11 +10,11 @@ tools run under* is what stops one customer seeing another's loan.
 
 import pytest
 
-from app.routers import chat as chat_router
-from app.services.loan_api_client import service_token
-import jwt
+from jose import jwt          # the same library the app itself signs with (T-88)
 
 from app.config import settings
+from app.routers import chat as chat_router
+from app.services.loan_api_client import service_token
 
 
 class _FakeAction:

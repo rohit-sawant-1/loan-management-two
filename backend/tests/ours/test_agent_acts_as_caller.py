@@ -13,7 +13,7 @@ person who asked**, so Phase 1's own owner-scoping does the work. There is no
 AI-specific permission logic to get wrong, which is the point.
 """
 
-import jwt
+from jose import jwt          # the same library the app itself signs with (T-88)
 
 from app.config import settings
 from app.services.loan_api_client import acting_as, service_token

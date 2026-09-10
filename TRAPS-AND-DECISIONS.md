@@ -96,11 +96,17 @@ named 'jwt'` and **takes the whole folder's other tests down with it**, which is
 how a green suite hides two red files.
 
 Not caused by Piece 23 — confirmed by running Phase 1 (27 passed) and the two
-LLM files (35 passed) separately. Two ways to fix it, and the choice matters:
-add `PyJWT` to `requirements.txt`, or change those two files to decode with
-`jose.jwt`, which is what the app itself already uses everywhere else. The second
-is tidier — one JWT library rather than two — but it edits tests, so it waits
-for Rohit's call rather than being done quietly.
+LLM files (35 passed) separately.
+
+**Fixed the same day** (Rohit: "resolve it yourself"). Both files now do
+`from jose import jwt` instead, which is the library the app itself already
+signs and verifies with in `app/utils/auth.py:15`. `jose.jwt.decode` takes the
+same arguments as PyJWT's, so it was a one-line import change in each file and
+no test logic moved. Chosen over adding `PyJWT` to `requirements.txt` because
+one JWT library in a project is better than two that do the same job — a second
+one is a thing to keep in step, and a way for a test to pass against a library
+the app never uses. `pytest tests/ours` now collects everything: **68 passed**,
+up from 55, so those 13 tests ran for the first time on a clean install.
 
 ### From the Wipro laptop survey (2026-09-09)
 
