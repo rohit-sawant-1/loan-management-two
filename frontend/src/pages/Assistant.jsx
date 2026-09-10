@@ -34,6 +34,7 @@ const MODES = {
   rag: { text: "Answered from the user manual", icon: "file" },
   agent: { text: "Answered by the assistant", icon: "activity" },
   review: { text: "Multi-agent review", icon: "shield" },
+  unavailable: { text: "No AI available", icon: "info" },
   empty: { text: "", icon: "info" },
 };
 
@@ -153,6 +154,7 @@ export default function Assistant() {
         sources: res.data.sources,
         tools: res.data.tools_used,
         ms: res.data.duration_ms,
+        notice: res.data.ai_notice,
       }]);
     } catch (err) {
       setError(errorMessage(err));
@@ -208,6 +210,14 @@ export default function Assistant() {
 
           {messages.map((m, i) => (
             <div key={i} className={`bubble bubble-${m.who}`}>
+              {/* Above the answer on purpose: it changes how the answer should
+                  be read, so finding it underneath would be too late. */}
+              {m.notice && (
+                <div className="ai-notice">
+                  <Icon name="info" size={13} />
+                  <span>{m.notice}</span>
+                </div>
+              )}
               <div className="bubble-text">{m.text}</div>
               {m.who === "assistant" && (
                 <>

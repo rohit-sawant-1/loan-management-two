@@ -33,6 +33,7 @@ import structlog
 from fastapi import APIRouter, Depends, Request
 from sqlalchemy.orm import Session
 
+import llm_provider
 from app.database import get_db
 from app.dependencies import get_current_user
 from app.models.user import User
@@ -173,6 +174,7 @@ def chat(
 
     mode = "agent"
     tools_used: list[ChatToolCall] = []
+    ai_status = llm_provider.AI_OK
 
     try:
         from agent.agent import run_agent
@@ -191,11 +193,32 @@ def chat(
             raise ValueError("agent returned an empty answer")
 
     except Exception as exc:                                   # noqa: BLE001
+        # Which kind of failure this was, so the person is told something
+        # specific rather than "the AI failed" (D-20). Note we classify the
+        # agent's error even though the RAG fallback below may well succeed:
+        # if a spent quota pushed us down to the local model, that is worth
+        # saying, because the answer really will be shorter and plainer.
+        ai_status = llm_provider.classify_failure(exc)
         logger.warning("chat_agent_failed", operation="chat_agent_failed",
-                       question=question[:200], error=str(exc)[:300])
+                       question=question[:200], error=str(exc)[:300],
+                       ai_status=ai_status)
         mode = "rag"
         tools_used = []
-        answer, sources = _answer_with_rag(question)
+
+        try:
+            answer, sources = _answer_with_rag(question)
+        except Exception as rag_exc:                           # noqa: BLE001
+            # Both brains are down. Before this, that raised and the person got
+            # a 500 with no explanation — the worst possible moment for the
+            # product to look broken rather than degraded. Now the chat says
+            # plainly that no AI is available and the rest of the app is fine.
+            ai_status = llm_provider.classify_failure(rag_exc)
+            logger.error("chat_all_brains_failed", operation="chat_agent_failed",
+                         question=question[:200], error=str(rag_exc)[:300],
+                         ai_status=ai_status)
+            mode = "unavailable"
+            sources = []
+            answer = llm_provider.message_for(ai_status)
 
     duration_ms = round((time.perf_counter() - started) * 1000, 2)
 
@@ -205,7 +228,8 @@ def chat(
         entity_type="chat",
         details={"question": question[:200], "mode": mode,
                  "sources": len(sources),
-                 "tools": [c.tool for c in tools_used]},
+                 "tools": [c.tool for c in tools_used],
+                 "ai_status": ai_status},
         **activity_service.request_meta(request),
     )
     db.commit()
@@ -214,7 +238,15 @@ def chat(
                 question=question[:200], mode=mode,
                 sources=len(sources),
                 tools_used=[c.tool for c in tools_used],
+                ai_status=ai_status,
                 duration_ms=duration_ms)
+
+    # The notice is quiet on a normal answer, and quiet again when the answer
+    # *is* the notice — when every brain failed there is nothing else to say,
+    # and showing the same sentence twice in a row looks like a glitch.
+    notice = "" if ai_status == llm_provider.AI_OK else llm_provider.message_for(ai_status)
+    if notice == answer:
+        notice = ""
 
     return ChatResponse(
         answer=answer,
@@ -222,4 +254,6 @@ def chat(
         sources=sources,
         duration_ms=duration_ms,
         tools_used=tools_used,
+        ai_status=ai_status,
+        ai_notice=notice,
     )

@@ -44,3 +44,15 @@ class ChatResponse(BaseModel):
     # was needed, or when the answer came straight from the manual chain.
     # Defaulted so nothing that already reads this response has to change.
     tools_used: list[ChatToolCall] = []
+
+    # How the AI behaved while answering this (Piece 23, D-20).
+    #
+    # `ai_status` is the machine-readable code we grep the logs for; `ai_notice`
+    # is the one sentence a customer reads. Two fields rather than one because
+    # the screen must never print a code like `ai_quota_exhausted` at a person,
+    # and we must never grep logs for a sentence someone may reword later.
+    #
+    # Both are quiet on a normal answer: "ai_ok" and an empty notice, so the
+    # screen shows nothing at all unless something actually went wrong.
+    ai_status: str = "ai_ok"
+    ai_notice: str = ""

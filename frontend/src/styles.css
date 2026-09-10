@@ -453,6 +453,23 @@ th.sorted { color: var(--ink-900); }
   margin-top: 0.55rem; font-size: 0.74rem; color: var(--ink-500);
 }
 
+/* Said when the AI did not answer the way it normally would — a spent quota
+   pushed the question down to the local model, or nothing answered at all
+   (Piece 23). It sits above the answer rather than below it, because it
+   changes how the answer should be read and underneath would be too late.
+
+   Deliberately the warn palette and not the error one: in almost every case
+   there IS an answer, just a plainer one, and painting that red would tell
+   the customer something worse than what actually happened. */
+.ai-notice {
+  display: flex; align-items: flex-start; gap: 0.4rem;
+  margin-bottom: 0.55rem; padding: 0.45rem 0.6rem;
+  border: 1px solid var(--warn-line); border-radius: 8px;
+  background: var(--warn-bg); color: var(--warn-ink);
+  font-size: 0.76rem; line-height: 1.45;
+}
+.ai-notice svg { flex-shrink: 0; margin-top: 0.12rem; }
+
 /* The two "check my work" controls — how it was worked out, and the manual
    extracts — sit on one row with a divider between them. Stacked, they were
    two identical grey lines that read as text rather than as buttons, which is

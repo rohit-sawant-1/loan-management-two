@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-10 — Piece 23 step 3: the chat now says what went wrong
+
+**Asked for:** finish the error-code work so the codes actually reach a person, and fix the PyJWT problem myself.
+**Built:** `/api/v1/chat` now returns two new fields — `ai_status` for us to grep the logs for, and `ai_notice`, the one sentence a customer reads. The Assistant screen shows that sentence in a small amber strip above the answer. Also fixed PyJWT by switching two test files to `jose`, the library the app itself already signs with, so the project has one JWT library instead of two.
+**Found:** a real hole while wiring it up. If the agent failed **and** the manual chain failed too, the exception escaped and the customer got a blank 500 page — the worst possible way for the product to look during a demo, because the rest of the app is fine. Now both failing gives a normal 200 with a plain explanation and `mode: "unavailable"`.
+**Realised:** two things worth keeping. A normal answer must stay completely silent — a notice on every healthy reply trains people to ignore it, and then it is worthless on the day it matters. And when every brain is down the answer *is* the explanation, so the notice above it is suppressed rather than printing the same sentence twice.
+**Next:** Piece 22 step 4 — Phase 4's six tools in the chat, staff only, with a confirmation before anything that changes a record.
+
+---
+
 ## 2026-09-10 — Session: set up this laptop, then Piece 23 step 1 — the key ladder
 
 **Asked for:** set the project up on this machine following `SETUP-WIPRO.md`, then start on making one React chatbot that can do Phase 3, 4 and 5 instead of Phase 4 living in Streamlit and Phase 5 living in a terminal.
