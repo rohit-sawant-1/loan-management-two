@@ -1032,6 +1032,59 @@ The trainer's `agent_app.py` (a separate Streamlit screen for Phase 3) is **not*
 
 ---
 
+# PIECE 23 — Keeping the AI answering, and saying plainly when it cannot
+
+Decided by Rohit on 2026-09-10, before steps 4 and 5 of Piece 22 get built.
+
+**Why this comes first.** Piece 22's remaining steps put Phase 4 and Phase 5 behind the chat box. Phase 5 is the expensive one: a four-agent review is several AI calls for a single question, so one free Gemini key runs dry quickly. Rohit is collecting spare free keys from friends. There is no point wiring in the feature most likely to exhaust a key before the thing that survives an exhausted key exists.
+
+**Where it goes.** `llm_provider.py` and nowhere else. Its own docstring already forbids any other file from importing a provider class directly, so every phase — the Phase 2 chain, Phase 3's agent, Phase 4's MCP chat, Phase 5's graph — passes through `get_llm()`. Build the rotation there and all five phases inherit it without being touched.
+
+### The ladder, in order
+
+Each rung is tried only when the one above it has genuinely run out.
+
+1. **Gemini key 1**, then key 2, then key 3… from a comma-separated `GOOGLE_API_KEYS` in `.env`. The existing single `GOOGLE_API_KEY` keeps working as a fallback so nothing already set up breaks.
+2. **A key is retired for the day** only on a real quota/rate-limit answer (HTTP 429, or Google's `RESOURCE_EXHAUSTED`). A wrong key (`400`/`403`) is a mistake, not an exhausted quota — that one is dropped and logged loudly, because silently rotating past a typo would hide it forever.
+3. **Local Ollama**, once every Gemini key is spent. This already exists as a LangChain fallback; it now becomes the last rung rather than the only one.
+4. **Offline.** Nothing answered. The chat says so honestly instead of showing a spinner that never ends.
+
+### The error codes
+
+Rohit asked for distinct codes per failure, reasoned out rather than copied. Each is a short machine-readable string in the reply plus a sentence a customer can read. `Assistant.jsx` shows the sentence; the code goes in the logs and is what we grep for when something goes wrong mid-demo.
+
+| Code | What actually happened | What the person sees |
+|---|---|---|
+| `ai_ok` | normal | (nothing — the answer) |
+| `ai_key_invalid` | a key was rejected as malformed or unauthorised | "One of the AI keys is not valid. The others are still being used." |
+| `ai_quota_exhausted` | every Gemini key hit its daily limit; fell through to Ollama | "The online AI has reached today's limit, so a local model answered. Answers may be shorter." |
+| `ai_provider_unreachable` | network refused / DNS / TLS — Gemini could not even be contacted | "The AI service cannot be reached from this network right now." |
+| `ai_local_not_running` | Ollama is not listening on its port at all | "No AI is available. The local model is not running." |
+| `ai_local_model_missing` | Ollama answered, but 404s the model name | "The local AI is running but the model it needs is not installed." |
+| `ai_local_timeout` | Ollama accepted the request and never finished in time | "The local AI is taking too long to answer. It may not have enough memory on this machine." |
+| `ai_local_truncated` | answered, but stopped mid-thought / hit its token ceiling | "The local AI ran out of room before finishing its answer." |
+| `ai_all_exhausted` | every rung of the ladder failed | "No AI is available at the moment. Everything else in the app still works." |
+
+The last four are the Wipro-laptop cases Rohit predicted: a small machine running a thinking model can accept a request and then stall or truncate, which is a different problem from not running at all, and lumping them together is what makes a demo failure impossible to diagnose while someone is watching.
+
+### One thing this must never do
+
+Phase 5's numbers are computed in plain Python, never by the LLM (D-19). So an exhausted key can change the *wording* of a review and must never change its *decision*. Whatever this layer does on failure, the verdict, the EMI, the DTI and the risk tiers stay exactly as they were.
+
+### Health, so we know before the demo does
+
+`/api/v1/health` already reports a `chat_fallback`. It gains an honest summary: which provider is live, how many keys remain unspent, and whether Ollama is answering. A traffic light we can look at *before* presenting rather than discovering mid-question. This is a read of local state, not an AI call — checking it costs no quota.
+
+### The build order
+
+1. Key rotation and the ladder inside `llm_provider.py`, with the error codes. Unit-tested with fake failures — **no real API calls**, so this costs nothing to build and verify.
+2. The health summary.
+3. The codes surfaced through `/api/v1/chat`, and the sentence shown in `Assistant.jsx`.
+
+Only then do Piece 22 steps 4 and 5 get built on top.
+
+---
+
 ## Done
 
 | # | Piece | Finished | Commit |

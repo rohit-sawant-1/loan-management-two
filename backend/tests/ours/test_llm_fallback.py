@@ -67,6 +67,10 @@ def _point_at(monkeypatch, base_url, provider="gemini", api_key="not-a-real-key"
     """Aim the settings at our stand-in, with Gemini deliberately broken."""
     monkeypatch.setattr(llm_provider.settings, "llm_provider", provider)
     monkeypatch.setattr(llm_provider.settings, "google_api_key", api_key)
+    # Cleared on purpose. `settings` is the real object loaded from .env, so
+    # without this a machine with spare keys configured would put extra rungs
+    # on the ladder and quietly change what these tests are measuring.
+    monkeypatch.setattr(llm_provider.settings, "google_api_keys", "")
     monkeypatch.setattr(llm_provider.settings, "ollama_base_url", base_url)
     monkeypatch.setattr(llm_provider.settings, "ollama_chat_model", "test-model")
 

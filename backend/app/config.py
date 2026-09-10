@@ -64,6 +64,16 @@ class Settings(BaseSettings):
     # reason: gemini-3.5-flash-lite was the only model that survived the free
     # tier's rate limit without refusing (T-55).
     google_api_key: str = ""
+
+    # Spare keys, comma-separated, tried in order after `google_api_key` runs
+    # out of its daily quota. A free Gemini key has a small daily cap and one
+    # Phase 5 review is several calls, so a single key empties fast. Borrowed
+    # keys go here rather than replacing the one above, so the machine keeps
+    # working if this line is left blank (D-20).
+    #
+    #     GOOGLE_API_KEYS=AIza...one,AIza...two
+    google_api_keys: str = ""
+
     gemini_chat_model: str = "gemini-3.5-flash-lite"
     gemini_embed_model: str = "models/gemini-embedding-001"
 

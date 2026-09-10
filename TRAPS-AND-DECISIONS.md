@@ -28,6 +28,32 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 ---
 
+### D-20 · Several Gemini keys, rotated, before Phase 4 and 5 reach the chat
+
+**What's wrong:** Piece 22's remaining steps put Phase 4 and Phase 5 behind the React chat box. A Phase 5 review is several AI calls for one question, so a single free-tier Gemini key runs dry fast — and the first time it does, it will be in front of an audience. There is currently one key, and one fallback (Ollama), with nothing in between.
+
+**Chosen (Rohit, 2026-09-10):** collect spare free Gemini keys from friends into a comma-separated `GOOGLE_API_KEYS`, and build a rotation ladder inside `llm_provider.py` — key 1, key 2, … then local Ollama, then an honest "offline". Plus distinct error codes per failure mode rather than one generic error. Planned as Piece 23; **it gets built before Piece 22 steps 4 and 5.**
+
+**Why it goes in `llm_provider.py` and nowhere else:** that file's docstring already forbids any other module from importing a provider class directly, so all five phases call `get_llm()`. Building rotation there means Phase 2's chain, Phase 3's agent, Phase 4's MCP chat and Phase 5's graph all inherit it without being edited.
+
+**Two things worth saying out loud:** a `429`/`RESOURCE_EXHAUSTED` retires a key for the day, but a `400`/`403` is a *typo*, not an exhausted quota — that one gets dropped and logged loudly, because silently rotating past a bad key would hide the mistake forever. And per D-19, an exhausted key may change the *wording* of a Phase 5 review but must never change its *decision*, since those numbers are plain Python.
+
+**Your answer:** _(his, 2026-09-10 — this was his design; recorded here so it is not re-argued)_
+
+---
+
+### D-21 · Phase 4 and 5 inherit Phase 3's permission gate for free
+
+**What's wrong:** Phase 4's six MCP tools include three that change real records — `submit_loan_application`, `update_application_status`, `upload_document_metadata`. `update_application_status` can reject or disburse a loan, and Phase 4's own prompt admits those moves "can never be undone". Phase 4 was built for a Streamlit page with no logged-in user, so its tools run as a fixed service account. Wired into the customer-facing chat unchanged, that is a customer approving their own loan.
+
+**Chosen:** wrap Phase 4's tools in the same `acting_as()` block Phase 3 already uses. Checked in the code: `mcp_app.py` imports `api_get/api_post/api_patch` from the same `app.services.loan_api_client` Phase 3 uses, and `service_token()` reads the `acting_as()` ContextVar. So the gate already reaches Phase 4's tools — they just are not currently called inside it.
+
+**Why:** it is not a new permission system. `application_service.py:271` already refuses disbursement to anyone who is not a branch manager, and every endpoint is owner-scoped and was tested twenty ways in Phase 1. The AI inherits all of it and answers 403 exactly where the browser would. Rohit's recollection of the role split was checked against the code and is correct: officers get everything except disburse, managers get disburse too.
+
+**Your answer:** _(his, 2026-09-10 — confirmed against the code)_
+
+---
+
 ### D-19 · Phase 5: the LLM writes the prose, plain Python computes the numbers
 
 **What's wrong:** the trainer's Phase 5 reference asks the LLM to compute the debt-to-income ratio, the EMI, the credit and employment risk tiers and the overall risk score itself, and return them as JSON to be parsed with a regex. Their own "common mistakes" table then admits the consequence: *"JSON parsing fails in Risk Assessor — use regex to extract JSON, have fallback values."* For numbers a lending decision hangs on, an occasional silent fallback to made-up defaults is not an acceptable failure mode.
@@ -57,6 +83,24 @@ each with an ID, so he can review and overturn any of them afterwards.
 # Traps and differences
 
 No decision needed. These break something quietly if forgotten.
+
+**T-88 · `PyJWT` is missing from `requirements.txt`, so two of our own tests cannot be collected.**
+Found 2026-09-10 on a clean install. `tests/ours/test_chat_uses_agent.py:15` and
+`tests/ours/test_agent_acts_as_caller.py` both `import jwt`, which is **PyJWT** —
+but `requirements.txt` installs `python-jose[cryptography]` instead, and the two
+are different packages that happen to do the same job. On the machine where
+those tests were written, PyJWT must have been present by accident (pulled in by
+something since removed, or installed by hand). On a fresh venv it is not, so
+`pytest tests/ours` stops at collection with `ModuleNotFoundError: No module
+named 'jwt'` and **takes the whole folder's other tests down with it**, which is
+how a green suite hides two red files.
+
+Not caused by Piece 23 — confirmed by running Phase 1 (27 passed) and the two
+LLM files (35 passed) separately. Two ways to fix it, and the choice matters:
+add `PyJWT` to `requirements.txt`, or change those two files to decode with
+`jose.jwt`, which is what the app itself already uses everywhere else. The second
+is tidier — one JWT library rather than two — but it edits tests, so it waits
+for Rohit's call rather than being done quietly.
 
 ### From the Wipro laptop survey (2026-09-09)
 

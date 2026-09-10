@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-10 — Session: set up this laptop, then Piece 23 step 1 — the key ladder
+
+**Asked for:** set the project up on this machine following `SETUP-WIPRO.md`, then start on making one React chatbot that can do Phase 3, 4 and 5 instead of Phase 4 living in Streamlit and Phase 5 living in a terminal.
+**Built:** the setup (venv, packages, `.env` files, seeded database, npm packages, 42 manual chunks ingested), then the first step of Piece 23: several Gemini keys tried in turn, then local Ollama, then an honest "nothing is available". Nine error codes so the failures can be told apart, and 27 new tests plus the 8 old ones, all green. None of it calls a real AI, so it cost no quota to build or check.
+**Found:** three things. This is **not** the Wipro laptop the guide was written for — Python here is 3.11.9 and Node is 24, so none of the guide's workarounds were needed. The 401 you spotted is not a bug: `AuthContext.jsx:23` only asks "who am I?" when a token already exists, so that was a stale token from an earlier session being correctly thrown away. And `PyJWT` is missing from `requirements.txt`, which stops two of our own test files being collected at all (T-88) — that one is older than today's work and needs your call.
+**Realised:** the gap you described is real but it sits in the backend, not in React. `Assistant.jsx` was deliberately built never to need rewriting, and it already has a `review` slot waiting for Phase 5. Better still, Phase 4's tools already call the API through the same client that reads the `acting_as()` gate, so they inherit Phase 1's permission checks for free — a customer cannot approve their own loan because the API itself says 403. Your memory of the role split was right; `application_service.py:271` confirms only a manager can disburse.
+**Next:** Piece 23 step 3 — surface the error codes through `/api/v1/chat` and show the sentence in the Assistant screen. Then Piece 22 steps 4 and 5, which is Phase 4 and Phase 5 in the chat box.
+
+---
+
 ## 2026-09-09 — Session: actually setting it up on the Wipro laptop
 
 **Asked for:** get the project running on this machine, follow `SETUP-WIPRO.md`, use Python 3.12 since several versions are installed here, and end with a single script Rohit can double-click to start everything.
