@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-11 — Piece 22 step 5: Phase 5 in the chat. One assistant, all five phases.
+
+**Asked for:** the last piece — "assess application 7" should run the four-agent underwriting review from the React chat, instead of only from a terminal prompt.
+**Built:** it does. A staff member types the phrase, sees a line saying four agents are working, and about ten seconds later gets the verdict, the figures behind it, and the paragraph explaining it — with all four agents listed in order under "Show how this was worked out". 46 new tests, 183 passing, none of them spending quota.
+**Found:** the review only makes **2 AI calls**, not four. Every number and the decision itself are plain Python (D-19), and the model only writes prose. So a dead quota changes the wording of a review and never its verdict — and with your five keys that is roughly 500 reviews a day. Also confirmed the chat bubble already preserved newlines, so the formatted answer needed no CSS at all.
+**Realised:** the four agents map exactly onto the "how this was worked out" list the screen already had. That meant no new response field, no new frontend component, and the pipeline became visible for the cost of one dictionary. The trigger is a typed phrase rather than something the model decides, because a model that sometimes runs a ten-second review and sometimes does not is the last thing you want on stage.
+**Next:** try it in the browser as Rajan, then Piece 22 is closed and every phase lives behind one chat box.
+
+---
+
 ## 2026-09-11 — Step 4 confirmed working in the browser, permission gate included
 
 **Asked for:** try the confirmation flow for real, as Rajan the loan officer.

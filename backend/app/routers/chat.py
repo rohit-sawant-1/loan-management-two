@@ -35,10 +35,12 @@ from sqlalchemy.orm import Session
 
 import llm_provider
 from app.database import get_db
+from app.domain import rules
+from app.utils.finance import format_rupees
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.chat import ChatRequest, ChatResponse, ChatSource, ChatToolCall
-from app.services import activity_service, pending_actions
+from app.services import activity_service, pending_actions, review_request
 from app.services.loan_api_client import acting_as
 
 logger = structlog.get_logger()
@@ -74,6 +76,68 @@ def get_agent(role: str | None = None):
 
         _agents[role] = build_agent(role)
     return _agents[role]
+
+
+# What the screen calls a Phase 5 answer. The mode tells it which brain
+# answered, and `Assistant.jsx` already has a slot for this one.
+REVIEW_MODE = "review"
+
+
+def _review_answer(state: dict) -> str:
+    """
+    The chat bubble for a finished review: the verdict, the figures it rests on,
+    then the paragraph the decision maker wrote.
+
+    The verdict and every number here were computed in plain Python from
+    `app/domain/rules.py` (D-19). The AI wrote only the closing paragraph, so a
+    dead quota changes the wording of this answer and never the decision in it.
+
+    Only called when the review actually ran. On a data-collection failure the
+    risk and compliance dicts are still empty, and the caller returns before
+    reaching here — which is why this reads them directly rather than guarding
+    every lookup.
+    """
+    risk = state["risk_assessment"]
+    compliance = state["compliance_check"]
+
+    lines = [
+        f"Application {state['application_id']} — {state['final_decision']}",
+        "",
+        # The score is a float, but "90/100" reads better than "90.0/100" and
+        # the decimal carries no meaning anyone acts on.
+        f"Risk score {risk['overall_risk_score']:.0f}/100 "
+        f"(credit risk: {risk['credit_risk_level']}, "
+        f"employment risk: {risk['employment_risk']})",
+        f"Estimated EMI {format_rupees(risk['emi_amount'])} a month · "
+        f"debt-to-income ratio {risk['debt_to_income_ratio']:.0%}",
+        f"Compliance: {'passed' if compliance['compliance_passed'] else 'not passed'}",
+    ]
+
+    missing = compliance.get("missing_documents") or []
+    if missing:
+        lines.append(f"Still missing: {', '.join(label.replace('_', ' ') for label in missing)}")
+
+    if state["reasoning"]:
+        lines.extend(["", state["reasoning"]])
+
+    return "\n".join(lines)
+
+
+def _review_steps(state: dict) -> list[ChatToolCall]:
+    """
+    The four agents' own messages, shaped as the same `tools_used` list the
+    screen already knows how to draw.
+
+    This is the reason no new response field was needed: "how this was worked
+    out" is already a numbered list of steps on that screen, and a four-agent
+    pipeline is exactly that — data collected, risk assessed, compliance
+    checked, decision made, in the order they ran.
+    """
+    return [
+        ChatToolCall(tool=message.get("agent", "agent"),
+                     tool_input=str(message.get("message", ""))[:200])
+        for message in state.get("messages", [])
+    ]
 
 
 def _tool_calls(intermediate_steps) -> list[ChatToolCall]:
@@ -233,6 +297,90 @@ def chat(
         # dropped rather than left waiting, so a later stray "yes" cannot land
         # on something they have already moved on from.
         pending_actions.clear(user.email)
+
+    # A full four-agent underwriting review, asked for by name.
+    #
+    # Deliberately a phrase rather than a tool the model may pick. A review is
+    # two AI calls and about ten seconds; letting a model decide when to spend
+    # that would mean "what happened to application 7" runs one some days and
+    # not others. See `app/services/review_request.py` for the whole argument.
+    #
+    # Placed after the pending-action block on purpose. A review typed while a
+    # change is awaiting confirmation should drop that change first, and the
+    # block above already does exactly that for every other new instruction —
+    # so this branch inherits that behaviour instead of restating it.
+    review_id = review_request.review_target(question)
+    if review_id is not None:
+        if user.role.value not in rules.STAFF_ROLES:
+            # Refused before the graph runs, so it costs no AI call. The review
+            # prints the literal word REJECT, and showing that to a customer for
+            # an application no human has rejected would be a commitment the
+            # bank has not made.
+            return ChatResponse(
+                answer="A full underwriting review is a tool for bank staff. I can "
+                       "tell you the status of your own application and what it "
+                       "still needs — just ask.",
+                mode=REVIEW_MODE,
+                sources=[],
+                duration_ms=round((time.perf_counter() - started) * 1000, 2),
+            )
+
+        # Imported here rather than at the top of the file: this pulls in
+        # LangGraph and all four agents, and every other route would pay that
+        # import cost for a feature it never touches.
+        from multi_agent.graph import evaluate_loan_application
+
+        # Runs as the person asking, so the review reads exactly the data they
+        # are allowed to read (T-75). Blocks for five to fifteen seconds, which
+        # is fine: this handler is `def`, not `async def`, so FastAPI runs it in
+        # a worker thread and the server keeps answering everything else.
+        with acting_as(user.email, user.role.value):
+            state = evaluate_loan_application(review_id)
+
+        if state.get("errors"):
+            # Not an AI failure, so `ai_status` stays `ai_ok` and the amber
+            # notice stays quiet. A missing application or a refused permission
+            # has nothing to do with the model, and saying "the AI has reached
+            # today's limit" about a typo'd number would be a lie. The API
+            # client already writes these sentences for people to read.
+            answer = "I could not run the review. " + state["errors"][0]
+            steps: list[ChatToolCall] = []
+        else:
+            answer = _review_answer(state)
+            steps = _review_steps(state)
+
+        duration_ms = round((time.perf_counter() - started) * 1000, 2)
+
+        activity_service.record(
+            db, action="chat_review",
+            actor_id=user.email, actor_role=user.role.value,
+            # Filed against the application itself, not against "chat", so the
+            # review shows up on that application's own timeline (T-91).
+            entity_type="application", entity_id=int(review_id),
+            details={
+                "decision": state.get("final_decision") or "not reached",
+                "risk_score": (state.get("risk_assessment") or {}).get("overall_risk_score"),
+                "compliance_passed": (state.get("compliance_check") or {}).get("compliance_passed"),
+                "agents_run": [m.get("agent") for m in state.get("messages", [])],
+                "errors": state.get("errors", [])[:2],
+            },
+            **activity_service.request_meta(request),
+        )
+        db.commit()
+
+        logger.info("chat_review_answered", operation="chat_answered",
+                    application_id=review_id, mode=REVIEW_MODE,
+                    decision=state.get("final_decision"),
+                    errors=state.get("errors", []),
+                    duration_ms=duration_ms)
+
+        return ChatResponse(
+            answer=answer,
+            mode=REVIEW_MODE,
+            sources=[],
+            duration_ms=duration_ms,
+            tools_used=steps,
+        )
 
     mode = "agent"
     tools_used: list[ChatToolCall] = []

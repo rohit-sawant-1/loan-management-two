@@ -26,6 +26,7 @@ export const ACTIONS = {
   // answer on this screen.
   chat_message:          { text: "Asked the assistant",      icon: "activity" },
   chat_action_confirmed: { text: "Change made via assistant", icon: "shield" },
+  chat_review:           { text: "Reviewed by the assistant", icon: "shield" },
 };
 
 export const describe = (action) => ACTIONS[action] || { text: label(action), icon: "info" };
@@ -41,6 +42,8 @@ export const DETAIL_LABELS = {
   ai_status: "AI status", arguments: "Details", tools: "Steps taken",
   applicant_id: "Applicant", amount_requested: "Amount", purpose: "Purpose",
   sources: "Manual extracts used",
+  decision: "Verdict", risk_score: "Risk score", agents_run: "Agents that ran",
+  compliance_passed: "Compliance passed", errors: "What went wrong",
 };
 
 // The assistant's tools, in words someone auditing a bank would use. These are
@@ -56,6 +59,11 @@ export const TOOL_NAMES = {
   get_dashboard_summary:     "Read the dashboard figures",
   get_applicant_details:     "Looked up an applicant",
   search_loan_policy:        "Read the user manual",
+  // Phase 5's four agents, which report one message each per review.
+  data_collector:            "Collected the application data",
+  risk_assessor:             "Assessed the risk",
+  compliance_checker:        "Checked compliance",
+  decision_maker:            "Made the decision",
 };
 
 /** The stored details are a small piece of JSON. Hand back an object, or null. */
@@ -97,6 +105,14 @@ export function summarise(action, raw) {
   }
   if (action === "chat_message" && d.question) {
     return d.question.length > 60 ? `${d.question.slice(0, 60)}…` : d.question;
+  }
+  // The verdict is the point of a review, so it goes in the table itself
+  // rather than only in the panel behind "View".
+  if (action === "chat_review") {
+    if (d.errors?.length) return "Could not run";
+    return d.risk_score != null
+      ? `${label(d.decision)} · risk ${d.risk_score}/100`
+      : label(d.decision);
   }
   return "";
 }

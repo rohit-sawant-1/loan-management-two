@@ -84,6 +84,40 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-92 · The review trigger is anchored to the whole message, and that is the whole design.**
+`app/services/review_request.py`, added 2026-09-11. A review costs two AI calls
+and about ten seconds, so it must run when someone asks for it and never
+otherwise. The pattern requires the message to *start* with one of four verbs
+and contain nothing but the instruction:
+
+    "assess application 7"            -> runs a review
+    "what happened to application 7"  -> does NOT
+
+Both contain "application 7". An unanchored search would fire on both, which
+means a plain question would sometimes cost ten seconds. Anchoring is what
+separates them, and it is why this is a phrase check rather than a tool the
+model may choose — a model given the choice does not answer the same question
+the same way twice, and an unpredictable ten-second branch is the worst thing
+to have on stage.
+
+Checked against all seventeen chat messages in the existing test suite before
+building: none begins with a trigger verb, so nothing already written changed
+behaviour. `reject application 7, income too low` is the near miss, and it fails
+on both the verb and the trailing text.
+
+**A copy of the pattern lives in `frontend/src/pages/Assistant.jsx`** (as
+`REVIEW_PHRASE`), used only to decide whether to show the "about ten seconds"
+line while waiting. Change one, change the other — there is a comment in both
+saying so.
+
+**T-93 · A failed review is not an AI failure.**
+When a review cannot run — bad application number, a 403, the API down — the
+chat answers 200 with the reason in plain words and leaves `ai_status` as
+`ai_ok`. Setting the D-20 codes there would make the amber notice say "the AI
+has reached today's limit" about a typo, which is worse than saying nothing.
+The AI codes describe the *model* misbehaving; everything else is ordinary
+product behaviour and reads as such.
+
 **T-91 · An activity row with a type but no number printed "Chat #null".**
 Spotted by Rohit on the manager's activity page, 2026-09-11. Mine, from the day
 before. The chat rows were written with `entity_type="chat"` and no

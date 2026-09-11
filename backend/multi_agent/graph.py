@@ -66,6 +66,13 @@ def evaluate_loan_application(application_id: str) -> LoanProcessingState:
     """Run the full four-agent evaluation for one loan application."""
     configure_logging()
     setup_telemetry()
+    # Known wart, left deliberately. This sets a process-global
+    # LANGCHAIN_PROJECT, and now that reviews also run from the chat endpoint, a
+    # Phase 3 question answered at the same moment can have its trace filed
+    # under the P5 project. Fixing it properly means a lock or threading the
+    # project name through every LangChain call — a lot of machinery for a
+    # diagnostic nobody's decisions depend on. Traces are for us, not for the
+    # bank, so a misfiled one costs nothing real.
     enable_langsmith(LANGSMITH_PROJECT)
 
     log = logger.bind(poc_id="POC-01", phase=5, application_id=application_id)

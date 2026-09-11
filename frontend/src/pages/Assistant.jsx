@@ -48,7 +48,27 @@ const TOOLS = {
   list_applications: { text: "Searched the applications list", icon: "search" },
   get_dashboard_summary: { text: "Read the dashboard figures", icon: "dashboard" },
   get_applicant_details: { text: "Looked up an applicant", icon: "user" },
+
+  // Phase 4's tools, which change a record rather than read one.
+  update_application_status: { text: "Changed an application's status", icon: "activity" },
+  submit_loan_application: { text: "Created a new application", icon: "file" },
+  upload_document_metadata: { text: "Recorded a document", icon: "file" },
+
+  // Phase 5's four agents. A review reports one of these per stage, so the
+  // "how this was worked out" list becomes the pipeline itself, in order.
+  data_collector: { text: "Collected the application data", icon: "applications" },
+  risk_assessor: { text: "Assessed the risk", icon: "activity" },
+  compliance_checker: { text: "Checked compliance", icon: "shield" },
+  decision_maker: { text: "Made the decision", icon: "check" },
 };
+
+// Does this look like a request for a full underwriting review?
+//
+// Used only to decide whether to warn that the answer takes about ten seconds.
+// The real decision is made on the server; this is a copy of the pattern in
+// `backend/app/services/review_request.py`, and if you change one, change both.
+const REVIEW_PHRASE =
+  /^\s*(?:please\s+)?(?:assess|review|evaluate|underwrite)\s+(?:loan\s+)?application\s+#?\d{1,9}\s*[.!?]?\s*$/i;
 
 const SUGGESTIONS = [
   "What documents are required for a home loan?",
@@ -56,6 +76,15 @@ const SUGGESTIONS = [
   "How long does a personal loan take to approve?",
   "What happens if my application is rejected?",
 ];
+
+// Staff can do more than ask questions, and the review has to be asked for by
+// name — so without a chip nobody would ever discover it exists.
+const STAFF_SUGGESTIONS = [
+  "Assess application 1",
+  "Show all pending applications",
+];
+
+const STAFF_ROLES = ["loan_officer", "branch_manager"];
 
 // The "check my work" strip under every answer: how the assistant worked the
 // answer out, and which manual extracts it quoted. Both live in one component
@@ -128,6 +157,7 @@ export default function Assistant() {
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
+  const [waitingOnReview, setWaitingOnReview] = useState(false);
   const [error, setError] = useState("");
   const endRef = useRef(null);
 
@@ -143,6 +173,9 @@ export default function Assistant() {
     setMessages((m) => [...m, { who: "you", text: question }]);
     setDraft("");
     setBusy(true);
+    // A review takes four agents and roughly ten seconds. Ten silent seconds
+    // reads as a hung page, so say what is happening while it works.
+    setWaitingOnReview(REVIEW_PHRASE.test(question));
     setError("");
 
     try {
@@ -163,6 +196,7 @@ export default function Assistant() {
       setMessages((m) => m.slice(0, -1));
     } finally {
       setBusy(false);
+      setWaitingOnReview(false);
     }
   }
 
@@ -199,7 +233,10 @@ export default function Assistant() {
                 I do not know something I will say so rather than guess.
               </p>
               <div className="chips" style={{ justifyContent: "center", marginTop: "1.1rem" }}>
-                {SUGGESTIONS.map((s) => (
+                {[
+                  ...SUGGESTIONS,
+                  ...(STAFF_ROLES.includes(user?.role) ? STAFF_SUGGESTIONS : []),
+                ].map((s) => (
                   <button key={s} type="button" className="chip" onClick={() => send(s)}>
                     {s}
                   </button>
@@ -237,6 +274,16 @@ export default function Assistant() {
               <div className="typing" aria-label="Thinking">
                 <span /><span /><span />
               </div>
+              {waitingOnReview && (
+                <div className="bubble-meta">
+                  <Icon name="shield" size={12} />
+                  <span>
+                    Four agents are reviewing this application — collecting the data,
+                    assessing risk, checking compliance, then deciding. This takes
+                    about ten seconds.
+                  </span>
+                </div>
+              )}
             </div>
           )}
           <div ref={endRef} />

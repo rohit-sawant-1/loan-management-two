@@ -16,10 +16,13 @@ function DetailValue({ name, value }) {
   // nothing to whoever is reading an audit trail. "Changed an application's
   // status" is the same fact in words a manager already uses.
   if (name === "tool") return TOOL_NAMES[value] || label(value);
-  if (name === "tools" && Array.isArray(value)) {
+  if ((name === "tools" || name === "agents_run") && Array.isArray(value)) {
     return value.length
       ? value.map((t) => TOOL_NAMES[t] || label(t)).join(", ")
       : <span className="muted">none needed</span>;
+  }
+  if (Array.isArray(value)) {
+    return value.length ? value.join("; ") : <span className="muted">none</span>;
   }
   return String(value);
 }
