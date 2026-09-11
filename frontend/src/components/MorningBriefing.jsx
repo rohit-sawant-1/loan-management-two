@@ -120,7 +120,7 @@ export default function MorningBriefing() {
                   <ul className="briefing-list">
                     {briefing.needs_attention.map((row) => (
                       <li key={row.id}>
-                        <Link to={`/applications/${row.id}`}>#{row.id}</Link>{" "}
+                        <Link to={`/applications/${row.id}`}>Application {row.id}</Link>{" "}
                         {row.applicant_name} · {label(row.loan_type)} · {rupees(row.amount)} ·{" "}
                         <strong>{row.days_waiting} days</strong> in {label(row.status).toLowerCase()}
                       </li>
@@ -135,7 +135,7 @@ export default function MorningBriefing() {
                   <ul className="briefing-list">
                     {briefing.missing_documents.map((row) => (
                       <li key={row.id}>
-                        <Link to={`/applications/${row.id}`}>#{row.id}</Link> {row.applicant_name} —
+                        <Link to={`/applications/${row.id}`}>Application {row.id}</Link> {row.applicant_name} —
                         missing {row.missing.map((m) => label(m)).join(", ")}
                       </li>
                     ))}
@@ -149,7 +149,7 @@ export default function MorningBriefing() {
                   <ul className="briefing-list">
                     {briefing.failed_eligibility.map((row) => (
                       <li key={row.id}>
-                        <Link to={`/applications/${row.id}`}>#{row.id}</Link> {row.applicant_name} ·{" "}
+                        <Link to={`/applications/${row.id}`}>Application {row.id}</Link> {row.applicant_name} ·{" "}
                         {label(row.loan_type)} · {rupees(row.amount)} ·{" "}
                         {label(row.status).toLowerCase()}
                       </li>

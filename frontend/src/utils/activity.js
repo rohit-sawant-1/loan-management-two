@@ -36,9 +36,26 @@ export const DETAIL_LABELS = {
   loan_type: "Loan type", amount: "Amount", tenure_months: "Tenure",
   doc_type: "Document type", file_name: "File name", application_id: "Application",
   eligible: "Passed eligibility", problem_count: "Rules not met", email: "Email",
-  question: "Question asked", tool: "Tool used", worked: "Went through",
+  question: "Question asked", tool: "What was done", worked: "Went through",
   outcome: "Result", new_status: "Changed to", mode: "Answered by",
-  ai_status: "AI status", arguments: "Details",
+  ai_status: "AI status", arguments: "Details", tools: "Steps taken",
+  applicant_id: "Applicant", amount_requested: "Amount", purpose: "Purpose",
+  sources: "Manual extracts used",
+};
+
+// The assistant's tools, in words someone auditing a bank would use. These are
+// function names in the stored data — fine for a developer, meaningless in an
+// audit trail that a branch manager is supposed to be able to read.
+export const TOOL_NAMES = {
+  update_application_status: "Changed an application's status",
+  submit_loan_application:   "Created a new application",
+  upload_document_metadata:  "Recorded a document",
+  get_application_details:   "Looked up an application",
+  list_applications:         "Searched the applications list",
+  list_applications_by_filter: "Searched the applications list",
+  get_dashboard_summary:     "Read the dashboard figures",
+  get_applicant_details:     "Looked up an applicant",
+  search_loan_policy:        "Read the user manual",
 };
 
 /** The stored details are a small piece of JSON. Hand back an object, or null. */

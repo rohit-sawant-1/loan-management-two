@@ -196,7 +196,7 @@ export default function ApplicationList() {
                 <tbody>
                   {data?.items?.length ? data.items.map((a) => (
                     <tr key={a.id} className="row-link" onClick={() => navigate(`/applications/${a.id}`)}>
-                      <td className="id">#{a.id}</td>
+                      <td className="id">{a.id}</td>
                       <td>{a.applicant_name || `Applicant ${a.applicant_id}`}</td>
                       <td>{label(a.loan_type)}</td>
                       <td className="num">{rupees(a.amount_requested)}</td>

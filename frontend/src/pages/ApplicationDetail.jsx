@@ -166,7 +166,7 @@ export default function ApplicationDetail() {
             <Icon name="chevronLeft" size={14} /> Back to applications
           </Link>
           <h1 style={{ marginTop: "0.3rem", display: "flex", alignItems: "center", gap: "0.6rem" }}>
-            Application #{app.id} <StatusBadge status={app.status} />
+            Application {app.id} <StatusBadge status={app.status} />
           </h1>
           <p className="sub">
             {label(app.loan_type)} loan of {rupees(app.amount_requested)} over {app.tenure_months} months
@@ -387,7 +387,7 @@ export default function ApplicationDetail() {
           <>
             <p>{FINAL[confirming].body}</p>
             <dl className="kv">
-              <dt>Application</dt><dd>#{app.id} · {app.applicant?.name}</dd>
+              <dt>Application</dt><dd>{app.id} · {app.applicant?.name}</dd>
               <dt>Moving from</dt><dd><StatusBadge status={app.status} /></dd>
               <dt>Moving to</dt><dd><StatusBadge status={confirming} /></dd>
               <dt>Remarks</dt>

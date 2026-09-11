@@ -163,11 +163,13 @@ export default function Activity() {
                           </div>
                         </td>
                         <td className="muted">
-                          {/* The number is only printed when there is one. A
-                              row with a type but no id used to render as
-                              "Chat #null" (T-91). */}
+                          {/* "Application 3" rather than "Application #3" —
+                              it reads as a sentence instead of a database
+                              reference. The number is only printed when there
+                              is one, so a row with a type but no id can never
+                              render as "Chat #null" again (T-91). */}
                           {row.entity_type
-                            ? `${label(row.entity_type)}${row.entity_id != null ? ` #${row.entity_id}` : ""}`
+                            ? `${label(row.entity_type)}${row.entity_id != null ? ` ${row.entity_id}` : ""}`
                             : "—"}
                         </td>
                         <td>
@@ -239,7 +241,7 @@ export default function Activity() {
                   <dt>Record</dt>
                   <dd>
                     {label(chosen.entity_type)}
-                    {chosen.entity_id != null && ` #${chosen.entity_id}`}
+                    {chosen.entity_id != null && ` ${chosen.entity_id}`}
                   </dd>
                 </dl>
               </>
