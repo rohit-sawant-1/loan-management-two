@@ -4,6 +4,15 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-11 — Piece 22 closed: verified in the browser, all four checks
+
+**Asked for:** confirm step 5 works for real, including that a customer cannot run a review.
+**Verified:** a review of application 7 ran in 25 seconds and returned REQUEST_MORE_INFO with the figures and a reasoning paragraph. Priya, a customer, was refused instantly — on her *own* application, which is the stricter test, because the rule is about role rather than ownership. Two bugs found and fixed along the way: the browser was giving up at 15 seconds (the app-wide limit, right for database reads and wrong for four agents), and the AI wrote "$4,000,000.0" because the prompt handed it a bare number with no unit.
+**Realised:** every number going into a prompt needs its unit attached. The risk assessor already did this and its EMI was always correct; only the decision maker passed a raw figure, and the model filled the gap with dollars. That is now T-94.
+**Next:** Piece 22 is done — all five phases reachable from one chat box, nothing left in a terminal or in Streamlit.
+
+---
+
 ## 2026-09-11 — Piece 22 step 5: Phase 5 in the chat. One assistant, all five phases.
 
 **Asked for:** the last piece — "assess application 7" should run the four-agent underwriting review from the React chat, instead of only from a terminal prompt.
