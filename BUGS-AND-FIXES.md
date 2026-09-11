@@ -179,6 +179,103 @@ All fixed in one pass, by category rather than by file.
 
 ---
 
+### 8. One event, two clocks, one screen
+
+**What we saw.** The Application Detail card says an eligibility assessment
+happened at one time. Open the assessment itself, directly below, and it says the
+same assessment happened at a different time — five and a half hours earlier.
+
+**What was actually wrong.** Both of them were telling the truth about the same
+instant. The paragraph read `eligibility_checked_at`, which is a proper datetime
+field, and the browser converted it to Indian time the way it converts every
+other date in the app. The assessment text had its own opening line, written by
+the server as a UTC wall clock and then stored as part of the text. India is UTC
+plus five and a half hours, so there is the gap.
+
+**The fix, and why it is a deletion.** The instinct is to convert that line to
+Indian time. That is the wrong fix twice over: it makes the server guess the
+reader's timezone, which it has no way of knowing, and it leaves two copies of
+one fact that will drift apart the moment somebody edits one of them. The moment
+was *already* stored properly in the field right beside the text. So the line
+comes out, and the card's existing, correct copy is the only one.
+
+**The half that nearly got missed.** Changing the code only changes what gets
+written from now on. Fourteen applications already in the database still had the
+old line inside their stored text, which means the bug would still have been on
+screen for every single demo application. **A stored string does not fix itself
+when the code that wrote it changes.** So the fix has a second half: on startup
+the app strips that one line from rows that have it, guarded so it touches
+nothing else in the assessment.
+
+**What it taught us.** *A time is stored once, as a datetime, and formatted where
+it is read.* This app already did that everywhere. The bug existed precisely
+because one string opted out of the rule — and the rule is not enforceable by a
+type, only by noticing.
+
+---
+
+### 9. "Id proof", and the ten places it came from
+
+**What we saw.** "Id proof" where a person would write "ID proof". Small, and the
+kind of thing that makes a demo look unfinished.
+
+**What was actually wrong.** The browser turns a stored value like `id_proof`
+into words by removing the underscore and capitalising the first letter. That is
+right for `under_review`, which becomes "Under review", and wrong for an
+abbreviation, which becomes somebody's name.
+
+Then the interesting part. Searching for the same mistake elsewhere found **ten
+more copies of it in the backend**, each a bare `replace("_", " ")` written
+inline. Those are not cosmetic in the same way: several of them feed text
+straight into AI prompts, and the AI repeats what it is handed. So the chatbot
+could tell a customer one thing about a document while the screen beside it said
+another — which is exactly what the project's own rule about the manual and the
+code agreeing exists to prevent.
+
+**The fix.** One function on each side, holding the same short list of words that
+are not ordinary words: ID, KYC, EMI, CIBIL, PAN, AI, NRI. All ten backend call
+sites go through it, and no raw underscore-strip survives anywhere outside the
+helper. A test walks every document type, status and employment status the app
+can store and asserts none of them comes out with an underscore still in it, so a
+value added next year cannot quietly bring the bug back.
+
+**Worth noticing.** Two copies of that word list, one in Python and one in
+JavaScript, is not elegant. Sharing a literal between the two languages would
+need a build step nobody asked for. Two small lists, each with a comment pointing
+at the other, is the honest version of that trade-off rather than a pretence that
+there is only one.
+
+---
+
+### 10. "3.0 days", "3.0 years", "70.0/100"
+
+**What we saw.** The Morning Briefing — the headline feature, the one the demo
+opens on — saying an application had been waiting **"3.0 days"**. My Profile
+saying someone had been with their employer **"3.0 years"**. The activity table
+saying a risk score of **"70.0/100"**.
+
+**What was actually wrong.** Nothing, again, in the data. All three are stored as
+decimal numbers for good reasons: days-waiting is rounded to a tenth so the
+sorting is stable, and the risk score is computed as a float. JavaScript prints
+`3.0` as `3`, so this only shows up where the number really did arrive as a
+decimal from the server. Nobody says "three point zero days".
+
+**The fix.** One helper that rounds to a whole number for display, used at all
+four places, rather than four separate rounding calls that would each need
+finding again later.
+
+**One extra thing fixed while there.** The risk score in the details panel had no
+formatting at all — it fell through to "print whatever this is", so a reader saw
+`70.0` with nothing to say what the scale was or which direction is good. It now
+reads "70 out of 100". That panel is the one place the number appears without a
+sentence around it to explain it.
+
+**What it taught us.** This is the same shape as every other bug in this file, at
+its smallest: the value was right, the sentence built from it was wrong, and no
+test noticed because every test asserts on the value.
+
+---
+
 ## How to look for bugs you do not know about
 
 The method, in four steps, in case it is useful again:

@@ -39,6 +39,7 @@ from langchain_core.tools import tool
 
 from app.services.loan_api_client import API_BASE_URL, api_get  # noqa: F401
 from app.utils.finance import format_rupees
+from app.utils.text import readable
 from app.utils.otel_config import get_tracer
 
 logger = structlog.get_logger()
@@ -77,7 +78,7 @@ def _readable(value) -> str:
     echoes what it was given. Handing it `id_proof` is how "id_proof" ends up in
     a sentence addressed to a loan officer (T-96).
     """
-    return str(value).replace("_", " ") if value is not None else "not recorded"
+    return readable(value) if value is not None else "not recorded"
 
 
 def _readable_time(value) -> str:

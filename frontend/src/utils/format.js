@@ -24,9 +24,41 @@ export function formatDateTime(value) {
   });
 }
 
-// "under_review" -> "Under review"
+// A whole number for things counted in whole units. The server sends
+// `days_waiting` and `years_with_employer` as floats, so the browser was
+// printing "3.0 days" and "3.0 years" on the Morning Briefing and on My
+// Profile. Nobody says "three point zero days", and the tenth of a day the
+// decimal carries is not something anyone acts on.
+export function whole(value) {
+  if (value === null || value === undefined || value === "") return "";
+  const n = Number(value);
+  return Number.isFinite(n) ? String(Math.round(n)) : String(value);
+}
+
+// Words that are not simply capitalised when an underscore is removed.
+// "id_proof" became "Id proof", which reads as a name rather than as the
+// initials it actually is. Keyed by the lower-case word so the lookup does
+// not depend on where in the string it appears.
+const WORD_FIXES = {
+  id: "ID",
+  kyc: "KYC",
+  emi: "EMI",
+  cibil: "CIBIL",
+  pan: "PAN",
+  ai: "AI",
+  nri: "NRI",
+};
+
+// "under_review" -> "Under review", "id_proof" -> "ID proof"
 export function label(value) {
   if (!value) return "";
-  const text = String(value).replace(/_/g, " ");
-  return text.charAt(0).toUpperCase() + text.slice(1);
+  const words = String(value).replace(/_/g, " ").split(" ");
+  const fixed = words.map((word, i) => {
+    const known = WORD_FIXES[word.toLowerCase()];
+    if (known) return known;
+    // Only the first word is capitalised: this is a sentence-style label,
+    // not a title, so "Under review" rather than "Under Review".
+    return i === 0 ? word.charAt(0).toUpperCase() + word.slice(1) : word;
+  });
+  return fixed.join(" ");
 }

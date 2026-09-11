@@ -52,7 +52,8 @@ from langchain_classic.agents import AgentExecutor, create_react_agent  # noqa: 
 from langchain_core.prompts import PromptTemplate                     # noqa: E402
 from langchain_core.tools import tool                                 # noqa: E402
 
-from app.utils.finance import format_rupees                          # noqa: E402
+from app.utils.finance import format_rupees
+from app.utils.text import readable, readable_list                          # noqa: E402
 from app.utils.logging_config import configure_logging               # noqa: E402
 from app.utils.otel_config import get_tracer, setup_telemetry        # noqa: E402
 from llm_provider import enable_langsmith, get_llm                   # noqa: E402
@@ -157,12 +158,12 @@ def _format_value(key: str, value) -> str:
         # than dumped, because `repr` of a dict is not something to show anyone.
         if isinstance(value[0], dict):
             return f"{len(value)} item(s)"
-        return ", ".join(str(v).replace("_", " ") for v in value)
+        return readable_list(value)
     if isinstance(value, dict):
         name = value.get("name") or value.get("id")
         return str(name) if name is not None else f"{len(value)} field(s)"
     if isinstance(value, str):
-        return value.replace("_", " ")
+        return readable(value)
     return str(value)
 
 
@@ -170,7 +171,7 @@ def _format_dict(data: dict) -> str:
     """A tool's raw dict, as a short readable observation for the agent to reason over."""
     if "error" in data:
         return f"Error: {data.get('detail', data['error'])}"
-    return "\n".join(f"{key.replace('_', ' ')}: {_format_value(key, value)}"
+    return "\n".join(f"{readable(key)}: {_format_value(key, value)}"
                      for key, value in data.items())
 
 

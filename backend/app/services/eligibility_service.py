@@ -5,8 +5,6 @@ Advisory only. It never blocks a submission; it explains problems and
 suggests a fix where it can. Every threshold comes from the rules file.
 """
 
-from datetime import datetime, timezone
-
 import structlog
 from sqlalchemy.orm import Session
 
@@ -18,6 +16,7 @@ from app.schemas.application import (
 )
 from app.services import activity_service
 from app.services.errors import Forbidden, NotFound
+from app.utils.text import readable
 from app.utils.dates import age_on
 from app.utils.finance import (
     calculate_emi, format_rupees, max_affordable_emi, max_principal_for_emi,
@@ -197,17 +196,21 @@ def build_summary_text(
     The readable note stored on the application (Piece 19). Written like
     something a person would jot down, not a dump of field names.
     """
-    now = datetime.now(timezone.utc)
     passed_count = sum(1 for r in result.rule_checks if r.passed)
     total = len(result.rule_checks)
     verdict = "ELIGIBLE" if result.eligible else "NOT ELIGIBLE"
 
+    # No timestamp in this text, deliberately. The moment of the assessment is
+    # stored properly next to it, in `eligibility_checked_at`, which is a real
+    # datetime field and reaches the browser as one — so the browser shows it in
+    # the reader's own timezone like every other date in the app. Writing the
+    # same instant into this string as a UTC wall clock meant the card printed
+    # one event at two times five and a half hours apart: the paragraph above in
+    # IST, the text below in UTC. One fact, one field.
     lines = [
-        f"Eligibility assessed at submission on {now.strftime('%d %b %Y, %H:%M')} UTC.",
-        "",
         f"Applicant: {applicant.name} — CIBIL {applicant.credit_score if applicant.credit_score is not None else 'not on file'}, "
         f"annual income {_rupees(applicant.annual_income)}, "
-        f"{applicant.employment_status.value.replace('_', ' ')}"
+        f"{readable(applicant.employment_status.value)}"
         + (f" {applicant.years_with_employer:g} years" if applicant.years_with_employer is not None else "")
         + (f", age {age_on(applicant.date_of_birth)}" if applicant.date_of_birth is not None else "") + ".",
         f"Requested: {loan_type} loan of {_rupees(amount)} over {tenure} months. "

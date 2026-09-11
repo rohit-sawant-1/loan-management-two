@@ -17,7 +17,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, errorMessage } from "../api/client";
-import { label, rupees } from "../utils/format";
+import { label, rupees, whole } from "../utils/format";
 import Button from "./ui/Button";
 import Icon from "./ui/Icon";
 
@@ -122,7 +122,7 @@ export default function MorningBriefing() {
                       <li key={row.id}>
                         <Link to={`/applications/${row.id}`}>Application {row.id}</Link>{" "}
                         {row.applicant_name} · {label(row.loan_type)} · {rupees(row.amount)} ·{" "}
-                        <strong>{row.days_waiting} days</strong> in {label(row.status).toLowerCase()}
+                        <strong>{whole(row.days_waiting)} days</strong> in {label(row.status).toLowerCase()}
                       </li>
                     ))}
                   </ul>

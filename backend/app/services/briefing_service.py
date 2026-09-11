@@ -29,6 +29,7 @@ from app.models.document import Document
 from app.models.user import User
 from app.services import activity_service
 from app.utils.finance import format_rupees
+from app.utils.text import readable, readable_list
 
 logger = structlog.get_logger()
 
@@ -185,8 +186,8 @@ def _facts_as_text(facts: dict) -> str:
         days = round(row["days_waiting"])
         lines.append(
             f"  - Application {row['id']} ({row['applicant_name']}, "
-            f"{row['loan_type'].replace('_', ' ')}, "
-            f"{format_rupees(row['amount'])}) has been {row['status'].replace('_', ' ')} "
+            f"{readable(row['loan_type'])}, "
+            f"{format_rupees(row['amount'])}) has been {readable(row['status'])} "
             f"for {days} day{'' if days == 1 else 's'}."
         )
     if facts["failed_eligibility_total"]:
@@ -194,14 +195,14 @@ def _facts_as_text(facts: dict) -> str:
                      f"submission: {facts['failed_eligibility_total']}.")
         for row in facts["failed_eligibility"]:
             lines.append(f"  - Application {row['id']} ({row['applicant_name']}, "
-                         f"{format_rupees(row['amount'])}, now {row['status'].replace('_', ' ')}).")
+                         f"{format_rupees(row['amount'])}, now {readable(row['status'])}).")
     if facts["missing_documents_total"]:
         lines.append(f"Waiting on a decision but missing documents: {facts['missing_documents_total']}.")
         for row in facts["missing_documents"]:
             # Document types are stored as `id_proof`. The model prints what it
             # is given, so without this the manager's briefing says "is missing
             # id_proof, bank_statement".
-            missing = ", ".join(doc.replace("_", " ") for doc in row["missing"])
+            missing = readable_list(row["missing"])
             lines.append(f"  - Application {row['id']} ({row['applicant_name']}) "
                          f"is missing {missing}.")
     return "\n".join(lines)

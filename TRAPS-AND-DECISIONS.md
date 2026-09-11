@@ -16,6 +16,67 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 ---
 
+### D-22 · The eligibility timestamp is removed from the stored text, not converted
+
+**What's wrong:** the Application Detail card showed the same event at two times
+five and a half hours apart. The paragraph above the assessment printed
+`eligibility_checked_at` through the browser's own formatter, which converts to
+the reader's timezone. The assessment text below it opened with a line
+`build_summary_text` had written as a UTC wall clock. One event, two clocks, one
+screen.
+
+**Chosen:** delete the line from the text entirely rather than converting it to
+IST. The moment is already stored properly in `eligibility_checked_at`, a real
+datetime column that reaches the browser as a datetime, so the card already had
+a correct copy — the text's line was a second, worse one.
+
+**Why:** converting it on the server would need the server to decide the
+reader's timezone, which it has no business knowing. It also leaves two copies
+of one fact that can drift apart later. A time is stored once, as a datetime,
+and formatted where it is read. That is how every other date in this app already
+works, and the bug existed precisely because this one string opted out.
+
+**The part worth arguing with:** a stored string does not fix itself when the
+code that wrote it changes, and fourteen applications in `loan_app.db` still had
+the old line in them. So `init_db()` now strips that one line from rows that have
+it, alongside the column-adding step from D-18. It is guarded by a `LIKE` and
+touches nothing else in the assessment — the rest is the bank's permanent record
+of what its rules said at submission and must not be rewritten. If you would
+rather the old rows kept their old text, the repair function is
+`_drop_baked_in_timestamps()` in `app/database.py` and deleting the one call in
+`init_db()` disables it. Your demo data has already been repaired; a re-seed
+would have produced clean text anyway.
+
+**Your answer:**
+
+---
+
+### D-23 · One helper for stored-value-to-words, shared by both the screen and the AI
+
+**What's wrong:** `label()` in the browser turned `id_proof` into "Id proof",
+which reads as somebody's name rather than the initials it is. The same mistake
+existed ten times over in the backend as a bare `replace("_", " ")`, and those
+copies feed the AI prompts — so the chatbot and the app could describe the same
+document with different words, which is exactly what Rule 12 forbids.
+
+**Chosen:** one function each side, kept deliberately in step. `readable()` in
+the new `backend/app/utils/text.py`, and `label()` in
+`frontend/src/utils/format.js`, both holding the same short list of words that
+are not simply capitalised: ID, KYC, EMI, CIBIL, PAN, AI, NRI. All ten backend
+call sites now go through the helper and no raw `replace("_", " ")` survives
+anywhere outside it.
+
+**Why not one shared file:** one is Python and one is JavaScript, and there is no
+sane way to share a literal between them in this project without a build step
+nobody asked for. Two small lists with a comment in each pointing at the other is
+the honest version of the trade-off. There is a test that walks every document
+type, status and employment status the app can store and asserts no underscore
+survives, so a new value added later cannot quietly reintroduce this.
+
+**Your answer:**
+
+---
+
 ### D-18 · How to add three new columns to a database that already has data in it
 
 **What's wrong:** Piece 19 needed three new columns on `loan_applications`. `Base.metadata.create_all()`, the only thing `init_db()` did before now, only creates tables that don't exist yet — it never alters one that's already there. `loan_app.db` and `test.db` both already exist with real rows.

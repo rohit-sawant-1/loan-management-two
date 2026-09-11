@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-11 — Audit phase 2: the glitches you can see from across the room
+
+**Asked for:** fix the visible number and date glitches found by the sweep, while you were away.
+**Built:** "3.0 days" on the Morning Briefing and "3.0 years" on My Profile are now whole numbers, through one new `whole()` helper rather than five scattered `Math.round` calls. The risk score in the activity table reads "70/100" and the details panel now says "70 out of 100" instead of falling through as a bare "70.0" with nothing to say what the scale was. And `label()` knows the words that are not ordinary words, so "Id proof" is "ID proof" everywhere, along with KYC, EMI, CIBIL and PAN.
+**Found:** two things I did not expect. The eligibility timestamp bug had a second half — the code fix only helps applications submitted from now on, and fourteen rows in your database still had the old UTC line baked into their stored text. A stored string does not fix itself when the code that wrote it changes. So `init_db()` now strips that one line on startup, alongside the column step from D-18, and your demo data is already clean. And the "Id proof" mistake was not one bug in the browser: the backend had ten copies of the same bare underscore-strip, and those ones feed the AI prompts, so the chatbot could describe a document differently from the app (Rule 12). All ten now go through one shared helper and no raw `replace("_", " ")` survives anywhere.
+**Realised:** the timestamp fix was the interesting one. The instinct is to convert the string to Indian time, but that makes the server decide the reader's timezone and leaves two copies of one fact to drift apart. Deleting the line is the better fix, because the moment was already stored properly in a real datetime column right beside it. One fact, one field, formatted where it is read — which is how every other date in this app already works, and the bug existed exactly because this one string opted out.
+**Next:** audit phase 3 — wrap the review path so an unexpected shape gives a degraded answer instead of a red banner.
+
+---
+
 ## 2026-09-11 — Piece 22 closed: verified in the browser, all four checks
 
 **Asked for:** confirm step 5 works for real, including that a customer cannot run a review.

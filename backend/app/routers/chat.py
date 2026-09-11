@@ -37,6 +37,7 @@ import llm_provider
 from app.database import get_db
 from app.domain import rules
 from app.utils.finance import format_rupees
+from app.utils.text import readable_list
 from app.dependencies import get_current_user
 from app.models.user import User
 from app.schemas.chat import ChatRequest, ChatResponse, ChatSource, ChatToolCall
@@ -115,7 +116,7 @@ def _review_answer(state: dict) -> str:
 
     missing = compliance.get("missing_documents") or []
     if missing:
-        lines.append(f"Still missing: {', '.join(label.replace('_', ' ') for label in missing)}")
+        lines.append(f"Still missing: {readable_list(missing)}")
 
     if state["reasoning"]:
         lines.extend(["", state["reasoning"]])

@@ -50,6 +50,7 @@ def init_db() -> None:
 
     Base.metadata.create_all(bind=engine)
     _add_missing_columns()
+    _drop_baked_in_timestamps()
 
 
 def _add_missing_columns() -> None:
@@ -71,4 +72,35 @@ def _add_missing_columns() -> None:
         for name, sql_type in new_columns.items():
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE loan_applications ADD COLUMN {name} {sql_type}"))
+        conn.commit()
+
+
+def _drop_baked_in_timestamps() -> None:
+    """
+    A one-time repair of rows written before the timezone fix.
+
+    `build_summary_text` used to open the stored assessment with a line reading
+    "Eligibility assessed at submission on ... UTC." The same instant is also
+    stored properly in `eligibility_checked_at`, which the browser renders in
+    the reader's own timezone — so the application card showed one event at two
+    times five and a half hours apart. The text no longer writes that line, but
+    every application submitted before today still has it stored, and a stored
+    string does not fix itself when the code that wrote it changes.
+
+    So: strip that first line, and only that first line, from rows that have it.
+    A plain string operation with a `LIKE` guard, not a rewrite of the
+    assessment — the rest of the text is the bank's permanent record of what its
+    rules said and must not be touched. Does nothing on a database that has none
+    (a fresh one, or a second startup), so it is safe on every boot.
+    """
+    with engine.connect() as conn:
+        conn.execute(text(
+            """
+            UPDATE loan_applications
+               SET eligibility_summary =
+                   substr(eligibility_summary,
+                          instr(eligibility_summary, ' UTC.') + 7)
+             WHERE eligibility_summary LIKE 'Eligibility assessed at submission on % UTC.%'
+            """
+        ))
         conn.commit()

@@ -11,7 +11,7 @@ import Spinner from "../components/Spinner";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import Icon from "../components/ui/Icon";
-import { formatDate, label, rupees } from "../utils/format";
+import { formatDate, label, rupees, whole } from "../utils/format";
 
 /** A value that says so plainly when it was never recorded. */
 function Given({ value, render }) {
@@ -80,7 +80,7 @@ export default function MyProfile() {
           <dl className="kv">
             <dt>Employment</dt><dd>{label(me.employment_status)}</dd>
             <dt>Years in current job</dt>
-            <dd className="num"><Given value={me.years_with_employer} render={(v) => `${v} year${v === 1 ? "" : "s"}`} /></dd>
+            <dd className="num"><Given value={me.years_with_employer} render={(v) => `${whole(v)} year${Math.round(Number(v)) === 1 ? "" : "s"}`} /></dd>
             <dt>Annual income</dt>
             <dd className="num"><Given value={me.annual_income} render={rupees} /></dd>
             <dt>CIBIL score</dt>

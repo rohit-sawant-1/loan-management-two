@@ -3,13 +3,19 @@
 // panel on an application.
 
 import { DETAIL_LABELS, parseDetails, TOOL_NAMES } from "../utils/activity";
-import { label, rupees } from "../utils/format";
+import { label, rupees, whole } from "../utils/format";
 
 function DetailValue({ name, value }) {
   if (value === null || value === undefined || value === "") return <span className="muted">not recorded</span>;
   if (typeof value === "boolean") return value ? <span className="tick">Yes</span> : <span className="cross">No</span>;
   if (name === "amount" || name === "amount_requested") return rupees(value);
   if (name === "tenure_months") return `${value} months`;
+  // A risk score is a float out of 100, and "70.0/100" reads like a
+  // measurement precise to a tenth when it is nothing of the sort. It also
+  // needs its scale said out loud here: this panel is the one place the
+  // number appears with no sentence around it to explain it.
+  if (name === "risk_score") return `${whole(value)} out of 100`;
+  if (name === "days_waiting") return `${whole(value)} days`;
   if (name === "from" || name === "to") return label(value);
   if (name === "doc_type" || name === "loan_type") return label(value);
   // The assistant's tools are stored under their function names, which mean

@@ -4,7 +4,7 @@
 // the same thing and was still printing raw stored data into a table cell. One
 // copy, imported by both, so the two screens can never drift apart.
 
-import { label } from "./format";
+import { label, whole } from "./format";
 
 // Plain words and an icon for each kind of event, instead of the stored name.
 export const ACTIONS = {
@@ -111,7 +111,7 @@ export function summarise(action, raw) {
   if (action === "chat_review") {
     if (d.errors?.length) return "Could not run";
     return d.risk_score != null
-      ? `${label(d.decision)} · risk ${d.risk_score}/100`
+      ? `${label(d.decision)} · risk ${whole(d.risk_score)}/100`
       : label(d.decision);
   }
   return "";

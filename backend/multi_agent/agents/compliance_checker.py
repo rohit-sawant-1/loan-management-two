@@ -28,6 +28,7 @@ from opentelemetry import trace
 from app.domain import rules
 from app.utils.dates import age_on
 from app.utils.finance import format_rupees
+from app.utils.text import readable_list
 from multi_agent.state import LoanProcessingState
 
 logger = structlog.get_logger()
@@ -87,8 +88,7 @@ def compliance_checker(state: LoanProcessingState) -> LoanProcessingState:
         # loan officer.
         notes = []
         if missing:
-            readable = ", ".join(doc.replace("_", " ") for doc in missing)
-            notes.append(f"Missing documents: {readable}")
+            notes.append(f"Missing documents: {readable_list(missing)}")
         if not amount_within_limit:
             notes.append(f"Amount exceeds the {loan_type} loan limit of "
                          f"{format_rupees(rules.amount_limit(loan_type))}")
