@@ -84,6 +84,38 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-94 · A model handed a bare number invents a currency, and it picks dollars.**
+Found 2026-09-11, in the first real review Rohit ran. The decision maker's prompt
+passed `amount_requested` straight through, so the model saw `4000000.0` and
+wrote **"$4,000,000.0"** — dollars, on an Indian home loan, with a stray decimal.
+The verdict and every number were correct; only the sentence a loan officer
+actually reads was wrong, which is the worst place for it.
+
+A model fills a missing unit with whatever is most common in its training data,
+and that is dollars. The unit has to be *in* the prompt, not assumed. Fixed by
+formatting the amount with `format_rupees()` before it reaches the model, plus
+one line telling it this is an Indian bank and never to use a dollar sign. It now
+writes "₹40,00,000" — correct lakh grouping, because the prompt showed it that
+way.
+
+The risk assessor already did this correctly (`risk_assessor.py:82`), which is
+why the EMI always displayed properly. Worth checking any new prompt against
+this: **every number going into a prompt needs its unit attached.**
+
+**T-95 · The app-wide 15 second timeout is too short for the assistant.**
+The chat's first real review answered in 25 seconds and the browser had already
+given up at 15 — an axios default set on the shared client in
+`frontend/src/api/client.js`, sensible for the database reads that make up
+almost every other request in this app, and simply the wrong measuring stick for
+four agents doing real work.
+
+The assistant now passes its own `CHAT_TIMEOUT_MS` of 90 seconds, about three
+times the worst real measurement, leaving room for the key ladder to retry
+across a couple of keys on a bad day. Deliberately *not* unlimited: if the
+backend dies mid-review, or a provider accepts the connection and never answers,
+an unlimited wait spins forever with no error and no way out but a page reload.
+Slow is normal on that screen; infinite is still not.
+
 **T-92 · The review trigger is anchored to the whole message, and that is the whole design.**
 `app/services/review_request.py`, added 2026-09-11. A review costs two AI calls
 and about ten seconds, so it must run when someone asks for it and never

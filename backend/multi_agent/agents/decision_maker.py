@@ -19,6 +19,7 @@ import structlog
 from opentelemetry import trace
 
 from app.domain import rules
+from app.utils.finance import format_rupees
 from llm_provider import get_llm
 from multi_agent.llm_text import text_of
 from multi_agent.state import LoanProcessingState
@@ -55,6 +56,22 @@ def _fallback_reasoning(decision: str, risk: dict, compliance: dict) -> str:
             f"{compliance.get('compliance_notes', 'no notes recorded')}.")
 
 
+def _rupees_or_unknown(amount) -> str:
+    """
+    An amount in rupees for the prompt, or "unknown" if there is not one.
+
+    Kept tolerant because this runs inside the reasoning path, which is not
+    allowed to fail — a missing or malformed amount should cost us a vague
+    sentence, never the decision itself.
+    """
+    if amount is None:
+        return "unknown"
+    try:
+        return format_rupees(float(amount))
+    except (TypeError, ValueError):
+        return "unknown"
+
+
 def _llm_reasoning(decision: str, risk: dict, compliance: dict, application: dict) -> str:
     """The paragraph a loan officer reads explaining a decision already made. Never raises."""
     try:
@@ -65,8 +82,13 @@ def _llm_reasoning(decision: str, risk: dict, compliance: dict, application: dic
             f"professional paragraph (3-5 sentences) explaining this decision to the "
             f"applicant's loan officer, referencing these specific figures — do not "
             f"contradict the decision or invent numbers not given here.\n\n"
+            # The amount is formatted as rupees before the model sees it. Handed
+            # the bare number 4000000.0 it wrote "$4,000,000.0" — dollars, on an
+            # Indian loan, with a stray decimal. A model fills in a missing unit
+            # with whatever is most common in its training data, so the unit has
+            # to be in the prompt rather than assumed.
             f"Loan: {application.get('loan_type', 'unknown')} loan of "
-            f"{application.get('amount_requested', 'unknown')} over "
+            f"{_rupees_or_unknown(application.get('amount_requested'))} over "
             f"{application.get('tenure_months', 'unknown')} months.\n"
             f"Risk assessment: overall score {risk.get('overall_risk_score', 'unknown')}/100, "
             f"credit risk {risk.get('credit_risk_level', 'unknown')}, employment risk "
@@ -75,7 +97,9 @@ def _llm_reasoning(decision: str, risk: dict, compliance: dict, application: dic
             f"Compliance: {'passed' if compliance.get('compliance_passed') else 'did not pass'} "
             f"— {compliance.get('compliance_notes', 'no notes')}.\n\n"
             f"If the decision is REQUEST_MORE_INFO or REJECT, say plainly what is missing or "
-            f"wrong. If APPROVE, note any standard conditions."
+            f"wrong. If APPROVE, note any standard conditions.\n"
+            f"This is an Indian bank. All amounts are in rupees — write them as "
+            f"shown above and never convert them or use a dollar sign."
         )
         response = llm.invoke(prompt)
         text = text_of(response.content)

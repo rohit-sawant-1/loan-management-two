@@ -14,6 +14,18 @@ export const api = axios.create({
   timeout: 15000,
 });
 
+// How long to wait on the assistant, which takes far longer than anything else
+// in the app. A Phase 5 review runs four agents in turn; the app-wide 15 second
+// limit cut it off mid-answer.
+//
+// Measured rather than guessed: a real review of application 7 took 21 seconds
+// from a script and 25 from the browser, on a good day with a working key. On a
+// bad day the key ladder retries across several keys before answering, so the
+// limit has to leave room for that — 90 seconds is roughly three times the
+// worst measurement, which is enough to absorb a couple of retries without
+// letting a genuinely stuck request spin forever.
+export const CHAT_TIMEOUT_MS = 90000;
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;

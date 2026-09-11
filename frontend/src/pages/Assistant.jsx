@@ -23,7 +23,7 @@
 //     Rule 13 keeps that off the browser's disk.
 
 import { useEffect, useRef, useState } from "react";
-import { api, errorMessage } from "../api/client";
+import { api, CHAT_TIMEOUT_MS, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import ErrorBanner from "../components/ErrorBanner";
 import Button from "../components/ui/Button";
@@ -158,6 +158,7 @@ export default function Assistant() {
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
   const [waitingOnReview, setWaitingOnReview] = useState(false);
+  const [waitedSeconds, setWaitedSeconds] = useState(0);
   const [error, setError] = useState("");
   const endRef = useRef(null);
 
@@ -165,6 +166,16 @@ export default function Assistant() {
   useEffect(() => {
     endRef.current?.scrollIntoView({ behavior: "smooth", block: "end" });
   }, [messages, busy]);
+
+  // Count the seconds while the assistant is working. A four-agent review is
+  // long enough that a silent wait reads as a hang, and seeing the number climb
+  // tells you it is still going.
+  useEffect(() => {
+    if (!busy) return undefined;
+    setWaitedSeconds(0);
+    const tick = setInterval(() => setWaitedSeconds((s) => s + 1), 1000);
+    return () => clearInterval(tick);
+  }, [busy]);
 
   async function send(text) {
     const question = (text ?? draft).trim();
@@ -179,7 +190,11 @@ export default function Assistant() {
     setError("");
 
     try {
-      const res = await api.post("/chat", { message: question });
+      // The assistant gets its own, longer patience. A four-agent review takes
+      // around twenty seconds, which the app-wide fifteen second limit used to
+      // cut off just before the answer arrived.
+      const res = await api.post("/chat", { message: question },
+                                 { timeout: CHAT_TIMEOUT_MS });
       setMessages((m) => [...m, {
         who: "assistant",
         text: res.data.answer,
@@ -279,8 +294,8 @@ export default function Assistant() {
                   <Icon name="shield" size={12} />
                   <span>
                     Four agents are reviewing this application — collecting the data,
-                    assessing risk, checking compliance, then deciding. This takes
-                    about ten seconds.
+                    assessing risk, checking compliance, then deciding.
+                    {waitedSeconds > 0 && ` ${waitedSeconds}s`}
                   </span>
                 </div>
               )}
