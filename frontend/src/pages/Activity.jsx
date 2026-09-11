@@ -163,7 +163,12 @@ export default function Activity() {
                           </div>
                         </td>
                         <td className="muted">
-                          {row.entity_type ? `${label(row.entity_type)} #${row.entity_id}` : "—"}
+                          {/* The number is only printed when there is one. A
+                              row with a type but no id used to render as
+                              "Chat #null" (T-91). */}
+                          {row.entity_type
+                            ? `${label(row.entity_type)}${row.entity_id != null ? ` #${row.entity_id}` : ""}`
+                            : "—"}
                         </td>
                         <td>
                           <Button size="sm" variant="ghost" onClick={(e) => { e.stopPropagation(); setChosen(row); }}>
@@ -232,7 +237,10 @@ export default function Activity() {
                 <h3>What it was about</h3>
                 <dl className="kv">
                   <dt>Record</dt>
-                  <dd>{label(chosen.entity_type)} #{chosen.entity_id}</dd>
+                  <dd>
+                    {label(chosen.entity_type)}
+                    {chosen.entity_id != null && ` #${chosen.entity_id}`}
+                  </dd>
                 </dl>
               </>
             )}

@@ -84,6 +84,29 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-91 · An activity row with a type but no number printed "Chat #null".**
+Spotted by Rohit on the manager's activity page, 2026-09-11. Mine, from the day
+before. The chat rows were written with `entity_type="chat"` and no
+`entity_id`, and `Activity.jsx` printed `` `${type} #${id}` `` whenever a type
+was present — so eight rows read `Chat #null`. Every other action type has a
+real number, which is why it had never shown up before.
+
+Fixed in both places, and the second half is the one that matters:
+
+- The page now prints the number only when there is one, so no future row can
+  reproduce this.
+- **`chat_action_confirmed` now files itself under the application it changed**,
+  not under "chat". A confirmed change always knows its application number, and
+  someone auditing application 3 wants that row to appear against application 3.
+  Filing an AI-made change under a conversation with no number hides it from
+  precisely the person looking for it.
+- `chat_message` now stores no `entity_type` at all, so it shows a dash. A
+  question genuinely is not about one numbered record — it may touch several or
+  none — and a dash is honest where an invented number would not be.
+
+The general rule worth keeping: **never claim an entity type without an id.**
+The pair travels together or not at all.
+
 **T-90 · A ReAct tool with several required arguments fails before its own code runs.**
 Found 2026-09-11, by Rohit trying the confirmation flow in the browser and
 getting "No AI is available at the moment" — which was true of nothing: all

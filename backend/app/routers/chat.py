@@ -187,10 +187,18 @@ def chat(
             with acting_as(user.email, user.role.value):
                 worked, sentence = pending_actions.run(waiting)
 
+            # Point the row at the record that was actually changed, not at
+            # "chat". Someone auditing application 3 wants this row to show up
+            # against application 3 — filing it under a conversation with no
+            # number is both useless to them and what produced "Chat #null" on
+            # the activity page.
+            touched = waiting["arguments"].get("application_id")
+
             activity_service.record(
                 db, action="chat_action_confirmed",
                 actor_id=user.email, actor_role=user.role.value,
-                entity_type="chat",
+                entity_type="application" if touched else "chat",
+                entity_id=touched,
                 # `outcome` carries the reason a refusal happened, not just
                 # that one did. "Blocked by a permission rule" and "the API was
                 # unreachable" are the same `worked: false` otherwise, and an
@@ -285,7 +293,11 @@ def chat(
     activity_service.record(
         db, action="chat_message",
         actor_id=user.email, actor_role=user.role.value,
-        entity_type="chat",
+        # No entity_type on purpose. A question is not about one numbered
+        # record — it may touch several or none — so the activity page shows a
+        # dash, which is honest. Claiming a type with no number behind it is
+        # what printed "Chat #null" (T-91).
+        entity_type=None,
         details={"question": question[:200], "mode": mode,
                  "sources": len(sources),
                  "tools": [c.tool for c in tools_used],
