@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-11 — A checklist for driving Phase 2 and Phase 3 by hand, and proof the fixes are real
+
+**Asked for:** a short list of what to try in a browser for the manual chatbot and the agent tools, which pass their tests but have never been used by a person.
+**Built:** `BROWSER-CHECKLIST.md`, seventeen things to try across four parts, each with the exact login, the exact words to type, and what should come back. Written to be read cold. The questions that matter most are B2 and A4: B2 is Priya asking for somebody else's application and being refused by the API rather than by the AI, and A4 is asking about a product the manual does not cover, where the only wrong answer is a confident one.
+**Found:** I ran parts C and D against the real server rather than guessing, and it was worth doing. Every figure in the checklist is now measured — application 7 comes back REQUEST_MORE_INFO at 70 out of 100, EMI ₹48,007, ratio 84%, all four agents listed, rupees throughout and no dollar sign. The briefing narrative wrote "ID proof" in its own words, which proves the shared helper reaches the AI and not just the screen. "assess application 999" answered HTTP 200 with one plain sentence and no amber notice, which is the phase 3 fix doing its job. Also worth knowing: the Phase 5 agents call the API at a fixed address from `.env`, so a review only works when the backend is on **port 8000**. On a spare port the review degrades politely and says the loan system is unavailable — correct behaviour, confusing if you do not know why.
+**Realised:** the one thing I could not check is the only thing the list is really for. Whether an answer from the manual is *good* — complete, not invented, phrased like a bank — needs a person reading it. Everything a script can check was already green while all twelve bugs in `BUGS-AND-FIXES.md` were live.
+**Next:** you work through `BROWSER-CHECKLIST.md` and tell me which items looked wrong. After that, audit phase 4, which is the duplicated-truth sweep and has no symptoms today.
+
+---
+
 ## 2026-09-11 — Audit phase 3: the review can no longer take the screen down
 
 **Asked for:** wrap the review path so an unexpected shape gives a degraded answer instead of a 500 and a red banner.

@@ -120,6 +120,37 @@ three lines, so I did it. Say if you would rather it came out.
 ---
 
 
+### D-26 · "2.5 years" rounds to "3 years", and that loses something real
+
+**What's wrong:** the fix for "3.0 years" on My Profile rounds the number to a
+whole one. Priya is stored as exactly 3.0 and now reads "3 years", which is the
+bug fixed. But **Rahul Verma is stored as 2.5**, and rounding turns two and a
+half years with an employer into three. For a decimal that is genuinely a half,
+that is not a display fix — it is a changed fact.
+
+**Chosen:** round anyway, for now. Every other decimal in the demo data is a
+whole number that only *looks* fractional because the column is a float, which is
+the bug you asked me to fix. Rahul's 2.5 is the single exception in the seeded
+data and it does not appear anywhere in the demo path.
+
+**Why I am flagging it rather than just doing it:** the employment rule in the
+manual is "a salaried applicant must have been with their current employer for at
+least 6 months", so half-years are meaningful to the business, not just to the
+display. If a customer with 5.5 years reads "6 years" on their own profile, that
+is the app misstating something about them.
+
+**The alternative, if you want it:** show the decimal only when there is one —
+`2.5 years`, `3 years` — which is one line in `whole()` in
+`frontend/src/utils/format.js`. I did not do it because it makes the helper mean
+two different things depending on the value, and `days_waiting` and `risk_score`
+genuinely do want the decimal gone. A second, separate helper would be the honest
+version.
+
+**Your answer:**
+
+---
+
+
 ### D-18 · How to add three new columns to a database that already has data in it
 
 **What's wrong:** Piece 19 needed three new columns on `loan_applications`. `Base.metadata.create_all()`, the only thing `init_db()` did before now, only creates tables that don't exist yet — it never alters one that's already there. `loan_app.db` and `test.db` both already exist with real rows.
@@ -187,6 +218,22 @@ three lines, so I did it. Say if you would rather it came out.
 # Traps and differences
 
 No decision needed. These break something quietly if forgotten.
+
+**T-101 · A review only works when the backend is on port 8000.**
+Found 2026-09-11 while verifying the audit fixes against a running server. The
+Phase 5 agents and the Phase 3 tools do not read the database directly — they
+call the Phase 1 API over HTTP, exactly the way a browser would, at the address
+in `API_BASE_URL` in `backend/.env`, which is `http://localhost:8000`.
+
+Start the backend on any other port and everything that touches the database
+through the API degrades: "assess application 7" answers *"The loan system's API
+is unavailable right now"*. That is the correct behaviour and it points at the
+wrong cause if you do not know this. The app itself answers fine on the other
+port; only the AI's own reads fail, because they go back out through the front
+door.
+
+Worth keeping because it looks exactly like a broken review. `start-app.ps1`
+uses 8000, so this only bites when starting uvicorn by hand.
 
 **T-100 · A React component that throws while rendering takes the whole page, not its own card.**
 Worth knowing before writing another dashboard card. An exception inside a
