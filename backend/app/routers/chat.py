@@ -191,8 +191,14 @@ def chat(
                 db, action="chat_action_confirmed",
                 actor_id=user.email, actor_role=user.role.value,
                 entity_type="chat",
+                # `outcome` carries the reason a refusal happened, not just
+                # that one did. "Blocked by a permission rule" and "the API was
+                # unreachable" are the same `worked: false` otherwise, and an
+                # auditor asking why the AI tried to disburse a loan deserves
+                # the actual answer.
                 details={"tool": waiting["tool"], "arguments": waiting["arguments"],
-                         "worked": worked},
+                         "worked": worked,
+                         "outcome": sentence[:200]},
                 **activity_service.request_meta(request),
             )
             db.commit()

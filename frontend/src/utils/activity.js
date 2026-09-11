@@ -19,6 +19,13 @@ export const ACTIONS = {
   document_verified:     { text: "Document verified",        icon: "check" },
   eligibility_checked:   { text: "Eligibility checked",      icon: "shield" },
   dashboard_viewed:      { text: "Dashboard viewed",         icon: "dashboard" },
+  // The assistant. `chat_action_confirmed` is the one a manager actually cares
+  // about: it means someone told the AI to change a record and agreed to it.
+  // Without these two here the rows still appeared, but with a raw stored name
+  // and no way to filter for them — so "what has the AI been doing?" had no
+  // answer on this screen.
+  chat_message:          { text: "Asked the assistant",      icon: "activity" },
+  chat_action_confirmed: { text: "Change made via assistant", icon: "shield" },
 };
 
 export const describe = (action) => ACTIONS[action] || { text: label(action), icon: "info" };
@@ -29,6 +36,9 @@ export const DETAIL_LABELS = {
   loan_type: "Loan type", amount: "Amount", tenure_months: "Tenure",
   doc_type: "Document type", file_name: "File name", application_id: "Application",
   eligible: "Passed eligibility", problem_count: "Rules not met", email: "Email",
+  question: "Question asked", tool: "Tool used", worked: "Went through",
+  outcome: "Result", new_status: "Changed to", mode: "Answered by",
+  ai_status: "AI status", arguments: "Details",
 };
 
 /** The stored details are a small piece of JSON. Hand back an object, or null. */
@@ -59,6 +69,17 @@ export function summarise(action, raw) {
   }
   if (action === "eligibility_checked") {
     return d.eligible ? "Passed" : `${d.problem_count ?? 0} rule(s) not met`;
+  }
+  // Whether the change actually went through is the whole point of this row.
+  // A blocked one — an officer trying to disburse — must not look the same as
+  // one that succeeded.
+  if (action === "chat_action_confirmed") {
+    const what = d.arguments?.new_status ? label(d.arguments.new_status) : "";
+    const verdict = d.worked ? "Done" : "Refused";
+    return what ? `${verdict} — ${what}` : verdict;
+  }
+  if (action === "chat_message" && d.question) {
+    return d.question.length > 60 ? `${d.question.slice(0, 60)}…` : d.question;
   }
   return "";
 }
