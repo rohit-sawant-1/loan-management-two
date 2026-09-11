@@ -4,6 +4,17 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-11 — The confirmation flow actually works now, and I owed you an apology
+
+**Asked for:** you tried "approve application 1, documents all verified" in the browser and got "No AI is available at the moment", and you pushed back on my claim that two of your API keys were fake.
+**Found, first:** you were right about the keys and I was wrong. I judged them by their shape — 53 characters starting `AQ.` — and said they were OAuth tokens. I should have tested them. Asking Google directly, all three work and show 50 models each. Gemini issues more than one key shape and I did not know that. T-89 is corrected, and you now have a real three-rung ladder.
+**Found, second:** the browser error was a genuine bug in my code, not your keys and not the AI. ReAct writes one `Action Input:` line, so for a tool with several arguments LangChain hands the whole lot to the first parameter and leaves the rest blank. With required parameters, the call was rejected before my code ever ran, and the chat honestly reported that as "no AI available" (T-90).
+**Built:** the fix, in two halves that both matter — defaults on every parameter after the first so the call lands, and an unpacker that works out what the model meant. A real model wrote **six** different shapes for the same call; all six are handled and pinned by tests. Commas inside a reason no longer tear the value in half. 137 tests pass.
+**Realised:** "No AI is available" was an honest message that pointed at completely the wrong thing, because the chat's error handling cannot tell a broken tool from a broken provider. Worth remembering next time that message appears.
+**Next:** you confirm it in the browser, then Piece 22 step 5 — Phase 5's four-agent review in the chat.
+
+---
+
 ## 2026-09-10 — Piece 22 step 4: staff can change records by chatting, after confirming
 
 **Asked for:** put Phase 4's record-changing tools into the React chat, staff only, and explain where to paste the new API keys.

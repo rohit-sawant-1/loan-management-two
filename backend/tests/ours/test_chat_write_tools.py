@@ -272,6 +272,76 @@ def test_a_word_where_a_number_belongs_is_refused():
     assert "not a valid application number" in result
 
 
+@pytest.mark.parametrize("blob", [
+    # Every shape a real Gemini model has been seen to write for one of these
+    # tools. ReAct has only one "Action Input:" line, so all three arguments
+    # arrive inside the first parameter and it is up to us to sort them out.
+    "{'application_id': 1, 'new_status': 'approved', 'remarks': 'all verified'}",
+    '{"application_id": 1, "new_status": "approved", "remarks": "all verified"}',
+    "application_id: 1, new_status: approved, remarks: all verified",
+    "application_id=1, new_status=approved, remarks=all verified",
+    "application_id='1', new_status='approved', remarks='all verified'",
+    "1, approved, all verified",
+])
+def test_the_arguments_survive_however_the_model_writes_them(blob):
+    """
+    The bug this pins down cost a real debugging session. With required
+    parameters, pydantic rejected the call before the tool body ran, and the
+    person saw "No AI is available" — which was true of nothing at all.
+    """
+    with pending_actions.owned_by("shapes@test.com"):
+        result = WRITE_TOOLS[0].invoke({"application_id": blob})
+        held = pending_actions.peek("shapes@test.com")
+
+    assert "CONFIRMATION NEEDED" in result, blob
+    assert held["arguments"]["application_id"] == 1, blob
+    assert held["arguments"]["new_status"] == "approved", blob
+    assert "all verified" in held["arguments"]["remarks"], blob
+    pending_actions.clear("shapes@test.com")
+
+
+def test_a_comma_inside_the_reason_is_not_torn_in_half():
+    """
+    "income too low, and no collateral" is one reason, not two fields. Splitting
+    on every comma would put half of it in the audit trail and lose the rest.
+    """
+    blob = ("application_id: 4, new_status: rejected, "
+            "remarks: income too low, and no collateral")
+
+    with pending_actions.owned_by("comma@test.com"):
+        WRITE_TOOLS[0].invoke({"application_id": blob})
+        held = pending_actions.peek("comma@test.com")
+
+    assert held["arguments"]["remarks"] == "income too low, and no collateral"
+    pending_actions.clear("comma@test.com")
+
+
+def test_a_plain_number_is_still_a_plain_number():
+    """
+    The unpacking must not fire on an ordinary single-argument call, or a tool
+    called properly would have its one real argument reinterpreted.
+    """
+    with pending_actions.owned_by("plain@test.com"):
+        result = WRITE_TOOLS[0].invoke({
+            "application_id": "7", "new_status": "approved", "remarks": "fine",
+        })
+        held = pending_actions.peek("plain@test.com")
+
+    assert "CONFIRMATION NEEDED" in result
+    assert held["arguments"] == {"application_id": 7, "new_status": "approved",
+                                 "remarks": "fine"}
+    pending_actions.clear("plain@test.com")
+
+
+def test_a_missing_status_asks_for_one_instead_of_failing():
+    """A half-written call should teach the model what is missing, not crash."""
+    with pending_actions.owned_by("partial@test.com"):
+        result = WRITE_TOOLS[0].invoke({"application_id": "3"})
+
+    assert "which status" in result.lower()
+    assert pending_actions.peek("partial@test.com") is None
+
+
 @pytest.mark.parametrize("said, expected", [
     ("yes", True), ("YES", True), ("Yes please", True), ("go ahead", True),
     ("confirm", True), ("do it.", True),

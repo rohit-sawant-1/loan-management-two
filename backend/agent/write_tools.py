@@ -37,6 +37,73 @@ from app.domain import rules
 logger = structlog.get_logger()
 
 
+def _unpack(first_value, expected: tuple[str, ...]) -> dict | None:
+    """
+    Rescue the arguments when ReAct hands them over as one blob.
+
+    The ReAct format has no structure for a tool that takes several arguments —
+    the model writes one "Action Input:" line, and LangChain passes whatever is
+    on it. For a single-argument tool that is fine. For these, the entire
+    dictionary regularly lands in the *first* parameter as a string, leaving
+    the rest empty, and the call dies in validation before the tool body ever
+    runs. `agent/tools.py` documents the single-argument half of this problem;
+    this is the multi-argument half.
+
+    So when the first parameter arrives looking like a whole dict, it is parsed
+    and used. `ast.literal_eval` handles the single quotes a model usually
+    writes; `json.loads` handles proper JSON. Neither can execute anything —
+    they only read data — which is why they are used rather than `eval`.
+
+    Two shapes are seen in practice and both are handled:
+
+        {'application_id': 1, 'new_status': 'approved', 'remarks': 'ok'}
+        application_id: 1, new_status: approved, remarks: ok
+
+    Returns the unpacked arguments, or None if this was a normal call.
+    """
+    import ast
+    import json
+    import re
+
+    text = str(first_value).strip()
+
+    # Shape one: a real dict, quoted however the model felt like quoting it.
+    if text.startswith("{") and text.endswith("}"):
+        for parse in (ast.literal_eval, json.loads):
+            try:
+                parsed = parse(text)
+            except (ValueError, SyntaxError):
+                continue
+            if isinstance(parsed, dict) and any(k in parsed for k in expected):
+                return {k: parsed.get(k, "") for k in expected}
+
+    # Shape two: named pairs, written with either a colon or an equals sign.
+    # Split on the commas that come immediately before another known field
+    # name, so a comma inside a reason ("income too low, and no collateral")
+    # does not tear the value in half.
+    if any(re.search(rf"\b{name}\s*[:=]", text) for name in expected):
+        boundary = re.compile(rf",\s*(?=(?:{'|'.join(expected)})\s*[:=])")
+        found: dict[str, str] = {}
+        for piece in boundary.split(text):
+            match = re.match(rf"\s*[\"']?({'|'.join(expected)})[\"']?\s*[:=]\s*(.*)",
+                             piece, re.DOTALL)
+            if match:
+                found[match.group(1)] = match.group(2).strip().strip("\"',")
+        if found:
+            return {k: found.get(k, "") for k in expected}
+
+    # Shape three: bare values in the order the tool declares them, which is
+    # what a model falls back to when it stops writing names at all. Only
+    # trusted when the count matches exactly — anything else is guesswork, and
+    # guessing which value is the application number is how the wrong loan gets
+    # approved.
+    pieces = [p.strip().strip("\"'") for p in text.split(",")]
+    if len(pieces) == len(expected) and all(pieces):
+        return dict(zip(expected, pieces))
+
+    return None
+
+
 def _propose(tool_name: str, arguments: dict, description: str) -> str:
     """
     Hold an action back and ask for confirmation.
@@ -53,19 +120,35 @@ def _propose(tool_name: str, arguments: dict, description: str) -> str:
             f"Do not call any other tool.")
 
 
+# Every parameter below the first has a default, and that is load-bearing
+# rather than sloppy. ReAct writes one "Action Input:" line, so LangChain
+# regularly delivers all of a multi-argument call inside the first parameter.
+# With required parameters, pydantic rejects that before the function body runs
+# and `_unpack` never gets a chance — the call dies with a validation error the
+# person sees as "no AI available". Defaults let the call land, and `_unpack`
+# sorts out what the model actually meant.
 @tool
-def update_application_status(application_id: str, new_status: str, remarks: str) -> str:
+def update_application_status(application_id: str, new_status: str = "",
+                              remarks: str = "") -> str:
     """Use this to move a loan application to a new status: under_review, approved,
     rejected, or disbursed. Give the application number, the new status, and the
     reason the person gave you as remarks. This does NOT take effect immediately —
     it asks the person to confirm first, which is intended. Do not use this to
     create a new application."""
+    blob = _unpack(application_id, ("application_id", "new_status", "remarks"))
+    if blob:
+        application_id, new_status, remarks = (
+            blob["application_id"], blob["new_status"], blob["remarks"])
+
     try:
         app_id = int(str(application_id).strip())
     except ValueError:
         return f"'{application_id}' is not a valid application number."
 
     status = str(new_status).strip().lower()
+    if not status:
+        return ("Which status should it move to? One of: "
+                + ", ".join(sorted(rules.STATUSES)) + ".")
     if status not in rules.STATUSES:
         allowed = ", ".join(sorted(rules.STATUSES))
         return f"'{new_status}' is not a status. It must be one of: {allowed}."
@@ -82,12 +165,20 @@ def update_application_status(application_id: str, new_status: str, remarks: str
 
 
 @tool
-def submit_loan_application(applicant_id: str, loan_type: str, amount_requested: str,
-                            tenure_months: str, purpose: str) -> str:
+def submit_loan_application(applicant_id: str, loan_type: str = "",
+                            amount_requested: str = "", tenure_months: str = "",
+                            purpose: str = "") -> str:
     """Use this to submit a brand new loan application for an existing applicant.
     loan_type must be personal, home, or auto. amount_requested is in rupees and
     tenure_months is the loan term. This asks the person to confirm before it
     takes effect. Do not use this to change an application that already exists."""
+    blob = _unpack(applicant_id, ("applicant_id", "loan_type", "amount_requested",
+                                  "tenure_months", "purpose"))
+    if blob:
+        applicant_id, loan_type = blob["applicant_id"], blob["loan_type"]
+        amount_requested, tenure_months = blob["amount_requested"], blob["tenure_months"]
+        purpose = blob["purpose"]
+
     try:
         parsed = {
             "applicant_id": int(str(applicant_id).strip()),
@@ -114,10 +205,16 @@ def submit_loan_application(applicant_id: str, loan_type: str, amount_requested:
 
 
 @tool
-def upload_document_metadata(application_id: str, doc_type: str, file_name: str) -> str:
+def upload_document_metadata(application_id: str, doc_type: str = "",
+                             file_name: str = "") -> str:
     """Use this to record that a document has been received for a loan application.
     doc_type must be one of: id_proof, income_proof, bank_statement, property_docs,
     employment_letter. This asks the person to confirm before it takes effect."""
+    blob = _unpack(application_id, ("application_id", "doc_type", "file_name"))
+    if blob:
+        application_id, doc_type, file_name = (
+            blob["application_id"], blob["doc_type"], blob["file_name"])
+
     try:
         app_id = int(str(application_id).strip())
     except ValueError:

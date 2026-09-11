@@ -84,6 +84,41 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-90 · A ReAct tool with several required arguments fails before its own code runs.**
+Found 2026-09-11, by Rohit trying the confirmation flow in the browser and
+getting "No AI is available at the moment" — which was true of nothing: all
+three keys worked and the model answered correctly.
+
+The ReAct format has exactly one `Action Input:` line, so for a tool taking
+several arguments LangChain hands **the whole thing to the first parameter**
+and leaves the rest empty. With required parameters, pydantic then rejects the
+call before the function body is reached, the agent raises, and the chat's
+own error handling reports it as an AI failure. `agent/tools.py` already
+documented the single-argument version of this; nobody had hit the
+multi-argument version because Phase 3's tools are all read-only and simple.
+
+**Two things were needed, and only doing one of them is not enough.** Every
+parameter after the first now has a default, so the call actually lands; and
+`_unpack()` in `agent/write_tools.py` sorts out what the model meant. The
+defaults look sloppy in isolation and are load-bearing — there is a comment
+above each saying so.
+
+A real Gemini model was observed writing **six** different shapes for the same
+call, all now handled and pinned by tests:
+
+    {'application_id': 1, 'new_status': 'approved', ...}     python dict
+    {"application_id": 1, ...}                               json
+    application_id: 1, new_status: approved, ...             bare, colons
+    application_id=1, new_status=approved, ...               bare, equals
+    application_id='1', new_status='approved', ...           equals, quoted
+    1, approved, documents all verified                      positional
+
+Splitting is done on commas that sit immediately before another known field
+name, so a comma inside a reason ("income too low, and no collateral") stays in
+one piece rather than being torn across two fields. Positional values are only
+trusted when the count matches exactly — guessing which value is the
+application number is how the wrong loan gets approved.
+
 **T-89 · `GOOGLE_API_KEY` takes exactly one key. Extra keys go on `GOOGLE_API_KEYS`.**
 Found 2026-09-10. Three keys had been pasted into `GOOGLE_API_KEY` as one
 comma-separated string, so the whole 147-character blob went to Google as a
