@@ -32,11 +32,13 @@ and reloads this module to prove the tools notice a different address:
 from __future__ import annotations
 
 import time
+from datetime import datetime
 
 import structlog
 from langchain_core.tools import tool
 
 from app.services.loan_api_client import API_BASE_URL, api_get  # noqa: F401
+from app.utils.finance import format_rupees
 from app.utils.otel_config import get_tracer
 
 logger = structlog.get_logger()
@@ -64,6 +66,40 @@ def _call_tool_span(tool_name: str, input_repr: str, fn):
                     input=input_repr[:200], output_length=len(result),
                     duration_ms=duration_ms)
         return result
+
+
+def _readable(value) -> str:
+    """
+    A stored enum as a person would say it: `under_review` -> "under review".
+
+    Everything these tools return is read twice — once by the model, which
+    reasons over it, and then by whoever is reading the chat, because the model
+    echoes what it was given. Handing it `id_proof` is how "id_proof" ends up in
+    a sentence addressed to a loan officer (T-96).
+    """
+    return str(value).replace("_", " ") if value is not None else "not recorded"
+
+
+def _readable_time(value) -> str:
+    """
+    A stored timestamp as a date a person can read.
+
+    The API sends UTC with a `Z`, which is right for a browser that converts it
+    but wrong for a model: handed `2026-09-05T20:13:55Z` it will read the UTC
+    wall clock aloud as though it were local, which is the 5.5-hour bug
+    returning through a door `UtcDateTime` cannot guard (T-97).
+
+    The date is what anyone actually asks about here — "when was it submitted" —
+    so the time of day is dropped rather than converted, which would need a
+    timezone this layer has no business deciding.
+    """
+    if not value:
+        return "not recorded"
+    try:
+        cleaned = str(value).replace("Z", "+00:00")
+        return datetime.fromisoformat(cleaned).strftime("%d %b %Y")
+    except (TypeError, ValueError):
+        return str(value)
 
 
 def _summarize_if_long(text: str) -> str:
@@ -99,12 +135,12 @@ def get_application_details(application_id: str) -> str:
             return data
         lines = [
             f"Application ID: {data['id']}",
-            f"Loan Type: {data['loan_type']}",
-            f"Status: {data['status']}",
-            f"Amount Requested: Rs {data['amount_requested']:,.0f}",
+            f"Loan Type: {_readable(data['loan_type'])}",
+            f"Status: {_readable(data['status'])}",
+            f"Amount Requested: {format_rupees(data['amount_requested'])}",
             f"Tenure: {data['tenure_months']} months",
             f"Purpose: {data.get('purpose', 'not given')}",
-            f"Submitted: {data.get('submitted_at', 'unknown')}",
+            f"Submitted: {_readable_time(data.get('submitted_at'))}",
         ]
         if data.get("applicant"):
             lines.append(f"Applicant: {data['applicant'].get('name', 'unknown')}")
@@ -135,8 +171,9 @@ def list_applications(status: str = "", loan_type: str = "") -> str:
         lines = [f"Found {data.get('total_count', len(items))} application(s):"]
         for item in items[:20]:
             lines.append(
-                f"- #{item['id']}: {item['loan_type']}, "
-                f"Rs {item['amount_requested']:,.0f}, status {item['status']}"
+                f"- Application {item['id']}: {_readable(item['loan_type'])}, "
+                f"{format_rupees(item['amount_requested'])}, "
+                f"status {_readable(item['status'])}"
             )
         return _summarize_if_long("\n".join(lines))
 
@@ -157,15 +194,17 @@ def get_dashboard_summary() -> str:
             "Dashboard Summary:",
             f"Total Applications: {data.get('total_applications', 0)}",
             f"Pending Review: {data.get('pending_review', 0)}",
-            f"Total Amount Requested: Rs {data.get('total_amount_requested', 0):,.0f}",
-            f"Approved Amount (not yet disbursed): Rs {data.get('approved_amount', 0):,.0f}",
+            f"Total Amount Requested: {format_rupees(data.get('total_amount_requested', 0))}",
+            f"Approved Amount (not yet disbursed): {format_rupees(data.get('approved_amount', 0))}",
         ]
         by_status = data.get("by_status") or {}
         if by_status:
-            lines.append("By status: " + ", ".join(f"{k}={v}" for k, v in by_status.items()))
+            lines.append("By status: " + ", ".join(
+                f"{_readable(k)}: {v}" for k, v in by_status.items()))
         by_type = data.get("by_loan_type") or {}
         if by_type:
-            lines.append("By loan type: " + ", ".join(f"{k}={v}" for k, v in by_type.items()))
+            lines.append("By loan type: " + ", ".join(
+                f"{_readable(k)}: {v}" for k, v in by_type.items()))
         return _summarize_if_long("\n".join(lines))
 
     return _call_tool_span("get_dashboard_summary", "{}", run)
@@ -202,11 +241,15 @@ def get_applicant_details(applicant_id: str) -> str:
         lines = [
             f"Applicant ID: {data['id']}",
             f"Name: {data['name']}",
-            f"Employment: {data.get('employment_status', 'unknown')}",
-            f"Annual Income: Rs {data.get('annual_income', 0):,.0f}",
+            f"Employment: {_readable(data.get('employment_status'))}",
+            f"Annual Income: {format_rupees(data.get('annual_income', 0))}",
         ]
         credit = data.get("credit_score")
-        lines.append(f"CIBIL Score: {credit if credit is not None else 'not provided'}")
+        # The scale is stated because CIBIL runs 300-900, and a model given a
+        # bare "750" may read it against a 0-100 or an American scale and call
+        # a good score mediocre (T-96).
+        lines.append(f"CIBIL Score: {credit} out of 900" if credit is not None
+                     else "CIBIL Score: not provided")
         return _summarize_if_long("\n".join(lines))
 
     return _call_tool_span("get_applicant_details", applicant_id, run)

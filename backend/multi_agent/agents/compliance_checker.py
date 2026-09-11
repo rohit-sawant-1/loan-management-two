@@ -27,6 +27,7 @@ from opentelemetry import trace
 
 from app.domain import rules
 from app.utils.dates import age_on
+from app.utils.finance import format_rupees
 from multi_agent.state import LoanProcessingState
 
 logger = structlog.get_logger()
@@ -78,12 +79,19 @@ def compliance_checker(state: LoanProcessingState) -> LoanProcessingState:
 
         compliance_passed = documents_complete and amount_within_limit and age_eligible
 
+        # These notes are read twice: by a person on screen, and by the model,
+        # which injects them wholesale into the decision prompt
+        # (`decision_maker.py`). So they carry their units and their words in
+        # full — a bare "2,500,000" here is how the AI ended up writing dollars
+        # (T-94), and a bare "id_proof" is how it ends up saying "id_proof" to a
+        # loan officer.
         notes = []
         if missing:
-            notes.append(f"Missing documents: {', '.join(missing)}")
+            readable = ", ".join(doc.replace("_", " ") for doc in missing)
+            notes.append(f"Missing documents: {readable}")
         if not amount_within_limit:
             notes.append(f"Amount exceeds the {loan_type} loan limit of "
-                         f"{rules.amount_limit(loan_type):,.0f}")
+                         f"{format_rupees(rules.amount_limit(loan_type))}")
         if not age_eligible:
             notes.append("Applicant's age does not meet this loan type's eligibility window")
         if not kyc_verified:

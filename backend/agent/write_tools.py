@@ -33,6 +33,7 @@ from langchain_core.tools import tool
 
 from app.services import pending_actions
 from app.domain import rules
+from app.utils.finance import format_rupees
 
 logger = structlog.get_logger()
 
@@ -198,8 +199,12 @@ def submit_loan_application(applicant_id: str, loan_type: str = "",
     return _propose(
         "submit_loan_application",
         arguments,
+        # The amount is formatted the way the rest of the app formats money.
+        # This sentence is the last thing a person reads before agreeing to
+        # create a real record, so it must not be the one place in the product
+        # that writes rupees differently (T-96).
         f"About to create a new {kind} loan application for applicant "
-        f"{arguments['applicant_id']}: Rs {arguments['amount_requested']:,.0f} "
+        f"{arguments['applicant_id']}: {format_rupees(arguments['amount_requested'])} "
         f"over {arguments['tenure_months']} months.",
     )
 

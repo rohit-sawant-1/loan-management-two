@@ -179,22 +179,31 @@ def _facts_as_text(facts: dict) -> str:
         f"Applications waiting longer than the branch's targets: {facts['stuck_total']}.",
     ]
     for row in facts["stuck"]:
+        # `days_waiting` is rounded to one decimal for sorting, so it arrives as
+        # 3.0. Left alone the model writes "3.0 days" into the manager's
+        # briefing, and "1.0 days" reads worse still (T-96).
+        days = round(row["days_waiting"])
         lines.append(
-            f"  - #{row['id']} ({row['applicant_name']}, {row['loan_type']}, "
+            f"  - Application {row['id']} ({row['applicant_name']}, "
+            f"{row['loan_type'].replace('_', ' ')}, "
             f"{format_rupees(row['amount'])}) has been {row['status'].replace('_', ' ')} "
-            f"for {row['days_waiting']} days."
+            f"for {days} day{'' if days == 1 else 's'}."
         )
     if facts["failed_eligibility_total"]:
         lines.append(f"Still open despite failing the bank's own eligibility check at "
                      f"submission: {facts['failed_eligibility_total']}.")
         for row in facts["failed_eligibility"]:
-            lines.append(f"  - #{row['id']} ({row['applicant_name']}, "
+            lines.append(f"  - Application {row['id']} ({row['applicant_name']}, "
                          f"{format_rupees(row['amount'])}, now {row['status'].replace('_', ' ')}).")
     if facts["missing_documents_total"]:
         lines.append(f"Waiting on a decision but missing documents: {facts['missing_documents_total']}.")
         for row in facts["missing_documents"]:
-            lines.append(f"  - #{row['id']} ({row['applicant_name']}) is missing "
-                         f"{', '.join(row['missing'])}.")
+            # Document types are stored as `id_proof`. The model prints what it
+            # is given, so without this the manager's briefing says "is missing
+            # id_proof, bank_statement".
+            missing = ", ".join(doc.replace("_", " ") for doc in row["missing"])
+            lines.append(f"  - Application {row['id']} ({row['applicant_name']}) "
+                         f"is missing {missing}.")
     return "\n".join(lines)
 
 

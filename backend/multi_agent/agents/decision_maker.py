@@ -48,12 +48,20 @@ def _decide(risk: dict, compliance: dict) -> str:
 
 
 def _fallback_reasoning(decision: str, risk: dict, compliance: dict) -> str:
-    return (f"Decision: {decision}. Overall risk score {risk.get('overall_risk_score', 'unknown')}/100 "
+    return (f"Decision: {decision}. Overall risk score {_score(risk.get('overall_risk_score'))}/100 "
             f"(credit risk {risk.get('credit_risk_level', 'unknown')}, employment risk "
             f"{risk.get('employment_risk', 'unknown')}, EMI affordable: "
             f"{risk.get('emi_affordability', 'unknown')}). Compliance "
             f"{'passed' if compliance.get('compliance_passed') else 'did not pass'}: "
             f"{compliance.get('compliance_notes', 'no notes recorded')}.")
+
+
+def _score(value) -> str:
+    """A risk score without its decimal tail: 70.0 reads better as 70."""
+    try:
+        return f"{float(value):.0f}"
+    except (TypeError, ValueError):
+        return "unknown"
 
 
 def _rupees_or_unknown(amount) -> str:
@@ -90,10 +98,20 @@ def _llm_reasoning(decision: str, risk: dict, compliance: dict, application: dic
             f"Loan: {application.get('loan_type', 'unknown')} loan of "
             f"{_rupees_or_unknown(application.get('amount_requested'))} over "
             f"{application.get('tenure_months', 'unknown')} months.\n"
-            f"Risk assessment: overall score {risk.get('overall_risk_score', 'unknown')}/100, "
-            f"credit risk {risk.get('credit_risk_level', 'unknown')}, employment risk "
-            f"{risk.get('employment_risk', 'unknown')}, EMI affordability "
-            f"{risk.get('emi_affordability', 'unknown')}.\n"
+            # "higher is better" matters: without it a model can read 70/100 as
+            # seventy percent risky and invert the whole meaning. The risk
+            # assessor's prompt has always said so; this one did not.
+            #
+            # The score is printed without its decimal tail, and affordability
+            # is translated out of the stored yes/no token into words, for the
+            # same reason — the model repeats whatever shape it is given (T-96).
+            f"Risk assessment: overall score "
+            f"{_score(risk.get('overall_risk_score'))} out of 100, where higher is "
+            f"better. Credit risk {risk.get('credit_risk_level', 'unknown')}, "
+            f"employment risk {risk.get('employment_risk', 'unknown')} "
+            f"(low risk is good). The monthly EMI is "
+            f"{'affordable' if risk.get('emi_affordability') == 'yes' else 'not affordable'} "
+            f"against their income.\n"
             f"Compliance: {'passed' if compliance.get('compliance_passed') else 'did not pass'} "
             f"— {compliance.get('compliance_notes', 'no notes')}.\n\n"
             f"If the decision is REQUEST_MORE_INFO or REJECT, say plainly what is missing or "

@@ -28,6 +28,7 @@ from __future__ import annotations
 import sys
 import time
 import uuid
+from datetime import datetime
 from pathlib import Path
 
 # `streamlit run mcp_server/chat_interface.py` puts THIS file's folder
@@ -51,6 +52,7 @@ from langchain_classic.agents import AgentExecutor, create_react_agent  # noqa: 
 from langchain_core.prompts import PromptTemplate                     # noqa: E402
 from langchain_core.tools import tool                                 # noqa: E402
 
+from app.utils.finance import format_rupees                          # noqa: E402
 from app.utils.logging_config import configure_logging               # noqa: E402
 from app.utils.otel_config import get_tracer, setup_telemetry        # noqa: E402
 from llm_provider import enable_langsmith, get_llm                   # noqa: E402
@@ -113,11 +115,63 @@ Question: {input}
 Thought: {agent_scratchpad}"""
 
 
+# Keys whose values are money. Named explicitly rather than guessed from the
+# name, so a new field is formatted deliberately or not at all.
+_MONEY_KEYS = {"amount_requested", "amount", "annual_income", "monthly_income",
+               "total_amount_requested", "approved_amount", "emi_amount"}
+
+_DATE_KEYS = {"submitted_at", "created_at", "updated_at", "decided_at",
+              "uploaded_at", "verified_at", "disbursed_at"}
+
+
+def _format_value(key: str, value) -> str:
+    """
+    One field of a tool's answer, in a shape both the model and a person can
+    read.
+
+    This function is where two of this project's real bugs met. Before it, every
+    field went to the model as `key: repr(value)` — so an amount arrived as a
+    bare `4000000.0` (which is how the AI came to write dollars, T-94), a
+    timestamp as a raw UTC string, an enum as `under_review`, and a nested dict
+    as Python's `{'name': 'Priya'}`. The model repeats what it is given, so all
+    of that reached whoever was reading the chat.
+    """
+    if value is None or value == "":
+        return "not recorded"
+    if isinstance(value, bool):
+        return "yes" if value else "no"
+    if key in _MONEY_KEYS:
+        try:
+            return format_rupees(float(value))
+        except (TypeError, ValueError):
+            return str(value)
+    if key in _DATE_KEYS:
+        try:
+            return datetime.fromisoformat(str(value).replace("Z", "+00:00")).strftime("%d %b %Y")
+        except (TypeError, ValueError):
+            return str(value)
+    if isinstance(value, list):
+        if not value:
+            return "none"
+        # A list of records — documents, history entries — is summarised rather
+        # than dumped, because `repr` of a dict is not something to show anyone.
+        if isinstance(value[0], dict):
+            return f"{len(value)} item(s)"
+        return ", ".join(str(v).replace("_", " ") for v in value)
+    if isinstance(value, dict):
+        name = value.get("name") or value.get("id")
+        return str(name) if name is not None else f"{len(value)} field(s)"
+    if isinstance(value, str):
+        return value.replace("_", " ")
+    return str(value)
+
+
 def _format_dict(data: dict) -> str:
     """A tool's raw dict, as a short readable observation for the agent to reason over."""
     if "error" in data:
         return f"Error: {data.get('detail', data['error'])}"
-    return "\n".join(f"{key}: {value}" for key, value in data.items())
+    return "\n".join(f"{key.replace('_', ' ')}: {_format_value(key, value)}"
+                     for key, value in data.items())
 
 
 # ---------------------------------------------------------------------------
