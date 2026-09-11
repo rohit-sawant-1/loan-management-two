@@ -4,6 +4,15 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-11 — Step 4 confirmed working in the browser, permission gate included
+
+**Asked for:** try the confirmation flow for real, as Rajan the loan officer.
+**What happened:** "approve application 1, documents all verified" proposed the change, waited, and went through on YES. The audit trail reads `under_review -> approved by rajan@bank.com (documents all verified)` — his name, his reason, exactly as typed. Then "disburse application 3" asked for a reason first, and once given, confirmed and **refused**: only a branch manager can disburse. Checked the database afterwards and application 3 is untouched, so the refusal was real rather than just a message.
+**Realised:** this is the bit worth showing in the demo. The assistant did not get its own permission system — it inherited Phase 1's, which was already tested twenty ways. An officer cannot disburse through the chat for exactly the same reason he cannot through the browser, and that is a far better answer to "is this safe?" than any amount of careful prompting.
+**Next:** Piece 22 step 5, the last one — "assess application 7" runs Phase 5's four-agent review in the chat.
+
+---
+
 ## 2026-09-11 — The confirmation flow actually works now, and I owed you an apology
 
 **Asked for:** you tried "approve application 1, documents all verified" in the browser and got "No AI is available at the moment", and you pushed back on my claim that two of your API keys were fake.
