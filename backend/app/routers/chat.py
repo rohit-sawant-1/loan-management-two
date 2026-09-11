@@ -93,32 +93,48 @@ def _review_answer(state: dict) -> str:
     `app/domain/rules.py` (D-19). The AI wrote only the closing paragraph, so a
     dead quota changes the wording of this answer and never the decision in it.
 
-    Only called when the review actually ran. On a data-collection failure the
-    risk and compliance dicts are still empty, and the caller returns before
-    reaching here — which is why this reads them directly rather than guarding
-    every lookup.
-    """
-    risk = state["risk_assessment"]
-    compliance = state["compliance_check"]
+    Every lookup here is guarded, and that is a deliberate change from how this
+    was first written. It used to read `state["risk_assessment"]` and its keys
+    directly, on the argument that the caller returns early whenever data
+    collection failed. That argument is true and it is not enough: it only
+    covers the failures the graph *records*. An agent raising part-way through,
+    or a state shape nobody predicted, would come through here as a `KeyError`
+    and reach the customer as a 500 and a red banner across the chat.
 
-    lines = [
-        f"Application {state['application_id']} — {state['final_decision']}",
-        "",
-        # The score is a float, but "90/100" reads better than "90.0/100" and
-        # the decimal carries no meaning anyone acts on.
-        f"Risk score {risk['overall_risk_score']:.0f}/100 "
-        f"(credit risk: {risk['credit_risk_level']}, "
-        f"employment risk: {risk['employment_risk']})",
-        f"Estimated EMI {format_rupees(risk['emi_amount'])} a month · "
-        f"debt-to-income ratio {risk['debt_to_income_ratio']:.0%}",
-        f"Compliance: {'passed' if compliance['compliance_passed'] else 'not passed'}",
-    ]
+    So a missing figure now costs us that one line of the answer rather than the
+    whole answer. What this never does is invent one — an absent number is left
+    out, never defaulted to zero, because a made-up figure in an underwriting
+    review is far worse than a short one.
+    """
+    risk = state.get("risk_assessment") or {}
+    compliance = state.get("compliance_check") or {}
+
+    decision = state.get("final_decision") or "no decision reached"
+    lines = [f"Application {state.get('application_id', '?')} — {decision}", ""]
+
+    # The score is a float, but "90/100" reads better than "90.0/100" and the
+    # decimal carries no meaning anyone acts on.
+    score = risk.get("overall_risk_score")
+    if score is not None:
+        lines.append(
+            f"Risk score {score:.0f}/100 "
+            f"(credit risk: {risk.get('credit_risk_level', 'not assessed')}, "
+            f"employment risk: {risk.get('employment_risk', 'not assessed')})"
+        )
+
+    emi, dti = risk.get("emi_amount"), risk.get("debt_to_income_ratio")
+    if emi is not None and dti is not None:
+        lines.append(f"Estimated EMI {format_rupees(emi)} a month · "
+                     f"debt-to-income ratio {dti:.0%}")
+
+    if "compliance_passed" in compliance:
+        lines.append(f"Compliance: {'passed' if compliance['compliance_passed'] else 'not passed'}")
 
     missing = compliance.get("missing_documents") or []
     if missing:
         lines.append(f"Still missing: {readable_list(missing)}")
 
-    if state["reasoning"]:
+    if state.get("reasoning"):
         lines.extend(["", state["reasoning"]])
 
     return "\n".join(lines)
@@ -335,8 +351,28 @@ def chat(
         # are allowed to read (T-75). Blocks for five to fifteen seconds, which
         # is fine: this handler is `def`, not `async def`, so FastAPI runs it in
         # a worker thread and the server keeps answering everything else.
-        with acting_as(user.email, user.role.value):
-            state = evaluate_loan_application(review_id)
+        # Everything from here to the answer is wrapped, and this is the last
+        # AI path in the product that was not. Phase 5's agents already fall
+        # back to deterministic summaries and the briefing falls back to plain
+        # figures; this branch could still raise a 500 straight through to a red
+        # banner across the chat. On stage that is a refresh and a lost thread,
+        # where a sentence saying the review could not be completed is simply
+        # the product behaving honestly.
+        #
+        # Deliberately broad: the point is not to handle a specific failure, it
+        # is that no failure at all gets out of here. Logged at exception level
+        # so the stack trace is still ours to read afterwards.
+        try:
+            with acting_as(user.email, user.role.value):
+                state = evaluate_loan_application(review_id)
+        except Exception:                                       # noqa: BLE001
+            logger.exception("chat_review_crashed", operation="chat_answered",
+                             application_id=review_id, mode=REVIEW_MODE)
+            state = {"application_id": review_id, "errors": [
+                "Something went wrong while the review was running. "
+                "The application itself is unchanged — nothing a review does "
+                "alters a record."
+            ]}
 
         if state.get("errors"):
             # Not an AI failure, so `ai_status` stays `ai_ok` and the amber
@@ -347,8 +383,21 @@ def chat(
             answer = "I could not run the review. " + state["errors"][0]
             steps: list[ChatToolCall] = []
         else:
-            answer = _review_answer(state)
-            steps = _review_steps(state)
+            # Guarded separately from the run above on purpose. A review that
+            # completed and then could not be *described* has still done its
+            # work, and the numbers behind it are in the activity row written
+            # a few lines below either way.
+            try:
+                answer = _review_answer(state)
+                steps = _review_steps(state)
+            except Exception:                                   # noqa: BLE001
+                logger.exception("chat_review_unreadable", operation="chat_answered",
+                                 application_id=review_id, mode=REVIEW_MODE)
+                answer = (f"The review of application {review_id} ran, but I could not "
+                          f"put the result into words. The verdict was "
+                          f"{state.get('final_decision') or 'not recorded'}. "
+                          f"Open the application to see the full assessment.")
+                steps = []
 
         duration_ms = round((time.perf_counter() - started) * 1000, 2)
 

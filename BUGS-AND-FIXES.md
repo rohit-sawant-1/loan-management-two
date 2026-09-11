@@ -27,6 +27,21 @@ to trip over it. That one sweep found **27 more suspects** in a single pass.
 
 ---
 
+## A note on the last two
+
+Bugs 1 to 10 below are things somebody saw on a screen. **Bugs 11 and 12 are not
+— nobody has ever seen either of them happen.** They are in this file because
+the audit went looking for the *shape* of a bug rather than waiting for one, and
+those two are the shape that costs you the demo rather than embarrassing you
+during it: a crash where every other comparable path in the product degrades
+politely instead.
+
+That is the difference worth pointing at in a walkthrough. The first ten were
+found by looking at the product. The last two were found by asking what this
+code would do on a day that has not happened yet.
+
+---
+
 ## The bugs, in the order we hit them
 
 ### 1. The AI wrote dollars on an Indian loan
@@ -273,6 +288,81 @@ sentence around it to explain it.
 **What it taught us.** This is the same shape as every other bug in this file, at
 its smallest: the value was right, the sentence built from it was wrong, and no
 test noticed because every test asserts on the value.
+
+---
+
+### 11. The one AI path that could still take the screen down
+
+**What we saw.** Nothing, yet. This one had not happened, and that is the point
+of writing it down.
+
+**What was actually wrong.** Every AI path in this product degrades rather than
+fails. Phase 5's four agents fall back to short deterministic summaries when the
+model is unavailable. The Morning Briefing falls back to the plain figures and
+says on the screen that no AI wrote it. The chat falls back from the agent to the
+manual, and then to an honest "nothing is available".
+
+The review branch was the exception. It called the four-agent graph with no
+`try` around it, then read `state["risk_assessment"]` and the keys inside it
+directly. Anything unexpected — an agent raising part-way through, a network
+failure inside the graph, a state shape nobody predicted — comes out as an HTTP
+500, which reaches a person as a red banner across the chat with a page refresh
+as the only way forward. Mid-demo, that is the worst available outcome.
+
+**The argument that was wrong.** The code had a reason, written in its own
+comment: the caller returns early whenever data collection fails, so by the time
+we read those keys they are always filled in. That is true, and it is not
+enough. It covers the failures the graph **records** — the ones it puts in its
+own error list and hands back politely. It covers none of the failures that
+escape it. And the agents' own error handling turns out to wrap only their calls
+to the AI; the plain-Python arithmetic before those calls is unguarded, so an
+applicant record missing one field raises straight out through the whole graph.
+
+**The rule worth keeping:** *a path is not safe because the caller checks, unless
+the caller checks the thing that actually goes wrong.* Errors a system reports
+are the easy half. What reaches a screen as a 500 is always the other half.
+
+**The fix.** The whole branch is wrapped, and a failure becomes a normal answer
+saying the review could not be completed — including the fact that the
+application itself is unchanged, which is the first thing a loan officer wonders
+after an error. Every figure in the answer is now read defensively too, so a
+missing number costs that one line rather than the whole answer.
+
+**What it deliberately does not do.** It never invents a verdict. If the review
+did not run, the answer says so. A confident made-up decision would be far worse
+than an honest failure, and there is a test asserting the words APPROVE and
+REJECT cannot appear in an answer for a review that did not happen.
+
+**Ten new tests, no AI quota spent.** Every failure is a stand-in raising on
+purpose: four kinds of exception, a state with no risk figures, a half-filled
+one, and an empty one.
+
+---
+
+### 12. The card that would have taken the dashboard with it
+
+**What we saw.** Also nothing, and this one is even less likely.
+
+**What was actually wrong.** The Morning Briefing card called `.split()` on the
+narrative text and read four figures out of a nested object, with no guard on
+either. Both fields are marked required by the server, so on any normal day this
+cannot fail.
+
+The reason it is worth three lines anyway is what happens **if** it does. A
+React component that throws while rendering does not fail quietly in its own
+box — React unmounts everything above it and the page goes white. So one
+optional field on one card would cost the manager the entire dashboard, and the
+`try` around the request that fetched the data does not help, because by then
+the request has already succeeded.
+
+**The fix.** A missing narrative now shows one line saying no summary was written
+and keeps the figures underneath, which matches what the card already does when
+the AI is unavailable. A missing figure shows a dash.
+
+**The habit worth taking from it.** Anything pulled out of a server response with
+`.split`, `.map`, `.length` or a nested property gets a guard, even when the
+schema says it cannot be null. The schema describes what the server intends to
+send. The component renders whatever actually arrived.
 
 ---
 

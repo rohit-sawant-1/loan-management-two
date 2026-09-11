@@ -51,7 +51,14 @@ export default function MorningBriefing() {
     );
   }
 
-  const numbers = briefing?.headline_numbers;
+  // Both of these are required by the server's schema, so on a good day neither
+  // guard does anything. They are here because this card renders on the
+  // manager's dashboard: a field that arrives null throws during render, and a
+  // React component that throws while rendering takes the whole page white,
+  // not just its own card. A missing briefing should cost the briefing, never
+  // the dashboard around it.
+  const numbers = briefing?.headline_numbers || {};
+  const paragraphs = String(briefing?.narrative || "").split("\n").filter(Boolean);
 
   return (
     <div className="card briefing-card">
@@ -77,16 +84,21 @@ export default function MorningBriefing() {
       ) : briefing ? (
         <>
           <div className="briefing-narrative">
-            {briefing.narrative.split("\n").filter(Boolean).map((para, i) => (
+            {paragraphs.length ? paragraphs.map((para, i) => (
               <p key={i}>{para}</p>
-            ))}
+            )) : (
+              <p className="muted">
+                No summary was written this morning. The figures below are still
+                counted from the database.
+              </p>
+            )}
           </div>
 
           <div className="briefing-stats">
-            <div><strong>{numbers.awaiting_decision}</strong><span>awaiting a decision</span></div>
-            <div><strong>{numbers.waiting_too_long}</strong><span>waiting too long</span></div>
-            <div><strong>{numbers.missing_documents}</strong><span>missing documents</span></div>
-            <div><strong>{rupees(numbers.value_awaiting_decision)}</strong><span>value in the queue</span></div>
+            <div><strong>{numbers.awaiting_decision ?? "—"}</strong><span>awaiting a decision</span></div>
+            <div><strong>{numbers.waiting_too_long ?? "—"}</strong><span>waiting too long</span></div>
+            <div><strong>{numbers.missing_documents ?? "—"}</strong><span>missing documents</span></div>
+            <div><strong>{rupees(numbers.value_awaiting_decision) || "—"}</strong><span>value in the queue</span></div>
           </div>
 
           {/* Not a ghost button. A ghost has no border or background until you

@@ -77,6 +77,49 @@ survives, so a new value added later cannot quietly reintroduce this.
 
 ---
 
+### D-24 · The review path fails to a sentence, never to a red banner
+
+**What's wrong:** every other AI path in this codebase is wrapped so it cannot
+raise. `_review_answer` in `app/routers/chat.py` read `state["risk_assessment"]`
+and its keys directly, and `evaluate_loan_application` was called outside any
+`try`. Its docstring justified this by saying the caller returns early when data
+collection fails — true, and it only covers the errors the graph *records*. An
+agent raising part-way through, a network failure inside LangGraph, or a state
+shape nobody predicted all escape as a 500, which is a red banner across the
+chat mid-demo.
+
+**Chosen:** wrap the whole review branch. Anything that escapes becomes a normal
+200 answer saying the review could not be completed, with the application number
+
+### D-25 · The briefing card is guarded against fields the schema says cannot be missing
+
+**What's wrong:** `MorningBriefing.jsx` called `briefing.narrative.split("\n")`
+and read `numbers.awaiting_decision` straight out of the response. Both fields
+are required by the server's schema, so on any normal day neither can be absent.
+But this card renders on the manager's dashboard, and **a React component that
+throws while rendering does not fail alone — it takes the whole page white.** A
+missing briefing would cost the entire dashboard rather than one card.
+
+**Chosen:** guard both. A missing narrative shows one line saying no summary was
+written and keeps the figures below it, which is the same shape as the existing
+"AI unavailable — figures only" behaviour. A missing figure shows a dash.
+
+**Why, given the schema says it cannot happen:** it costs three lines, and the
+list of things that make it happen anyway is not short — a field renamed on the
+server while a browser tab holds the old code, a proxy truncating a response, a
+future change making the narrative optional because the AI was down. This whole
+audit phase is about failures that are unlikely and bad. The briefing is the
+headline demo feature and the first thing on screen after a manager logs in.
+
+**Not on the list you gave me.** It was next to the review crash in the plan
+file's phase 3 line ("a briefing that white-screens on missing data") and it is
+three lines, so I did it. Say if you would rather it came out.
+
+**Your answer:**
+
+---
+
+
 ### D-18 · How to add three new columns to a database that already has data in it
 
 **What's wrong:** Piece 19 needed three new columns on `loan_applications`. `Base.metadata.create_all()`, the only thing `init_db()` did before now, only creates tables that don't exist yet — it never alters one that's already there. `loan_app.db` and `test.db` both already exist with real rows.
@@ -144,6 +187,80 @@ survives, so a new value added later cannot quietly reintroduce this.
 # Traps and differences
 
 No decision needed. These break something quietly if forgotten.
+
+**T-100 · A React component that throws while rendering takes the whole page, not its own card.**
+Worth knowing before writing another dashboard card. An exception inside a
+component's render is not caught by the `try` around the fetch that loaded the
+data — by then the request has already succeeded. React unmounts the entire tree
+above it and the page goes white, so one optional field on one card can cost a
+manager the whole dashboard.
+
+This is why `MorningBriefing.jsx` guards fields the server's schema marks
+required (D-25). The cheap habit: anything read out of a response with `.split`,
+`.map`, `.length` or a nested property gets a `?.` or a `|| {}` even when the
+schema says it cannot be null, because the schema describes the server and the
+component renders whatever actually arrived.
+
+**T-99 · A stored string does not fix itself when the code that wrote it changes.**
+Found 2026-09-11, fixing the eligibility timestamp. The fix to
+`build_summary_text` was correct and it changed nothing that any demo would
+show, because every application already in the database still carried the old
+text. Fourteen of them.
+
+The general shape: **a bug in code that generates stored text is two bugs.** One
+in the generator, one in every row it already wrote. Fixing only the first is
+how a fix gets reported as done and the screen keeps showing the old thing. The
+check takes one query — search the column for the pattern you just removed — and
+the repair went next to the column-adding step in `init_db()`, which is already
+where this project does one-time data repair (D-18).
+
+**T-98 · The review path was the only AI path in the product that could raise.**
+Every other one degrades: Phase 5's agents fall back to deterministic summaries,
+the briefing falls back to plain figures and says `written_by_ai: false`, the
+chat falls back from agent to manual chain to an honest "nothing is available".
+The review branch in `chat.py` called the graph outside any `try` and then read
+`state["risk_assessment"]` and its keys directly.
+
+The docstring justified that by saying the caller returns early when data
+collection fails. True, and insufficient: it covers the failures the graph
+*records* in `state["errors"]`, not the ones that escape it. The agents' own
+`try` blocks only wrap their LLM calls — the plain-Python computation before them
+is unguarded, so an applicant record missing a field raises straight out of the
+graph.
+
+Now wrapped, and the rule worth keeping: **a path is not "safe because the
+caller checks" unless the caller checks the thing that actually goes wrong.**
+Errors a system reports are the easy half. What reaches a screen as a 500 is
+always the other half.
+
+
+**T-97 · A raw UTC timestamp handed to a model reintroduces the 5.5-hour bug through a door `UtcDateTime` cannot guard.**
+Cited by `agent/tools.py` since audit phase 1 and written up here afterwards.
+The API sends UTC with a `Z`, which is exactly right for a browser, because the
+browser converts it. A model does not convert anything — handed
+`2026-09-05T20:13:55Z` it reads the UTC wall clock aloud as though it were local
+time, so the chat tells a customer their application was submitted at 8pm when
+the app says 1:43am the next day.
+
+`UtcDateTime` protects the API's own responses and cannot reach inside a
+sentence built for a prompt. So `_readable_time()` formats the date before it
+goes in, and drops the time of day rather than converting it — the time of day
+is not what anyone asks about here, and converting it would need this layer to
+decide a timezone it has no business deciding.
+
+Same family as T-99 and the eligibility fix: one instant, formatted once, at the
+place it is read.
+
+**T-96 · A stored enum handed to a model comes back out in a sentence.**
+Cited by `agent/tools.py` since audit phase 1 and written up here afterwards.
+Everything those tools return is read twice — by the model, which reasons over
+it, and then by a person, because the model echoes the words it was given. Hand
+it `id_proof` and "id_proof" appears in a sentence addressed to a loan officer.
+
+Fixed by translating at the point the tool builds its answer. Audit phase 2 then
+found ten copies of that translation across the backend, all doing it slightly
+wrong ("Id proof"), and replaced them with one shared helper — see D-23.
+
 
 **T-94 · A model handed a bare number invents a currency, and it picks dollars.**
 Found 2026-09-11, in the first real review Rohit ran. The decision maker's prompt

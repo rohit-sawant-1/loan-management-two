@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-11 — Audit phase 3: the review can no longer take the screen down
+
+**Asked for:** wrap the review path so an unexpected shape gives a degraded answer instead of a 500 and a red banner.
+**Built:** the whole review branch is now wrapped, and every figure inside the answer is read defensively. A crash becomes a normal reply saying the review could not be completed and that the application itself is unchanged — which is the first thing anyone wonders after an error. A missing number costs that one line instead of the whole answer, and it is never filled in with a zero. Ten new tests, every failure a stand-in raising on purpose, so no quota was spent. 202 pass now, and Phase 4's 25 still pass separately.
+**Found:** the reason the old code gave for being safe was true and not enough. It said the caller returns early whenever data collection fails — which covers the failures the graph *records*, and none of the ones that escape it. Looking properly, the four agents' own error handling wraps only their calls to the AI. The plain-Python arithmetic before those calls is unguarded, so an applicant record missing one field raises straight out through the graph and past every check. That is T-98.
+**Realised:** worth knowing separately, because it will come up again in React work. A component that throws while *rendering* is not caught by the try/catch around the fetch that loaded its data — the request already succeeded by then. React unmounts the whole tree and the page goes white. So one optional field on the briefing card could have cost the manager the entire dashboard, which is why it got three lines of guarding even though the server's schema says those fields cannot be missing (T-100, D-25).
+**Next:** the browser checklist for Phase 2 and Phase 3 of the product, which have passing tests but have never been driven end-to-end by a person.
+
+---
+
 ## 2026-09-11 — Audit phase 2: the glitches you can see from across the room
 
 **Asked for:** fix the visible number and date glitches found by the sweep, while you were away.
