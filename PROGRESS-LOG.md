@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-16 — The underwriting review now charges people for the loans they already have
+
+**Asked for:** you asked whether we look at how much of a borrower's income is already going out in EMIs, and whether banks check a new loan against the existing ones. Then, once it turned out we half did: fix it.
+**Built:** Phase 5's Risk Assessor now works out affordability the same way Phase 1's form check always did — take 50% of monthly income, subtract what they already pay elsewhere, and the new EMI has to fit in what is left. Both go through the one helper now, so the form and the review cannot reach opposite verdicts on the same person. Seven new tests, all stubbed, no Gemini quota spent. Our suite is 185 passing and the trainer's twenty still pass.
+**Found:** the bug was sitting in plain sight and was oddly specific. The agent already folded existing EMIs into the debt-to-income ratio it *displayed*, then ignored them completely when setting the yes/no flag that actually costs 20 points and moves the recommendation. So it could print "84% of income already committed" and "affordable: yes" in the same breath. Also worth knowing: the trainer's acceptance criterion is written one-way — "if the EMI is over 50%, say no" — and says nothing about the case where the EMI alone fits but the total does not, so our stricter version does not break the contract.
+**Realised:** the fix changes no seeded application. Sanjay, application 7 from the browser checklist, was already failing on the old maths — ₹48,007 against a ₹37,500 ceiling — which is exactly where his 84% ratio and score of 70 come from. So the demo figures are untouched, but it also means nothing on screen currently *demonstrates* the new rule. Worth fixing in the seed data when we write the demo script.
+**Next:** the profile page you asked for — a customer seeing and editing their own details, with officers and managers approving the changes. Parked as Piece 24 in `BUILD-PLAN.md` with the open questions written down; it gets planned properly before anything is built.
+
+---
+
 ## 2026-09-11 — A checklist for driving Phase 2 and Phase 3 by hand, and proof the fixes are real
 
 **Asked for:** a short list of what to try in a browser for the manual chatbot and the agent tools, which pass their tests but have never been used by a person.

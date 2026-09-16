@@ -885,6 +885,34 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 
 # Settled
 
+### 2026-09-16 · D-27 — The Risk Assessor now counts the EMIs an applicant already pays
+**Answer: fixed.** Phase 5's Risk Assessor was setting `emi_affordability` from
+the new EMI against the full 50% of income, ignoring what the applicant already
+pays elsewhere — while Phase 1's eligibility check had always netted existing
+EMIs off first. Same applicant, same numbers, two different verdicts.
+
+Both now go through the one helper, `max_affordable_emi` in `app/utils/finance.py`.
+The trainer's acceptance criterion survives because it is written one-way
+("given EMI > 50% of monthly income, then affordability = no") and netting
+existing EMIs only ever adds "no" verdicts, never removes one. The trainer's
+"assume existing obligations = 10% of income unless specified" fallback is
+kept exactly as it was, and only fires when no figure was given at all.
+
+**Worth knowing: no seeded application changes verdict.** Sanjay (application 7,
+the one in `BROWSER-CHECKLIST.md`) was already failing on the un-netted ceiling —
+his ₹48,007 EMI clears ₹37,500 either way, which is where the 84% ratio and the
+score of 70 come from. Every other demo customer either owes nothing elsewhere
+or sits well inside the netted room. So the demo figures are untouched, and the
+fix is currently invisible on seed data — if we want to *show* FOIR working at
+the showcase, the seed data would need an applicant sitting in the band between
+the netted room and the bare ceiling. Not done; raise it when the demo script
+is written.
+
+7 new tests in `tests/ours/test_risk_assessor_counts_existing_emi.py`, all
+stubbed, no quota spent. Tag `v2.4.1`.
+
+---
+
 ### 2026-09-08 · T-77 — LangChain's `_Exception` retry marker looked like a crash in the customer-facing reasoning trail
 
 **What's wrong:** the agent's `intermediate_steps` include a step named `_Exception` whenever the model wrote a malformed step and had to be asked to correct itself. Seen live on a customer's refused request: the "how this was worked out" list read `get_application_details`, then `_Exception`. That is a real thing that happened and is worth logging, but it is not an action the assistant took, and a customer reading `_Exception` under their answer sees a crash.

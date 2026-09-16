@@ -22,7 +22,7 @@ import structlog
 from opentelemetry import trace
 
 from app.domain import rules
-from app.utils.finance import calculate_emi, format_rupees
+from app.utils.finance import calculate_emi, format_rupees, max_affordable_emi
 from llm_provider import get_llm
 from multi_agent.llm_text import text_of
 from multi_agent.state import LoanProcessingState
@@ -115,7 +115,13 @@ def risk_assessor(state: LoanProcessingState) -> LoanProcessingState:
             existing_emi = monthly_income * rules.ASSUMED_EXISTING_OBLIGATION_SHARE
 
         dti = round((existing_emi + emi_amount) / monthly_income, 2) if monthly_income else 1.0
-        emi_affordability = "yes" if emi_amount <= monthly_income * rules.EMI_MAX_SHARE_OF_INCOME else "no"
+
+        # What is left of the 50% share after what they already pay out each
+        # month, not the whole 50%. This is the same helper Phase 1's
+        # eligibility check uses, so the form and the underwriting review can
+        # no longer reach opposite verdicts on one applicant (D-27).
+        room = max_affordable_emi(annual_income, existing_emi)
+        emi_affordability = "yes" if emi_amount <= room else "no"
 
         credit_risk_level = _credit_risk_level(applicant.get("credit_score"))
         employment_risk = _employment_risk_level(

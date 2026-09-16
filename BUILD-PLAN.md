@@ -1158,6 +1158,51 @@ The model decides *what to propose*; Python decides *what runs*.
 
 ---
 
+# PIECE 24 — The customer's own profile page, with edits that staff approve
+
+Asked for by Rohit on 2026-09-16, straight after the D-27 fix. **Not planned in
+detail yet — this is a placeholder so the ask does not get lost.** The next
+session plans it properly and asks him the open questions before building.
+
+### What he asked for
+
+- A customer, logged in, can see a profile page of their own details.
+- They can edit some of those fields themselves — including their existing
+  monthly EMIs, which today can only be set once at signup and never changed.
+- Only "safe" fields are editable. Rohit left the choice of which ones to me.
+- A customer can only ever see their own profile, never anybody else's.
+- Loan officers and managers can see any customer's profile details, including
+  the existing-EMI figure.
+- When a customer edits a field, the change does **not** apply immediately. It
+  goes to the loan officer and the manager as a request, and either of them can
+  approve it.
+
+### The open questions, for the session that plans this
+
+1. Which fields are safe to self-edit? The honest split is that anything the
+   lending decision rests on — income, CIBIL, employment, date of birth,
+   existing EMIs — cannot be changed on the customer's word alone, which is
+   exactly why he wants the approval step. Contact details (phone) are lower
+   stakes. Name and email touch identity and login.
+2. Does the *current* value keep applying while a change is pending? It has to,
+   or a customer could stall an unfavourable figure by editing it.
+3. What happens to an application submitted while an edit is pending?
+4. Does an approved edit re-run the stored eligibility assessment on that
+   applicant's open applications? Piece 19 stores that assessment permanently,
+   so an approved income change makes the stored note stale.
+5. New table, or a status column? A pending-change table is the honest shape,
+   since one customer can have several fields in flight at once.
+6. Where do staff see the queue — the existing activity page, the dashboard, or
+   a page of its own?
+
+### What this must not break
+
+Piece 19's stored eligibility summary, and the D-27 affordability maths that
+now reads `existing_monthly_emi` in two places. Both Phase 1's form check and
+Phase 5's Risk Assessor use that field, so a change to it moves real verdicts.
+
+---
+
 ## Done
 
 | # | Piece | Finished | Commit |

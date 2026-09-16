@@ -82,3 +82,23 @@ When a bank scores your application, that score and the rules behind it stay ins
 Two reasons. First, if customers knew the exact rules, some would arrange their paperwork to just clear each line, which defeats the point. Second, the scoring model is the bank's competitive edge, so it is treated like a trade secret.
 
 This is why "aim it at managers" was Koushik's feedback on the risk tool. Staff see the score. Applicants see approve, reject, or "we need more documents".
+
+---
+
+## FOIR — how a bank works out what you can actually afford
+
+The obvious question a bank asks is "can this person pay this EMI?". The better question, and the one they actually ask, is "can this person pay this EMI **on top of everything they are already paying?**".
+
+That second question has a name: **FOIR — Fixed Obligation to Income Ratio.** Some banks call it DTI, debt-to-income. Same idea. You add up every fixed monthly payment the borrower already has — car loan, an older personal loan, a credit card minimum — add the EMI of the loan they are now asking for, and divide the total by their gross monthly income.
+
+```
+FOIR = (existing EMIs + the new EMI) / gross monthly income
+```
+
+Most Indian banks cap this somewhere between 40% and 50%. Some tier it by income, giving high earners more room, on the reasoning that somebody on ₹5 lakh a month still has plenty left after 60% goes out, while somebody on ₹25,000 does not. We use a flat 50% for all three loan types (D-14).
+
+**Two ways of saying the same thing.** You can write the rule as a ratio, "total EMIs over income must stay under 50%". Or you can turn it around: "take 50% of monthly income, subtract what they already pay, and whatever is left is the biggest EMI we can give them." The arithmetic is identical — the second is just the first rearranged. Our code uses the second form, because it answers the more useful question directly: how much room is left? That is `max_affordable_emi` in `app/utils/finance.py`.
+
+**Where the bank gets the "existing EMIs" figure.** Not by asking, or at least not only by asking. They pull the CIBIL credit report, which lists every live loan account in the borrower's name along with what each one costs per month, and they cross-check it against six months of bank statements where those EMIs show up as debits. A borrower who forgets to mention a loan does not get away with it. Our POC simply takes the applicant's declared number, which is the honest simplification to make when you have no bureau feed.
+
+**A worked example from our own seed data.** Sanjay earns ₹9,00,000 a year, so ₹75,000 a month. Half of that is ₹37,500 — that is his ceiling. He already pays ₹15,000 a month on other loans, so the room actually left for a new EMI is ₹22,500. He has applied for a ₹40,00,000 home loan over 180 months, which at 12% works out to an EMI of ₹48,007. That is more than double his remaining room, and his FOIR comes to (15,000 + 48,007) / 75,000 = **84%**. No bank lends into that. This is exactly why his application scores 70 and comes back as REQUEST_MORE_INFO rather than an approval.
