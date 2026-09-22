@@ -10,8 +10,11 @@ Nothing here calls a real AI, so it spends no Gemini quota.
 """
 
 import pytest
+from langchain_core.prompts import PromptTemplate
 
-from agent.agent import tools_for
+from agent.agent import (
+    ADMIN_REACT_TEMPLATE, REACT_TEMPLATE, STAFF_REACT_TEMPLATE, template_for, tools_for,
+)
 from agent.write_tools import WRITE_TOOLS
 from app.domain import rules
 from app.models.user import User, UserRole
@@ -306,6 +309,49 @@ def test_the_admin_is_not_bank_staff_to_the_chatbot():
     assert rules.ADMIN_ROLE not in rules.STAFF_ROLES
     write_names = {t.name for t in WRITE_TOOLS}
     assert not write_names & {t.name for t in tools_for("admin")}
+
+
+def test_each_role_gets_its_own_prompt():
+    """Three kinds of person, three prompts. The customer's is untouched by the other two."""
+    assert template_for("admin") is ADMIN_REACT_TEMPLATE
+    for staff_role in ("loan_officer", "branch_manager"):
+        assert template_for(staff_role) is STAFF_REACT_TEMPLATE
+    # A customer, and the no-role default the trainer's Phase 3 tests use.
+    assert template_for("applicant") is REACT_TEMPLATE
+    assert template_for(None) is REACT_TEMPLATE
+
+    # The customer's prompt must not pick up either of the other paragraphs.
+    assert "system administrator" not in REACT_TEMPLATE
+    assert "CONFIRMATION NEEDED" not in REACT_TEMPLATE
+    # And the admin gets no instructions about tools it hasn't got.
+    assert "CONFIRMATION NEEDED" not in ADMIN_REACT_TEMPLATE
+
+
+@pytest.mark.parametrize("template", [REACT_TEMPLATE, STAFF_REACT_TEMPLATE, ADMIN_REACT_TEMPLATE])
+def test_every_prompt_still_renders(template):
+    """
+    A stray { or } in a prompt is a crash at the first message, not a typo.
+    This is the check that would have caught it before a demo.
+    """
+    rendered = PromptTemplate.from_template(template).format(
+        tools="tool list", tool_names="tool_name_list",
+        input="change application 21 to under review", agent_scratchpad="",
+    )
+    assert "change application 21 to under review" in rendered
+
+
+@pytest.mark.parametrize("must_mention", [
+    # The wording that went wrong: the admin was told to email customer support
+    # about "your application".
+    "your application", "support@bank.com",
+    # Every action it has to refuse, and who does it instead.
+    "under review", "Disbursing", "edit request", "verified", "borrower profile",
+    "underwriting review",
+    # Things nobody can do through the assistant.
+    "password", "activity log", "interest rate", "notification", "on behalf of",
+])
+def test_the_admin_prompt_covers_what_it_must(must_mention):
+    assert must_mention in ADMIN_REACT_TEMPLATE
 
 
 def test_the_admin_cannot_run_a_review(client, monkeypatch, clean_chat):

@@ -1479,6 +1479,68 @@ Helper `_admin_token(client)`: register a user, set `role = UserRole.admin` thro
 
 ---
 
+# PIECE 27a — What the assistant says to the administrator
+
+Built 2026-09-23, just after midnight, tag `v2.10.1`. Found by Rohit that evening: signed in as
+the admin, he typed *"change application 21 to under review"* and the assistant
+answered *"I cannot change submitted applications directly. To get help with
+your application, please email our support team at support@bank.com."*
+
+**What was wrong.** Nothing unsafe — the admin has no record-changing tools, so
+no change was ever possible. But the assistant knew only two kinds of person:
+`agent.py` asked "is this role in `STAFF_ROLES`?" and gave everyone else the
+customer prompt. The admin is not staff, so it was spoken to as a customer:
+"your application", and an instruction to email the customer support address.
+It also never looked application 21 up, so it didn't say the true reason.
+
+**The fix.** A third prompt, `ADMIN_EXTRA` + `ADMIN_REACT_TEMPLATE`, chosen by
+the new `template_for(role)` next to `tools_for(role)`. The twelve-line ReAct
+format block became one `REACT_FORMAT` constant shared by all three prompts;
+the customer's and staff's prompts are unchanged character for character, which
+a test checks. **This changes only what a refusal says.** What actually stops a
+change is the tool list, and that is untouched.
+
+## The cases it covers, and what the admin is told
+
+**How to speak to them:** never "your application", never "email
+support@bank.com" (that is the customers' address), and look a record up before
+answering a question about it.
+
+| If the admin asks to… | The answer says | Who does it instead |
+|---|---|---|
+| Move an application to under review, approve or reject it | The administrator can view records but not change them | A loan officer or the branch manager |
+| Disburse an approved loan | Same | The branch manager only |
+| Create or submit an application, or change its amount, tenure or purpose | Same | The customer, after staff approve their edit request |
+| Add a document | Same | The customer or bank staff |
+| Mark a document verified | Same | Bank staff |
+| Approve or refuse an edit request | Same | A loan officer or the branch manager |
+| Create a borrower profile, or change a customer's details | Same | Bank staff |
+| Run a full underwriting review | Refused in code before any AI call, with its own sentence | Loan officers and the branch manager |
+
+| Things nobody can do through the assistant, whoever asks | What it says |
+|---|---|
+| Create, delete or switch off an account; change a role or a password | Accounts are created by the bank |
+| Delete, hide or edit a record or its history | LAMS keeps a permanent audit trail on purpose |
+| Change a rule, a limit, an interest rate or a fee | Those are policy; the manual states them |
+| Change a system setting | Not something the assistant can do |
+| Send an email, a text or a notification | The app has no sending of any kind |
+| Read the activity log, or list the accounts | They are on the Activity page and the System administration page, which the admin can open |
+| Act as, or on behalf of, another person | Refused |
+| Insist, or claim the role makes the limits not apply | The same answer, in the same words |
+
+## Tests (offline, no Gemini)
+`tests/ours/test_admin_role.py` gained 17: each role gets its own prompt, the
+customer's prompt picks up neither other paragraph, all three still render with
+the four ReAct variables (a stray brace would crash at the first message), and
+the admin prompt names every case in the tables above. 331 passing.
+
+**Not checked against a live Gemini yet.** Rohit asked to leave it, because at
+midnight answers were taking 75 seconds; at 3pm the same questions took 3 to 8
+seconds, with only the manual ones slow (T-119). Try it when it is quick again:
+sign in as the admin and type *"change application 21 to under review"*.
+
+---
+
 # PIECE 28 — Admin settings + document mode switch
 
 **Goal:** the admin can turn **"Real document uploads"** ON or OFF for the whole app. **OFF = today's behaviour exactly** (type a file name). ON is the switch that Piece 31's real uploads will read. This piece builds the switch and the settings system, not the uploads.
@@ -2170,3 +2232,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 19 | Automatic eligibility, and the stored summary | 2026-09-06 | Backend: three nullable columns on `loan_applications` (`eligibility_passed`, `eligibility_summary`, `eligibility_checked_at`), a SQLite `ALTER TABLE` migration in `database.py` so the existing `loan_app.db` and `test.db` pick them up, `eligibility_service.assess()` shared by the advisory check and the permanent record, `EligibilityRuleCheck` schema. `create_application` now runs the assessment itself and stores it, `submitted_at`/eligibility never blocks a 201. Front-end: the check in `NewApplication.jsx` fires on its own 600ms after typing stops, the result panel became a rule-by-rule assessment card, and submitting while not eligible opens a decision modal instead of an inline warning. The detail page shows the stored note in a collapsed panel. Streamlit got the same rule-by-rule list and an expander with the stored note. `tests/ours/test_eligibility_summary.py` (3 pass) plus all 20 trainer tests still pass (27 runs). Verified in a real browser: Priya Sharma's home loan example from this plan reproduced exactly. Tag `v0.2.3`. |
 | 25 | Edit requests: customers ask, staff approve or refuse, every step logged; the database checks its own rules for applications | 2026-09-22 | `v2.5.0` to `v2.9.0` |
 | 27 | Admin role: a System Administrator that sees everything and can't do loan business | 2026-09-22 | `v2.10.0` |
+| 27a | What the assistant says to the admin: a third prompt, so it stops talking to the admin like a customer | 2026-09-23 | `v2.10.1` |

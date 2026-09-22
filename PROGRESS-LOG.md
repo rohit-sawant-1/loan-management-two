@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — Piece 27a: the assistant stops talking to the admin like a customer
+
+**Asked for:** you signed in as the admin and typed "change application 21 to under review". The assistant said it couldn't change submitted applications and told you to email support@bank.com about "your application". You asked me to think through every other thing an admin might try, and write the right reply for each. No live testing tonight, because Gemini is slow at midnight.
+**Built:** a third prompt for the assistant. It knew only two kinds of person — staff, and everyone else — so the admin, not being staff, was handed the customer's prompt and answered like one. Now there are three: customer, staff, administrator, picked by `template_for(role)` sitting right next to `tools_for(role)`. The admin's paragraph covers eight things it might ask to change (with who really does each), eight things nobody can do through the assistant at all, and the two wording traps: never "your application", never the customer support address. 17 new tests; **331 passing**.
+**Found:** the safety was never in question. The admin has no record-changing tools, so the change could not have happened — what was broken was only what the refusal *said*. Worth keeping that distinction: the tool list is the guard, the prompt is the manners. Also, the assistant never looked application 21 up before answering, so it couldn't tell you what was actually true about it.
+**Realised:** your timing observation is the useful one. 3 to 8 seconds in the afternoon, about 75 seconds at midnight, with Gemini returning "high demand" errors. That means B2 (the slow manual answers) has to be measured in the afternoon, and demo rehearsals should happen at the hour the demo happens (T-119).
+**Next:** when Gemini is quick again, sign in as the admin and try "change application 21 to under review" plus one or two from the list in `BUILD-PLAN.md` (Piece 27a). After that, Piece 28.
+
+---
+
 ## 2026-09-22 — Piece 27: a System Administrator who sees everything and changes nothing
 
 **Asked for:** build the next thing in `BUILD-PLAN.md`, which is Piece 27, and report back.
