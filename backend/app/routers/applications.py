@@ -11,7 +11,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_staff
+from app.dependencies import get_current_user, require_business_actor, require_staff
 from app.domain import rules
 from app.models.user import User
 from app.schemas.application import (
@@ -42,7 +42,7 @@ def create_application(
     data: CreateApplicationSchema,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_business_actor),
 ):
     try:
         application = application_service.create_application(

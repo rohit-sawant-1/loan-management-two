@@ -1,8 +1,9 @@
 // The frame every signed-in page sits inside: a dark sidebar on the left,
 // the page itself on the right.
 //
-// The sidebar links change with the role, so an applicant, an officer and a
-// manager each see only what they can actually use (D-06, D-07).
+// The sidebar links change with the role, so an applicant, an officer, a
+// manager and the administrator each see only what they can actually use
+// (D-06, D-07, Piece 27).
 
 import { NavLink, Outlet, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
@@ -28,7 +29,7 @@ function isActive(to, pathname) {
 }
 
 export default function Layout() {
-  const { user, logout, isApplicant, isStaff, isManager } = useAuth();
+  const { user, logout, isApplicant, isAdmin, canViewStaffScreens, canViewAudit } = useAuth();
   const navigate = useNavigate();
   const { pathname } = useLocation();
 
@@ -38,13 +39,15 @@ export default function Layout() {
   }
 
   // Each entry: where it goes, what it says, which icon, and who may see it.
+  // The admin sees everything but creates nothing, so it has no "New application".
   const links = [
-    { to: "/applications", text: isApplicant ? "My applications" : "Applications", icon: "applications", show: true },
-    { to: "/applications/new", text: isApplicant ? "Apply for a loan" : "New application", icon: "plus", show: true },
+    { to: "/admin", text: "Administration", icon: "settings", show: isAdmin },
+    { to: "/applications", text: isApplicant ? "My applications" : isAdmin ? "All applications" : "Applications", icon: "applications", show: true },
+    { to: "/applications/new", text: isApplicant ? "Apply for a loan" : "New application", icon: "plus", show: !isAdmin },
     { to: "/assistant", text: "Assistant", icon: "shield", show: true },
-    { to: "/dashboard", text: "Dashboard", icon: "dashboard", show: isStaff },
-    { to: "/edit-requests", text: "Edit requests", icon: "inbox", show: isStaff },
-    { to: "/activity", text: "Activity", icon: "activity", show: isManager },
+    { to: "/dashboard", text: "Dashboard", icon: "dashboard", show: canViewStaffScreens },
+    { to: "/edit-requests", text: "Edit requests", icon: "inbox", show: canViewStaffScreens },
+    { to: "/activity", text: "Activity", icon: "activity", show: canViewAudit },
     { to: "/profile", text: "My profile", icon: "user", show: isApplicant },
   ].filter((l) => l.show);
 

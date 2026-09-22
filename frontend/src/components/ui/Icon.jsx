@@ -27,6 +27,8 @@ const PATHS = {
   inbox: "M22 12h-6l-2 3h-4l-2-3H2M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z",
   sortAsc: "M12 19V5M5 12l7-7 7 7",
   sortDesc: "M12 5v14M5 12l7 7 7-7",
+  // Three sliders, for System administration (Piece 27).
+  settings: "M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3M1 14h6M9 8h6M17 16h6",
 };
 
 export default function Icon({ name, size = 18, className = "", ...rest }) {

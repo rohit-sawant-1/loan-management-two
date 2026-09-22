@@ -67,7 +67,7 @@ function Money({ value, suffix = "" }) {
 
 export default function ApplicationDetail() {
   const { id } = useParams();
-  const { isApplicant, isStaff, isManager } = useAuth();
+  const { isApplicant, isStaff, isManager, canViewAudit } = useAuth();
   const [app, setApp] = useState(null);
   const [docs, setDocs] = useState(null);
   const [activity, setActivity] = useState([]);
@@ -89,7 +89,8 @@ export default function ApplicationDetail() {
       ]);
       setApp(a.data);
       setDocs(d.data);
-      if (isManager) {
+      // The audit trail: the manager's, and the administrator's to look at (Piece 27).
+      if (canViewAudit) {
         const act = await api.get(`/activity/entity/application/${id}`);
         setActivity(act.data);
       }
@@ -99,7 +100,7 @@ export default function ApplicationDetail() {
     } finally {
       setLoading(false);
     }
-  }, [id, isManager]);
+  }, [id, canViewAudit]);
 
   useEffect(() => { load(); }, [load]);
 
@@ -264,7 +265,7 @@ export default function ApplicationDetail() {
             <DocumentChecklist applicationId={app.id} data={docs} onChange={load} />
           </div>
 
-          {isManager && (
+          {canViewAudit && (
             <div className="card">
               <div className="card-head">
                 <h2>Everything that happened to this application</h2>

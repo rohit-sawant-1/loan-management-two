@@ -45,14 +45,25 @@ export function AuthProvider({ children }) {
     return me.data;
   }, []);
 
+  const isStaff = user?.role === "loan_officer" || user?.role === "branch_manager";
+  const isManager = user?.role === "branch_manager";
+  const isAdmin = user?.role === "admin";
+
   const value = {
     user,
     loading,
     login,
     logout,
     isApplicant: user?.role === "applicant",
-    isStaff: user?.role === "loan_officer" || user?.role === "branch_manager",
-    isManager: user?.role === "branch_manager",
+    // isStaff and isManager guard the ACTION buttons, so they never include
+    // the admin (Piece 27).
+    isStaff,
+    isManager,
+    isAdmin,
+    // Looking is wider than acting: the admin may open the staff screens and
+    // the audit log, but only to look.
+    canViewStaffScreens: isStaff || isAdmin,
+    canViewAudit: isManager || isAdmin,
   };
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

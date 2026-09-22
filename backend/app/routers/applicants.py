@@ -7,7 +7,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_staff
+from app.dependencies import get_current_user, require_staff, require_staff_view
 from app.models.user import User
 from app.schemas.applicant import ApplicantResponse, CreateApplicantSchema
 from app.services import applicant_service
@@ -46,7 +46,7 @@ def list_applicants(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    user: User = Depends(require_staff),
+    user: User = Depends(require_staff_view),
 ):
     items, total = applicant_service.list_applicants(db, page=page, limit=limit)
     return ApplicantListResponse(items=items, total_count=total, page=page, limit=limit)

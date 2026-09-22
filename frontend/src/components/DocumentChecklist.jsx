@@ -1,17 +1,19 @@
 // What this loan type needs, what has been uploaded, and what is still missing.
-// Staff can mark a document as verified; anyone who may see the application can add one.
+// Staff can mark a document as verified; anyone who may see the application can
+// add one, except the administrator, who can only look (Piece 27).
 
 import { useState } from "react";
 import { api, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import ErrorBanner from "./ErrorBanner";
+import ViewOnly from "./ViewOnly";
 import Button from "./ui/Button";
 import Icon from "./ui/Icon";
 import { DOCUMENT_TYPES, checkFileName } from "../utils/validation";
 import { formatDate, label } from "../utils/format";
 
 export default function DocumentChecklist({ applicationId, data, onChange }) {
-  const { isStaff } = useAuth();
+  const { isStaff, isAdmin } = useAuth();
   const [docType, setDocType] = useState("id_proof");
   const [fileName, setFileName] = useState("");
   const [fieldError, setFieldError] = useState("");
@@ -111,25 +113,29 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
 
       <hr className="divider" />
 
-      <form onSubmit={addDocument} noValidate>
-        <div className="toolbar" style={{ marginBottom: "0.35rem" }}>
-          <label>
-            Document type
-            <select value={docType} onChange={(e) => setDocType(e.target.value)}>
-              {DOCUMENT_TYPES.map((t) => (
-                <option key={t} value={t}>{label(t)}</option>
-              ))}
-            </select>
-          </label>
-          <label className="grow">
-            File name
-            <input value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="aadhaar.pdf" />
-          </label>
-          <Button type="submit" variant="primary" icon="plus" loading={busy}>Add</Button>
-        </div>
-        {fieldError && <span className="field-error">{fieldError}</span>}
-        <span className="hint">Phase 1 records the file name only. PDF, JPG or PNG.</span>
-      </form>
+      {isAdmin ? (
+        <ViewOnly>View only. The administrator can't add documents.</ViewOnly>
+      ) : (
+        <form onSubmit={addDocument} noValidate>
+          <div className="toolbar" style={{ marginBottom: "0.35rem" }}>
+            <label>
+              Document type
+              <select value={docType} onChange={(e) => setDocType(e.target.value)}>
+                {DOCUMENT_TYPES.map((t) => (
+                  <option key={t} value={t}>{label(t)}</option>
+                ))}
+              </select>
+            </label>
+            <label className="grow">
+              File name
+              <input value={fileName} onChange={(e) => setFileName(e.target.value)} placeholder="aadhaar.pdf" />
+            </label>
+            <Button type="submit" variant="primary" icon="plus" loading={busy}>Add</Button>
+          </div>
+          {fieldError && <span className="field-error">{fieldError}</span>}
+          <span className="hint">Phase 1 records the file name only. PDF, JPG or PNG.</span>
+        </form>
+      )}
     </div>
   );
 }

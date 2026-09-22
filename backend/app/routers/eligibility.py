@@ -10,7 +10,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user
+from app.dependencies import require_business_actor
 from app.models.user import User
 from app.schemas.application import EligibilityCheckRequest, EligibilityCheckResponse
 from app.services import eligibility_service
@@ -25,7 +25,7 @@ def check_eligibility(
     data: EligibilityCheckRequest,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_business_actor),
 ):
     """Would this loan be allowed? Advice, not a block."""
     try:

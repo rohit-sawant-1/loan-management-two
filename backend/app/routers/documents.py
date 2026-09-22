@@ -7,7 +7,7 @@ from fastapi import APIRouter, Depends, HTTPException, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_staff
+from app.dependencies import get_current_user, require_business_actor, require_staff
 from app.models.user import User
 from app.schemas.document import (
     CreateDocumentSchema, DocumentListResponse, DocumentResponse, DocumentUploadBody,
@@ -37,7 +37,7 @@ def add_document(
     body: DocumentUploadBody,
     request: Request,
     db: Session = Depends(get_db),
-    user: User = Depends(get_current_user),
+    user: User = Depends(require_business_actor),
 ):
     # The trainer's schema carries application_id; build it from the address plus the body.
     data = CreateDocumentSchema(

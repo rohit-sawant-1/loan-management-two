@@ -119,6 +119,17 @@ Left out of Piece 25 on purpose (2026-09-22), so the base feature gets finished 
 | Edit requests in the Streamlit front-end | Keeping the two front-ends level | Rule 5: React first, then decide if Streamlit needs it | Small |
 | A count of waiting requests next to "Edit requests" in the sidebar | Came up planning Piece 25 | One extra request on every page load; nice, not needed | Tiny |
 
+## Around Piece 27 — the admin role
+
+Left out of Piece 27 on purpose (2026-09-22). The base role only looks.
+
+| Idea | Where it came from | Why it waits | Size |
+|---|---|---|---|
+| The admin switches an account off or on (`is_active` already exists, and login already refuses a switched-off account) | Came up building the account list | A real "manage accounts" action, with its own audit rows. Worth doing after Piece 28 gives the admin page its first setting. | Small |
+| The admin creates staff accounts, instead of anyone registering as a loan officer | The open staff sign-up is the same kind of gap as T-115 | Changes who may register, which the trainer's test fixture depends on (it registers an officer), so it needs care | Medium |
+| The admin role in the Streamlit front-end (T-116) | Keeping the two front-ends level | Rule 5: React first | Small |
+| An audit row when the admin opens the account list | A real bank logs who looked at staff records | Needs a new activity label and nothing reads it yet | Tiny |
+
 ## Document intelligence — production hardening (from the 2026-09-22 plan)
 
 Deliberately left out of Pieces 27–38, which build only what the demo needs. These are what a real bank would add.

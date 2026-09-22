@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import { useAuth } from "../auth/AuthContext";
+import { homeFor } from "../auth/home";
 import { errorMessage } from "../api/client";
 import ErrorBanner from "../components/ErrorBanner";
 import Button from "../components/ui/Button";
@@ -20,9 +21,10 @@ export default function Login() {
     setError("");
     setBusy(true);
     try {
-      await login(email.trim(), password);
-      // Go back to where the user was trying to go, or the applications list.
-      navigate(location.state?.from || "/applications", { replace: true });
+      const me = await login(email.trim(), password);
+      // Go back to where the user was trying to go, or to their own home page:
+      // the applications list, or System administration for the admin.
+      navigate(location.state?.from || homeFor(me), { replace: true });
     } catch (err) {
       setError(errorMessage(err));
     } finally {

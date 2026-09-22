@@ -19,6 +19,8 @@ class UserRole(str, enum.Enum):
     applicant = "applicant"
     loan_officer = "loan_officer"
     branch_manager = "branch_manager"
+    # Piece 27: the System Administrator. Sees everything, can't do loan business.
+    admin = "admin"
 
 
 class User(Base):

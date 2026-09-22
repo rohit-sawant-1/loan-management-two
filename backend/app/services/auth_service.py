@@ -3,7 +3,8 @@ The logic behind register, sign up, and log in.
 
 Decision D-07 (Option A):
   - `register_staff` is the trainer's register address. It creates bank staff.
-    Managers are seeded, never self-registered, so this refuses that role.
+    Managers and the administrator are seeded, never self-registered, so this
+    refuses those roles.
   - `signup_applicant` is for customers. One call creates both the login row
     and the borrower profile, linked (T-23).
 """
@@ -43,6 +44,9 @@ def register_staff(db: Session, data: RegisterRequest, *, meta: dict | None = No
         raise RuleViolation("Customers sign up at /auth/register-applicant")
     if role == UserRole.branch_manager:
         raise RuleViolation("Manager accounts are created by the bank, not by registration")
+    # T-115: without this, anyone could register themselves as the administrator.
+    if role == UserRole.admin:
+        raise RuleViolation("Administrator accounts are created by the bank, not by registration")
 
     email = data.email.lower()
     if _email_taken(db, email):

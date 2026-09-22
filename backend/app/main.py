@@ -24,7 +24,7 @@ from app.config import settings                              # noqa: E402
 from app.database import engine, init_db                     # noqa: E402
 from app.middleware.logging_middleware import logging_middleware  # noqa: E402
 from app.routers import (                                     # noqa: E402
-    activity, applicants, applications, auth, briefing, chat, dashboard, documents,
+    activity, admin, applicants, applications, auth, briefing, chat, dashboard, documents,
     edit_requests, eligibility,
 )
 from app.utils.logging_config import configure_logging       # noqa: E402
@@ -83,6 +83,8 @@ app.include_router(edit_requests.router, prefix="/api/v1/applications", tags=["e
 app.include_router(edit_requests.staff_router, prefix="/api/v1/edit-requests", tags=["edit requests"])
 app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["dashboard"])
 app.include_router(activity.router, prefix="/api/v1/activity", tags=["activity"])
+# Piece 27: the System Administrator's own screens.
+app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 # The headline feature (D-13): the manager's morning briefing.
 app.include_router(briefing.router, prefix="/api/v1/briefing", tags=["briefing"])
 # The one chat door. What sits behind it grows with each phase; the address does not.

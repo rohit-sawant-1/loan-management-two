@@ -21,7 +21,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import get_current_user, require_staff
+from app.dependencies import get_current_user, require_staff, require_staff_view
 from app.domain import rules
 from app.models.user import User
 from app.schemas.edit_request import (
@@ -89,7 +89,7 @@ def list_edit_requests(
     page: int = Query(1, ge=1),
     limit: int = Query(20, ge=1, le=100),
     db: Session = Depends(get_db),
-    user: User = Depends(require_staff),
+    user: User = Depends(require_staff_view),
 ):
     # A bad filter value is a 400, the same as the applications list (T-18).
     if status_filter is not None and status_filter not in rules.EDIT_REQUEST_STATUSES:

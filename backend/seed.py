@@ -4,10 +4,13 @@ Fill the database with believable demo data.
 Run from backend/:   python seed.py
 
 Safe to run more than once: if the manager account already exists, it stops.
+The administrator is the exception. It arrived later (Piece 27), so it is
+added to any database that doesn't have one yet, even an old one.
 Everything goes through the real services, so the status history and the
 activity log are as real as they would be from the screens.
 
 Logins it creates (all passwords are printed at the end):
+  administrator    admin@bank.com
   branch manager   anita@bank.com
   loan officer     rajan@bank.com
   customers        priya@example.com, rahul@example.com, meera@example.com,
@@ -27,6 +30,8 @@ from app.schemas import (                                                     # 
 from app.services import application_service, auth_service, document_service  # noqa: E402
 from app.utils.auth import hash_password                                      # noqa: E402
 
+ADMIN_EMAIL = "admin@bank.com"
+ADMIN_PW = "Admin@123"
 MANAGER_PW = "Manager@123"
 OFFICER_PW = "Officer@123"
 CUSTOMER_PW = "Customer@123"
@@ -84,12 +89,35 @@ REMARKS = {
 }
 
 
+def ensure_admin(db) -> bool:
+    """
+    Create the System Administrator if it isn't there yet (Piece 27).
+
+    It is kept apart from the rest of the seed on purpose. main() stops early
+    when the demo data already exists, so an admin created inside that part
+    would never reach a database seeded before Piece 27. This runs first, every
+    time, and does nothing if the account already exists. It returns True only
+    when it created one.
+    """
+    if db.query(User).filter(User.email == ADMIN_EMAIL).first():
+        return False
+    # Seeded, never registered: the register address refuses this role (T-115).
+    db.add(User(name="System Administrator", email=ADMIN_EMAIL,
+                hashed_password=hash_password(ADMIN_PW), role=UserRole.admin))
+    db.commit()
+    return True
+
+
 def main() -> None:
     init_db()
     db = SessionLocal()
 
+    if ensure_admin(db):
+        print(f"admin: {ADMIN_EMAIL} (system administrator)")
+
     if db.query(User).filter(User.email == "anita@bank.com").first():
-        print("Seed data already present. Nothing to do.")
+        print("Seed data already present. Nothing else to do.")
+        print(f"  admin     {ADMIN_EMAIL}   {ADMIN_PW}")
         return
 
     # ---- Bank staff. The manager is seeded, never self-registered (D-07). ----
@@ -159,6 +187,7 @@ def main() -> None:
     activity_rows = db.query(ActivityLog).count()
     print(f"\nDone. {activity_rows} activity rows recorded along the way.")
     print("\nLogins:")
+    print(f"  admin     {ADMIN_EMAIL}   {ADMIN_PW}")
     print(f"  manager   anita@bank.com   {MANAGER_PW}")
     print(f"  officer   rajan@bank.com   {OFFICER_PW}")
     print(f"  customer  priya@example.com (and the others)   {CUSTOMER_PW}")

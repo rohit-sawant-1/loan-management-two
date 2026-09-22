@@ -333,10 +333,20 @@ def chat(
             # prints the literal word REJECT, and showing that to a customer for
             # an application no human has rejected would be a commitment the
             # bank has not made.
+            #
+            # The administrator (Piece 27) is refused too, because a review
+            # recommends a loan decision. It gets its own sentence, since "your
+            # own application" means nothing to someone who has none.
+            if user.role.value == rules.ADMIN_ROLE:
+                answer = ("A full underwriting review is for loan officers and the "
+                          "branch manager. As the administrator you can still ask "
+                          "about any application's details and status.")
+            else:
+                answer = ("A full underwriting review is a tool for bank staff. I can "
+                          "tell you the status of your own application and what it "
+                          "still needs — just ask.")
             return ChatResponse(
-                answer="A full underwriting review is a tool for bank staff. I can "
-                       "tell you the status of your own application and what it "
-                       "still needs — just ask.",
+                answer=answer,
                 mode=REVIEW_MODE,
                 sources=[],
                 duration_ms=round((time.perf_counter() - started) * 1000, 2),

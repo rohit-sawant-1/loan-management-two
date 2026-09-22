@@ -17,6 +17,7 @@ import { useAuth } from "../auth/AuthContext";
 import ErrorBanner from "../components/ErrorBanner";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
+import ViewOnly from "../components/ViewOnly";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import Icon from "../components/ui/Icon";
@@ -39,7 +40,7 @@ const COLUMNS = [
 ];
 
 export default function ApplicationList() {
-  const { isApplicant } = useAuth();
+  const { isApplicant, isAdmin } = useAuth();
   const navigate = useNavigate();
   const [typed, setTyped] = useState("");          // what is in the search box right now
   const [filters, setFilters] = useState(EMPTY);   // what we have actually asked the server for
@@ -110,10 +111,15 @@ export default function ApplicationList() {
               : "Every loan application in the branch. Search, filter, or sort by any column."}
           </p>
         </div>
-        <Link className="btn btn-primary" to="/applications/new">
-          <Icon name="plus" size={16} />
-          <span>{isApplicant ? "Apply for a loan" : "New application"}</span>
-        </Link>
+        {/* The admin sees every application but can't create one (Piece 27). */}
+        {isAdmin ? (
+          <ViewOnly />
+        ) : (
+          <Link className="btn btn-primary" to="/applications/new">
+            <Icon name="plus" size={16} />
+            <span>{isApplicant ? "Apply for a loan" : "New application"}</span>
+          </Link>
+        )}
       </div>
 
       <div className="toolbar">
@@ -212,9 +218,11 @@ export default function ApplicationList() {
                           title={activeFilters > 0 ? "Nothing matches those filters" : "No applications yet"}
                           action={activeFilters > 0
                             ? <Button size="sm" onClick={clearAll}>Clear filters</Button>
-                            : <Link className="btn btn-sm btn-primary" to="/applications/new">
-                                {isApplicant ? "Apply for a loan" : "New application"}
-                              </Link>}
+                            : isAdmin
+                              ? <ViewOnly />
+                              : <Link className="btn btn-sm btn-primary" to="/applications/new">
+                                  {isApplicant ? "Apply for a loan" : "New application"}
+                                </Link>}
                         >
                           {activeFilters > 0
                             ? "Try a shorter search, or clear the filters to see everything."

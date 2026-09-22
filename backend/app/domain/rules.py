@@ -46,10 +46,19 @@ DOCUMENT_TYPES: tuple[str, ...] = (
 EMPLOYMENT_STATUSES: tuple[str, ...] = ("salaried", "self_employed", "unemployed")
 
 # Who can log in. Matches manual Section 2 (D-06, D-07).
-ROLES: tuple[str, ...] = ("applicant", "loan_officer", "branch_manager")
+ROLES: tuple[str, ...] = ("applicant", "loan_officer", "branch_manager", "admin")
 
 # Roles counted as "bank staff".
+#
+# The admin is deliberately NOT in here (Piece 27). This set decides who gets
+# the chatbot's write tools and who may run a four-agent review, so adding the
+# admin would let a view-only role change loans through the chat. The admin's
+# view access comes from its own guards in dependencies.py instead.
 STAFF_ROLES: frozenset[str] = frozenset({"loan_officer", "branch_manager"})
+
+# The System Administrator (Piece 27): sees the whole system, administers it,
+# and has no loan-business authority.
+ADMIN_ROLE: str = "admin"
 
 # What a brand-new user gets when registering through the staff address (D-07).
 DEFAULT_STAFF_ROLE: str = "loan_officer"

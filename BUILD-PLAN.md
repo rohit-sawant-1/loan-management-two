@@ -1339,6 +1339,14 @@ Planned 2026-09-22 with Rohit, across several rounds. **Nothing here is built ye
 
 **Needs first:** nothing. **Open decisions:** none (D1 settled).
 
+**Status: built 2026-09-22, tag `v2.10.0`.** Where the build differs from the plan below:
+- **No `AdminUserResponse`.** `UserResponse` (from `/auth/me`) already has exactly the six fields, so `AdminUserListResponse` reuses it. The query is in a small new `services/admin_service.py`.
+- **`homeFor` lives in `frontend/src/auth/home.js`**, not in `AuthContext.jsx`. A file that exports components should export nothing else, or Vite's fast refresh (and the linter) complains.
+- **The chat's review refusal has its own sentence for the admin.** The customer's sentence says "your own application", which means nothing to an admin. Customers get exactly the same words as before.
+- **A small `ViewOnly` component** (`components/ViewOnly.jsx`) is the "View only" note in all three places, and there's a new `settings` icon for the Administration link. The Assistant link stays where it is for every role.
+- **Streamlit is unchanged.** It treats the admin like a customer, and the API still refuses every action (T-116).
+- **Browser check step 1:** a restart alone doesn't create the admin. Run `seed.py`.
+
 ### What exists today (inspected 2026-09-22)
 - `UserRole` in `backend/app/models/user.py:16-20` has `applicant`, `loan_officer`, `branch_manager`, mirrored in `rules.ROLES` (`rules.py:49`). The `role` column is plain text in SQLite, so **no database change is needed** for a new value.
 - `rules.STAFF_ROLES = {"loan_officer", "branch_manager"}` (`rules.py:52`) is used in three sensitive places:
@@ -1463,7 +1471,7 @@ Helper `_admin_token(client)`: register a user, set `role = UserRole.admin` thro
 - The manager's disbursement rule (`application_service.py:271`), the chatbot's write tools and reviews (still `STAFF_ROLES` only), and every customer-scoping check.
 
 ### Browser check
-1. Run `seed.py` (or restart; `ensure_admin` also runs), then log in as **admin@bank.com / Admin@123**. You land on **System administration** with every account listed.
+1. Run `venv\Scripts\python.exe seed.py` from `backend/` (a restart alone doesn't create the admin), then log in as **admin@bank.com / Admin@123**. You land on **System administration** with every account listed.
 2. All applications → open one. Everything is visible, but there's **no** Update status, Add document or New application; a "View only" note shows instead.
 3. Edit requests: the queue is visible, marked View only, with no Approve or Refuse. Dashboard and Activity open.
 4. Assistant: "how many applications are under review?" gets an answer. "Assess application 7" is refused (staff only).
@@ -2141,7 +2149,7 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 
 | # | Piece | Finished | Commit |
 |---|---|---|---|
-| 0 | Tools on the laptop | 2026-09-06 | `02fcf34` first commit; repo at `github.com/l-rohittt-l/loan-application-management` (private) |
+| 0 | Tools on the laptop | 2026-09-06 | `02fcf34` first commit. The live repo is now `github.com/rohit-sawant-1/loan-management-two`; the older `l-rohittt-l/loan-application-management` is out of date. |
 | 1 | Project skeleton | 2026-09-06 | `backend/` with `app/` package, venv on Python 3.11.9, `requirements.txt` at trainer's versions plus two fixes (T-30, T-31), `.env` with a generated secret, `.env.example` |
 | 2 | Domain rules | 2026-09-06 | `app/domain/rules.py`: every rule as plain constants and six helpers. No imports from the app. Sanity checks pass. |
 | 3 | Database + 6 models | 2026-09-06 | `config.py`, `database.py`, and `models/` with the six tables. Smoke test mirrors DB-01 to DB-04 and passes. Tag `v0.0.3`. |
@@ -2161,3 +2169,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 16 | Seed data, report, submission files | 2026-09-06 | `backend/seed.py` (2 staff, 6 customers, 8 applications, 58 activity rows), `README.md`, `MY_SCORES.md`, `results/phase1-results.xml` (27 runs, 0 failures). Tags `v0.0.16` and **`v0.1.0`**. |
 | 19 | Automatic eligibility, and the stored summary | 2026-09-06 | Backend: three nullable columns on `loan_applications` (`eligibility_passed`, `eligibility_summary`, `eligibility_checked_at`), a SQLite `ALTER TABLE` migration in `database.py` so the existing `loan_app.db` and `test.db` pick them up, `eligibility_service.assess()` shared by the advisory check and the permanent record, `EligibilityRuleCheck` schema. `create_application` now runs the assessment itself and stores it, `submitted_at`/eligibility never blocks a 201. Front-end: the check in `NewApplication.jsx` fires on its own 600ms after typing stops, the result panel became a rule-by-rule assessment card, and submitting while not eligible opens a decision modal instead of an inline warning. The detail page shows the stored note in a collapsed panel. Streamlit got the same rule-by-rule list and an expander with the stored note. `tests/ours/test_eligibility_summary.py` (3 pass) plus all 20 trainer tests still pass (27 runs). Verified in a real browser: Priya Sharma's home loan example from this plan reproduced exactly. Tag `v0.2.3`. |
 | 25 | Edit requests: customers ask, staff approve or refuse, every step logged; the database checks its own rules for applications | 2026-09-22 | `v2.5.0` to `v2.9.0` |
+| 27 | Admin role: a System Administrator that sees everything and can't do loan business | 2026-09-22 | `v2.10.0` |

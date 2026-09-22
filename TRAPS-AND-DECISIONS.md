@@ -219,11 +219,37 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-118 · "I don't have information about that in the user manual" can be wrong.**
+Seen 2026-09-22 while checking Piece 27's manual change. The first time the
+chatbot was asked what the administrator can do, it answered with the
+out-of-scope sentence, although the paragraph had just been ingested and the
+search finds it as the top two results. Asked again, it answered correctly
+twice, and Gemini had returned `503 UNAVAILABLE` ("high demand") during the
+run. So a wrong "not in the manual" is a real possibility in a demo, and it
+looks like a confident answer rather than a failure. Ask the same question
+twice before believing it. The same answers took 78 and 189 seconds, which is
+B2.
+
+**T-117 · Any new address that changes something must not use plain `get_current_user`.**
+Found 2026-09-22 while building Piece 27. Most services only restrict customers
+and treat everyone else as staff, so a new action guarded by `get_current_user`
+alone would let the admin do it. Actions use `require_staff`, `require_manager`
+or `require_business_actor` (customer or staff, never the admin). Views use
+`require_staff_view` or `require_audit_view`. `tests/ours/test_admin_role.py`
+lists every action; add new ones to it. Pieces 28 to 38 add many addresses.
+
+**T-116 · Streamlit treats the admin like a customer.** `frontend-streamlit/app.py`
+only knows the three old roles, so an admin there sees "My applications" and
+the customer's form. Nothing unsafe, because the API refuses every action with
+a 403, but the labels are wrong. Left alone on purpose: Streamlit is its own
+iteration (Rule 5), and the demo uses React.
+
 **T-115 · Staff sign-up accepts a role, so an "admin" could register themselves.**
 Found 2026-09-22 while planning Piece 27. `POST /auth/register` takes an optional
 `role` and only refuses `applicant` and `branch_manager`
 (`auth_service.py:42-45`). The moment `UserRole.admin` exists, it must refuse
-`admin` too. That's in Piece 27's plan.
+`admin` too. **Fixed in Piece 27 (`v2.10.0`)**: it now answers 422, and a test
+checks it.
 
 **T-114 · Aadhaar numbers may not be stored in full.** UIDAI requires the first 8
 digits to be masked before any copy is stored. Store `XXXX XXXX 1234` only, and

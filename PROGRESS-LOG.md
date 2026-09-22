@@ -4,6 +4,22 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-22 — Piece 27: a System Administrator who sees everything and changes nothing
+
+**Asked for:** build the next thing in `BUILD-PLAN.md`, which is Piece 27, and report back.
+**Built:** the new **admin** role, end to end.
+- **Server:** every address was sorted into "looking" or "doing". Three new guards let the admin look at the applicants list, the edit-request queue, the dashboard and the activity log; a fourth (`require_business_actor`) keeps it out of creating applications, adding documents and the eligibility check. Nobody can register as an admin any more (T-115). New address `GET /admin/users` lists every account with a count per role.
+- **Screens:** a new **System administration** page, the admin's sidebar, and a small grey "View only" note wherever its buttons would have been. Signing in as the admin lands on the admin page, not on the applications list.
+- **Seed:** `seed.py` now adds `admin@bank.com / Admin@123` to any database that hasn't got one, including your existing `loan_app.db`, and running it twice is safe.
+- **Manual:** Section 2 has an Administrator paragraph, and Sections 8 and 10 say the admin can see the dashboard and the audit log. Re-ingested, 55 chunks.
+
+28 new tests, the suite is **314 passing** (286 before), the trainer's 20 still pass, and so do Phase 3's offline tests and all eight Phase 4 MCP tests. The front end builds and lints clean. I also checked it against the real running server: the admin opened all nine screens and was refused all eleven actions.
+**Found:** the chatbot got the new manual paragraph wrong on the first try, saying it had no information about the administrator, then answered correctly twice in a row. Gemini was returning "503, high demand" during that run. Worth knowing before a demo, because a wrong "it's not in the manual" looks exactly like a real answer (T-118). Those answers also took 78 and 189 seconds, which is B2 again.
+**Realised:** the admin must never go into `STAFF_ROLES`. That one set decides who gets the chatbot's record-changing tools and who can run an underwriting review, so putting the admin in it would have handed a look-only role the power to change loans by chat. Its access comes from its own guards instead. The same trap waits in every later piece: a new action guarded by "any logged-in user" lets the admin through (T-117).
+**Next:** Piece 28, the admin settings page with the switch that turns real document uploads on and off.
+
+---
+
 ## 2026-09-22 — Planned the Document intelligence programme (Pieces 27–38); nothing built
 
 **Asked for:** first Piece 24 (profile changes). It grew into real document uploads, then reading documents, a demo/real switch for a new Admin role, TEST documents, notifications, a top navigation bar, several documents at once, and documents and history in the chatbot. You asked for it all to be planned in detail as separate pieces, which you'll implement yourself, one at a time.

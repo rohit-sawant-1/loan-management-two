@@ -1,4 +1,5 @@
 // Piece 25: the staff queue of edit requests. Loan officers and the manager.
+// The administrator can open it too, but only to look (Piece 27).
 //
 // Customers ask to change an application from its own page. Their requests
 // land here, oldest waiting first, so whoever has waited longest is on top.
@@ -12,9 +13,11 @@
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, errorMessage } from "../api/client";
+import { useAuth } from "../auth/AuthContext";
 import ErrorBanner from "../components/ErrorBanner";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
+import ViewOnly from "../components/ViewOnly";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
 import Icon from "../components/ui/Icon";
@@ -38,6 +41,7 @@ const EMPTY_TEXT = {
 };
 
 export default function EditRequests() {
+  const { isAdmin } = useAuth();
   const [filter, setFilter] = useState("pending");
   const [page, setPage] = useState(1);
   const [data, setData] = useState(null);
@@ -118,7 +122,9 @@ export default function EditRequests() {
         <div>
           <h1>Edit requests</h1>
           <p className="sub">
-            Customers asking to change an application after submitting it. Nothing changes until you approve.
+            {isAdmin
+              ? "Customers asking to change an application after submitting it. Loan officers and the manager decide these; you can only look."
+              : "Customers asking to change an application after submitting it. Nothing changes until you approve."}
           </p>
         </div>
       </div>
@@ -190,7 +196,8 @@ export default function EditRequests() {
                         </td>
                         <td><span className={state.pill}>{state.text}</span></td>
                         <td>
-                          {r.status === "pending" && (
+                          {r.status === "pending" && isAdmin && <ViewOnly />}
+                          {r.status === "pending" && !isAdmin && (
                             <div className="row" style={{ gap: "0.4rem" }}>
                               <Button size="sm" variant="ok" icon="check" onClick={() => startDeciding(r, true)}>
                                 Approve

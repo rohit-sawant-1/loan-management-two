@@ -79,6 +79,36 @@ def require_role(*roles: UserRole):
     return _check
 
 
-# Handy shortcuts.
+# Handy shortcuts. These two guard ACTIONS, so the admin is never in them.
 require_staff = require_role(UserRole.loan_officer, UserRole.branch_manager)
 require_manager = require_role(UserRole.branch_manager)
+
+# Piece 27: the System Administrator. Every address is sorted into VIEW or ACT.
+# The admin passes the VIEW guards below and none of the ACT ones.
+
+# Only the admin, for the admin's own screens.
+require_admin = require_role(UserRole.admin)
+
+# "Can look at staff screens": the applicants list, the edit-request queue,
+# the dashboard. Looking only; changing still needs require_staff.
+require_staff_view = require_role(UserRole.loan_officer, UserRole.branch_manager, UserRole.admin)
+
+# "Can read the audit log": the manager, and the admin who oversees the system.
+require_audit_view = require_role(UserRole.branch_manager, UserRole.admin)
+
+
+def require_business_actor(user: User = Depends(get_current_user)) -> User:
+    """
+    Anyone logged in EXCEPT the admin. Used on the actions that were open to
+    every login (creating an application, adding a document, the eligibility
+    check), because those used to mean "a customer or staff", and the admin is
+    neither. The services still do their own owner checks after this.
+    """
+    if user.role == UserRole.admin:
+        logger.warning("auth_forbidden", user_email=user.email, role=user.role.value,
+                       reason="admin_cannot_act")
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="The system administrator can view records but cannot create or change them.",
+        )
+    return user

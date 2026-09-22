@@ -11,7 +11,7 @@ from pydantic import BaseModel
 from sqlalchemy.orm import Session
 
 from app.database import get_db
-from app.dependencies import require_manager
+from app.dependencies import require_audit_view
 from app.models.activity_log import ActorType
 from app.models.user import User
 from app.schemas.activity import ActivityLogResponse
@@ -44,7 +44,7 @@ def list_activity(
     from_date: date | None = Query(None),
     to_date: date | None = Query(None),
     db: Session = Depends(get_db),
-    user: User = Depends(require_manager),
+    user: User = Depends(require_audit_view),
 ):
     if entity_type is not None and entity_type not in _ENTITY_TYPES:
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST,
@@ -64,7 +64,7 @@ def entity_history(
     entity_type: str,
     entity_id: int,
     db: Session = Depends(get_db),
-    user: User = Depends(require_manager),
+    user: User = Depends(require_audit_view),
 ):
     """The full story of one record, oldest first."""
     if entity_type not in _ENTITY_TYPES:

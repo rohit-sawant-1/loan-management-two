@@ -31,7 +31,7 @@ moves through its own review process.
 
 ## Section 2 — Roles and Permissions
 
-LAMS has three kinds of user, and each sees a different part of the system.
+LAMS has four kinds of user, and each sees a different part of the system.
 
 **Applicant (the customer).** An applicant may submit loan applications, upload
 documents against their own applications, view their own application status and
@@ -54,6 +54,16 @@ and in addition may **disburse an approved loan**, view the analytics dashboard,
 and view the full activity log of everything that has happened in the branch.
 Disbursement is restricted to the branch manager because it is the point at
 which money actually leaves the bank.
+
+**System Administrator.** The system administrator oversees the system itself
+rather than the lending. The administrator may view every customer, every loan
+application, every document, every request to change an application, the
+dashboard, the full activity log, and the list of every user account and its
+role. The administrator **cannot do any loan business**: it cannot create
+an application or a borrower profile, add or verify a document, move, approve,
+reject or disburse an application, or approve or refuse a change request. The
+administrator is not a branch manager and cannot run the underwriting review.
+Administrator accounts are created by the bank; nobody can register as one.
 
 ---
 
@@ -245,7 +255,8 @@ how many applications are awaiting review and the total value of loans that are
 approved but not yet paid out.
 
 The dashboard refreshes every 5 minutes, and can be refreshed on demand. Loan
-officers and branch managers can both view the dashboard. Applicants cannot.
+officers and branch managers can both view the dashboard, and the system
+administrator can view it too. Applicants cannot.
 
 ---
 
@@ -283,8 +294,8 @@ Access is checked on the server for every single request. An applicant can only
 ever retrieve their own applications, their own documents and their own profile.
 
 Every status change and every significant action is written to an audit log
-recording who did it, what they did, when, and why. The branch manager can review
-this log at any time.
+recording who did it, what they did, when, and why. The branch manager and the
+system administrator can review this log at any time.
 
 ---
 
