@@ -7,11 +7,12 @@ Also defines the two enums the tests import from this exact module:
 
 import enum
 
-from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text
+from sqlalchemy import Boolean, Column, DateTime, Enum, Float, ForeignKey, Integer, String, Text, event
 from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.database import Base
+from app.db_checks import install_loan_application_checks
 
 
 class LoanType(str, enum.Enum):
@@ -51,8 +52,10 @@ class LoanApplication(Base):
     updated_at = Column(DateTime(timezone=True), server_default=func.now(), onupdate=func.now())
 
     # Piece 19: the server's own eligibility assessment, taken at the moment
-    # of submission and never changed afterwards. All three are nullable so
-    # rows created before this piece existed still load fine.
+    # of submission. Since Piece 25 the one thing that replaces it is an
+    # approved edit, which re-checks the new figures; the old assessment is
+    # kept in that edit's activity row. All three are nullable so rows created
+    # before Piece 19 existed still load fine.
     eligibility_passed = Column(Boolean, nullable=True)
     eligibility_summary = Column(Text, nullable=True)
     eligibility_checked_at = Column(DateTime(timezone=True), nullable=True)
@@ -72,3 +75,20 @@ class LoanApplication(Base):
         cascade="all, delete-orphan",
         order_by="StatusHistory.changed_at",   # oldest first, as the spec says
     )
+    # Piece 25. Same cascade as above, so deleting an application also removes
+    # its edit requests instead of leaving them pointing at nothing.
+    edit_requests = relationship(
+        "EditRequest",
+        back_populates="application",
+        cascade="all, delete-orphan",
+        order_by="EditRequest.created_at",
+    )
+
+
+# Piece 25: whenever this table is freshly created (a new database, or every
+# test run), add the database's own checks straight away. An existing database
+# gets them from `init_db()` instead. See `app/db_checks.py` for why these are
+# triggers.
+@event.listens_for(LoanApplication.__table__, "after_create")
+def _add_database_checks(target, connection, **kw):
+    install_loan_application_checks(connection)

@@ -70,6 +70,28 @@ def check_password(value: str) -> str:
     return value
 
 
+# Invisible control characters (things like a bell or a null byte) that no
+# keyboard types on purpose. Newlines and tabs are allowed, because a reason
+# written in a text box can have line breaks.
+_CONTROL_CHARACTERS = re.compile(r"[\x00-\x08\x0b\x0c\x0e-\x1f\x7f]")
+
+
+def clean_free_text(value: str, min_len: int, max_len: int, what: str) -> str:
+    """
+    The one check for any box where a person writes in their own words:
+    purpose, an edit reason, a staff note.
+
+    Trims leading and trailing spaces first, then counts. Without the trim,
+    "   " would pass a three-character minimum while saying nothing at all.
+    """
+    value = value.strip()
+    if _CONTROL_CHARACTERS.search(value):
+        raise ValueError(f"{what} contains characters that cannot be typed")
+    if not min_len <= len(value) <= max_len:
+        raise ValueError(f"{what} must be {min_len} to {max_len} characters")
+    return value
+
+
 # Manual Section 12: documents must be PDF, JPG or PNG.
 _ALLOWED_EXTENSIONS = (".pdf", ".jpg", ".jpeg", ".png")
 

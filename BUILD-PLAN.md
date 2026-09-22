@@ -1203,6 +1203,75 @@ Phase 5's Risk Assessor use that field, so a change to it moves real verdicts.
 
 ---
 
+# PIECE 25 — Customers ask to edit their application, staff approve or refuse
+
+Asked for by Rohit on 2026-09-22 (`TO-FIX-SORTED.md` B1, his top priority).
+Planned the same day; the full plan is in
+`~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. This is the short
+version.
+
+### Why
+
+A customer who spots a mistake after submitting has no way to fix it. The
+trainer's manual said "withdraw and resubmit", but withdraw was never built.
+The trainer then said to change this rule (D-28). So a customer now **asks**,
+bank staff **approve or refuse** (a refusal must give a reason), and only
+after approval can the customer change the fields they asked for, **once**.
+Every step lands in the activity log.
+
+### Settled 2026-09-22
+
+- Edits are only possible while the application is **submitted** or **under review** (A1).
+- Only **amount, tenure and purpose** can change. Loan type can't: a different type means a new application.
+- An approved edit **re-checks eligibility** and replaces the stored result. The old result is kept in the activity row.
+- **No email.** The staff page does the job. The customer sees "Questions? Contact support@bank.com" (a placeholder), and the chatbot gives the same address.
+- Every input is checked in **three places**: the form, the server's schema, and the database itself.
+
+### My defaults (Rohit can overturn any of them)
+
+- One open request per application.
+- Approval unlocks the fields for one save.
+- Staff decide the whole request, not part of it.
+- Either an officer or the manager can decide.
+- A reason is 10 to 1,000 characters. A refusal note is required, 10 to 1,000 characters.
+- A request is closed automatically if the status moves on.
+- Saving with nothing changed is refused.
+
+### Steps (one per turn, each committed and tagged)
+
+| Step | What | Tag |
+|---|---|---|
+| 1 | Rules, the new `application_edit_requests` table, schemas, the `check_free_text` helper, and the database's own checks (triggers on `loan_applications`, CHECK rules on the new table) | v2.5.0 ✅ |
+| 2 | `edit_request_service.py`, the new addresses, `PATCH /applications/{id}`, closing open requests on a status move, API tests | v2.6.0 |
+| 3 | React, the customer's side: `EditRequestCard` on the application page, the two-step pop-up, the unlocked-fields form, the support-email note | v2.7.0 |
+| 4 | React, the staff side: the "Edit requests" page and sidebar item, and activity labels for the five new events | v2.8.0 |
+| 5 | Manual (Section 6, the FAQ, a new "Contacting the bank" section), the T-102 ingestion fix, re-ingest, and asking the chatbot twice | v2.9.0 |
+
+### What this must not break
+
+- The trainer's 20 Phase 1 tests. The new database checks use only the global bounds, and every trainer row sits inside them.
+- The Phase 2 ingestion tests.
+- D-22: no dates baked into stored text.
+- D-27: affordability goes through the same helper.
+
+---
+
+# PIECE 26 — The database checks its own rules for the other tables
+
+Placeholder, decided 2026-09-22 while planning Piece 25. Piece 25 found that
+SQLite checks almost nothing by itself: it ignores `VARCHAR` lengths, it
+doesn't check enum values, and foreign keys are off on purpose (T-03). Piece 25
+fixes that for `loan_applications` and its own new table. This piece does the
+same for **applicants, users, documents and status history**, using the same
+pattern (triggers built from `rules.py`, see `backend/app/db_checks.py`).
+
+Needs its own plan first. The trainer's database tests insert rows directly,
+some with made-up values (for example `phone="1234567890"` in DB-01, which our
+schema would refuse), so every trigger has to be checked against those tests
+before it's added.
+
+---
+
 ## Done
 
 | # | Piece | Finished | Commit |

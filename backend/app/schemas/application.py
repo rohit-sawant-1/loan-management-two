@@ -9,12 +9,12 @@ are checked in the service, where we can also explain why.
 """
 
 
-from pydantic import BaseModel, ConfigDict, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
 
 from app.domain import rules
 from app.models.application import ApplicationStatus, LoanType
 from app.schemas.applicant import ApplicantResponse
-from app.schemas.common import UtcDateTime
+from app.schemas.common import UtcDateTime, clean_free_text
 from app.schemas.document import DocumentResponse
 
 
@@ -24,7 +24,14 @@ class CreateApplicationSchema(BaseModel):
     # Test UNIT-04 sends 5000, 15000000, -100 and 0 and expects all rejected.
     amount_requested: float = Field(..., ge=rules.AMOUNT_MIN, le=rules.AMOUNT_MAX)
     tenure_months: int = Field(..., ge=rules.TENURE_MIN, le=rules.TENURE_MAX)
-    purpose: str = Field(..., min_length=3, max_length=500)
+    purpose: str = Field(..., min_length=rules.PURPOSE_MIN, max_length=rules.PURPOSE_MAX)
+
+    # Piece 25: trims spaces before counting, so "   " no longer passes as a
+    # purpose. A purpose that was valid before is still valid.
+    @field_validator("purpose")
+    @classmethod
+    def _check_purpose(cls, value: str) -> str:
+        return clean_free_text(value, rules.PURPOSE_MIN, rules.PURPOSE_MAX, "purpose")
 
 
 class StatusUpdateRequest(BaseModel):

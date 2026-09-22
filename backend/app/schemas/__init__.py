@@ -18,6 +18,10 @@ from app.schemas.document import (
     CreateDocumentSchema, DocumentUploadBody, DocumentResponse, DocumentListResponse,
 )
 from app.schemas.activity import ActivityLogResponse
+from app.schemas.edit_request import (
+    EditRequestCreate, ApproveBody, RefuseBody, ApplicationEditBody,
+    EditRequestResponse, EditRequestListResponse,
+)
 
 __all__ = [
     "RegisterRequest", "ApplicantSignupRequest", "LoginRequest", "TokenResponse", "UserResponse",
@@ -27,4 +31,6 @@ __all__ = [
     "EligibilityCheckRequest", "EligibilityCheckResponse",
     "CreateDocumentSchema", "DocumentUploadBody", "DocumentResponse", "DocumentListResponse",
     "ActivityLogResponse",
+    "EditRequestCreate", "ApproveBody", "RefuseBody", "ApplicationEditBody",
+    "EditRequestResponse", "EditRequestListResponse",
 ]

@@ -107,3 +107,14 @@ The user manual is written for Phase 2. It describes some things the trainer's P
 | Remember each officer's last filter and sort | Noticed building Piece 18 — a manager who always looks at "under review, oldest first" retypes it every visit | Needs a per-user settings table on the server (never the browser, Rule 13). Nice, not graded. | Small |
 | Export the filtered list to a spreadsheet | Same place — the toolbar is the natural home for a download button | Belongs with the activity-log export already listed above, so build both together or neither | Small |
 | The search box should also match the purpose text | Piece 18 searches name, email and application number | Purpose is free text, so it needs a proper text index to stay fast once there are thousands of rows | Small |
+
+## Around Piece 25 — edit requests
+
+Left out of Piece 25 on purpose (2026-09-22), so the base feature gets finished first.
+
+| Idea | Where it came from | Why it waits | Size |
+|---|---|---|---|
+| Email the manager and the customer when a request is made or decided | Your notes in `TO-FIX.md` ("email to manager", "common email to request edits") | No email sending exists at all. It needs a mail account, credentials in `.env`, and it's one more thing that can fail during a demo. The in-app staff page does the job for now. | Medium |
+| Ask for, approve and refuse edit requests from the chatbot | Natural next step once Piece 25 works on screen | Needs a new write tool with the YES confirmation, an MCP handler, and permission checks. The manual update in Piece 25 already lets the chatbot *explain* the process. | Small |
+| Edit requests in the Streamlit front-end | Keeping the two front-ends level | Rule 5: React first, then decide if Streamlit needs it | Small |
+| A count of waiting requests next to "Edit requests" in the sidebar | Came up planning Piece 25 | One extra request on every page load; nice, not needed | Tiny |

@@ -219,6 +219,35 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-105 · SQLite checked almost nothing by itself before Piece 25.**
+Found 2026-09-22. It ignores `VARCHAR(500)` (a 5,000-character purpose would
+have been stored), it doesn't check that a status or loan type is a real one,
+and foreign keys are off on purpose (T-03). Only "not empty" was enforced. Piece
+25 adds the database's own checks for `loan_applications` (triggers) and the new
+edit-request table (CHECK rules), all built from `rules.py` in
+`backend/app/db_checks.py`. The other tables still have none. That's Piece 26.
+
+**T-104 · The support address lives in two places.** `support@bank.com` is a
+placeholder, shown on the customer's application page (`SUPPORT_EMAIL` in
+`frontend/src/utils/editRequests.js`, Piece 25 step 3) and written in the user
+manual so the chatbot can quote it (step 5). When the real address is known,
+change both together and re-ingest the manual, or the chatbot and the screen
+will give different addresses.
+
+**T-103 · A pop-up with a text box in it loses focus on every keystroke,
+unless its `onClose` is stable.** Found 2026-09-22 while planning Piece 25.
+`Modal.jsx` re-runs its focus effect whenever `onClose` changes, and every
+current caller passes a fresh inline arrow function. None of today's pop-ups
+has an input, so it has never shown. The edit-request pop-up does, so its
+`onClose` must be wrapped in `useCallback`.
+
+**T-102 · Ingesting a shorter manual leaves old chunks behind.** Found
+2026-09-22. `rag/ingest.py` saves chunks under fixed ids (`chunk_0`,
+`chunk_1`, ...) and overwrites them, but never deletes ids past the new count.
+If an edit makes the manual shorter, the old tail chunks stay searchable. For
+Piece 25 that would mean the old "cannot be modified after submission" text
+lives on, and the chatbot could still quote it. Fixed in Piece 25 step 5.
+
 **T-101 · A review only works when the backend is on port 8000.**
 Found 2026-09-11 while verifying the audit fixes against a running server. The
 Phase 5 agents and the Phase 3 tools do not read the database directly — they
@@ -884,6 +913,29 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 ---
 
 # Settled
+
+### 2026-09-22 · D-28 — Customers may edit an application after submitting it
+**Answer: yes, the trainer asked for this change himself.** This goes against
+the trainer's original rule: "Applications cannot be modified after
+submission. Withdraw and resubmit" (`phase2-rag-application.md:385-386`,
+`01-POC-BLUEPRINT.md:500`, and our manual at `backend/rag/user_manual.md:181-182`
+and `:292`). No trainer test checks that rule, so nothing fails. The manual and
+the chatbot must change to match (Rule 12). Built as Piece 25.
+
+### 2026-09-22 · Piece 25 — the four design answers
+- **A1: which statuses allow an edit?** Only **submitted** and **under review**.
+  Once approved, the approval rests on those figures, and the status can't go
+  back to review without breaking the forward-only rule and its Phase 1 test.
+- **Which fields?** **Amount, tenure, purpose.** Not loan type: a different
+  type is a different loan, so it needs a new application.
+- **Eligibility after an edit?** **Re-check it and replace the stored result.**
+  The old result is kept in the `application_edited` activity row. This relaxes
+  Piece 19's "never changed afterwards", deliberately.
+- **Email?** **None.** The staff "Edit requests" page does the job. The customer
+  sees "Questions? Contact support@bank.com" (a placeholder, T-104), and the
+  chatbot must give the same address when asked how to contact the bank.
+- **Database checks for the other tables?** A separate piece, Piece 26, straight
+  after this one.
 
 ### 2026-09-16 · D-27 — The Risk Assessor now counts the EMIs an applicant already pays
 **Answer: fixed.** Phase 5's Risk Assessor was setting `emi_affordability` from

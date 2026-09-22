@@ -51,6 +51,7 @@ def init_db() -> None:
     Base.metadata.create_all(bind=engine)
     _add_missing_columns()
     _drop_baked_in_timestamps()
+    _install_database_checks()
 
 
 def _add_missing_columns() -> None:
@@ -104,3 +105,20 @@ def _drop_baked_in_timestamps() -> None:
             """
         ))
         conn.commit()
+
+
+def _install_database_checks() -> None:
+    """
+    Piece 25: give `loan_applications` the database's own checks, even when
+    the table was created long before this piece existed.
+
+    A brand-new table gets them the moment it is created (see the listener at
+    the bottom of `app/models/application.py`), but `loan_app.db` already has
+    this table, so `create_all` skips it and the listener never fires. This
+    covers that case. The triggers are rebuilt on every startup, so they always
+    carry today's numbers from `rules.py`. See `app/db_checks.py`.
+    """
+    from app.db_checks import install_loan_application_checks
+
+    with engine.begin() as conn:
+        install_loan_application_checks(conn)

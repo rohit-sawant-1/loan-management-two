@@ -139,6 +139,15 @@ def tenure_range(loan_type) -> tuple[int, int]:
 
 
 # ---------------------------------------------------------------------------
+# Purpose (free text on the application)
+# ---------------------------------------------------------------------------
+# Counted after leading and trailing spaces are removed, so "   " is empty.
+
+PURPOSE_MIN: int = 3
+PURPOSE_MAX: int = 500
+
+
+# ---------------------------------------------------------------------------
 # Eligibility (manual Section 5)
 # ---------------------------------------------------------------------------
 
@@ -253,3 +262,42 @@ RISK_APPROVE_ABOVE: int = 70
 RISK_REJECT_BELOW: int = 40
 
 DECISIONS: tuple[str, ...] = ("APPROVE", "REJECT", "REQUEST_MORE_INFO")
+
+
+# ---------------------------------------------------------------------------
+# Editing an application after submission (Piece 25, D-28)
+# ---------------------------------------------------------------------------
+# The trainer's original rule was "cannot be modified after submission". The
+# trainer later asked for this change. A customer now asks to edit, bank staff
+# approve or refuse, and only then can the customer change the fields they
+# asked for — once.
+
+# Only while nobody has made a decision on the loan yet (A1, settled 2026-09-22).
+# Once approved, the approval rests on the figures, so they cannot move.
+EDITABLE_STATUSES: frozenset[str] = frozenset({"submitted", "under_review"})
+
+# Loan type is deliberately not here: a different type is a different loan,
+# with different limits and documents, so it needs a new application.
+EDITABLE_FIELDS: tuple[str, ...] = ("amount_requested", "tenure_months", "purpose")
+
+# Where a request can be in its life.
+#   pending   -> waiting for staff
+#   approved  -> staff said yes; the customer may now save one edit
+#   refused   -> staff said no, with a note saying why
+#   completed -> the customer saved the edit; editing is locked again
+#   closed    -> the application's status moved on before the edit was used
+EDIT_REQUEST_STATUSES: tuple[str, ...] = ("pending", "approved", "refused", "completed", "closed")
+
+# A request that is still "live". Only one of these per application at a time.
+OPEN_EDIT_REQUEST_STATUSES: frozenset[str] = frozenset({"pending", "approved"})
+
+# Lengths, counted after trimming spaces.
+EDIT_REASON_MIN: int = 10
+EDIT_REASON_MAX: int = 1000
+EDIT_NOTE_MIN: int = 10     # a refusal must say why
+EDIT_NOTE_MAX: int = 1000   # also the cap on an optional approval note
+
+
+def is_editable(status) -> bool:
+    """True if an application in this status may have an edit requested or saved."""
+    return _v(status) in EDITABLE_STATUSES

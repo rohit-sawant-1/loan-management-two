@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-22 — Piece 25 step 1: the groundwork for edit requests, and the database now checks its own rules
+
+**Asked for:** your top priority, B1. Let a customer ask to change a submitted application, have staff approve or refuse, and log every step. Then, while planning, you asked whether every input field is validated, and wanted checks on all three layers: the form, the server and the database.
+**Built:** the plan (Piece 25, five steps) and step 1. The new rules are in `rules.py`. There's a new `application_edit_requests` table and the input shapes for asking, approving, refusing and saving an edit. A shared `clean_free_text` check trims spaces and blocks hidden characters. The database's own checks are in the new `db_checks.py`. 45 new tests; the suite is 257 passing (212 before), and the trainer's 20 still pass.
+**Found:** the database was checking almost nothing. SQLite ignores `VARCHAR(500)`, doesn't check that a status is real, and foreign keys are off on purpose, so only "not empty" was enforced (T-105). The server also let a purpose of three spaces through. And ingesting a shorter manual would have left the old "cannot be modified" text searchable (T-102, fixed in step 5).
+**Realised:** the trainer's "cannot be modified after submission" rule gets overridden on the trainer's own say-so (D-28). Edits are only allowed at submitted and under review, only for amount, tenure and purpose, and eligibility is re-checked afterwards. There's no email; a placeholder support address goes on the page and in the manual. Database checks for the other tables become their own piece, Piece 26.
+**Next:** Piece 25 step 2, the service and the addresses that make requests actually work, with API tests.
+
+---
+
 ## 2026-09-16 — The underwriting review now charges people for the loans they already have
 
 **Asked for:** you asked whether we look at how much of a borrower's income is already going out in EMIs, and whether banks check a new loan against the existing ones. Then, once it turned out we half did: fix it.
