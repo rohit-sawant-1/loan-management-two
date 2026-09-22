@@ -1667,6 +1667,13 @@ Front-end only. `npm run build` and `npm run lint`: no new errors. The backend s
 - **Does the admin receive staff notifications?** Not specified. Recommended: **no** for now; "bank staff" means loan officers and branch managers.
 - **Is "application submitted" a status change** for the customer? Recommended: **yes**. The application's first status is `submitted`, so the customer gets "Application 9 submitted", and the same when staff submit on their behalf.
 
+**Status: built 2026-09-23, tag `v2.13.0`. Both recommendations above were taken:** the admin gets no staff notifications (it is not staff, Piece 27), and submitting counts as the first status change. Where the build differs from the plan below:
+- **`notify_staff_test_document` takes the applicant's name as an argument** rather than digging it out of the document. Piece 32 knows who uploaded; the notification service should not have to walk three relationships to find out.
+- **Trigger 3 sets `application.applicant` by hand** before calling, in both call sites, so the message can be written without a second query for a record the caller already has.
+- **A profile with no login gets nothing, and staff are not told instead.** Staff can create a borrower profile with no account behind it; there is simply nobody to address the message to. There is a test for it.
+- **`timeAgo` is new in `utils/format.js`**, using the browser's own relative-time formatter: a bell is read at a glance, and a full date makes you work out how long ago it was.
+- **Not checked in a browser yet**, and the panel is the one part no test covers.
+
 ### Triggers (the only ones)
 
 | # | Audience | When | Recipients | Called from |
@@ -2257,3 +2264,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 29 | The sidebar becomes a sticky top bar, with the account behind its initials | 2026-09-23 | `v2.12.0` |
 | 29b | The bar rebuilt: real glass, and dressed properly | 2026-09-23 | `v2.12.1` |
 | 29c | No more sideways jump when changing page; pages fade in and start at the top | 2026-09-23 | `v2.12.2` |
+| 30 | In-app notifications: their own tables, three triggers, and the bell | 2026-09-23 | `v2.13.0` |

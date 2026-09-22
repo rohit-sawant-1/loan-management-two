@@ -35,6 +35,33 @@ export function whole(value) {
   return Number.isFinite(n) ? String(Math.round(n)) : String(value);
 }
 
+// "3 minutes ago", for the notification panel (Piece 30). A bell is read at a
+// glance, and "22 Sep 2026, 11:58 pm" makes you work out how long ago that was.
+// The browser's own formatter knows the wording for every language it supports.
+const relative = new Intl.RelativeTimeFormat("en-IN", { numeric: "auto" });
+const STEPS = [
+  ["second", 60],
+  ["minute", 60],
+  ["hour", 24],
+  ["day", 7],
+  ["week", 4.35],
+  ["month", 12],
+  ["year", Infinity],
+];
+
+export function timeAgo(value) {
+  if (!value) return "";
+  const then = new Date(value).getTime();
+  if (Number.isNaN(then)) return "";
+
+  let amount = (then - Date.now()) / 1000;   // negative for the past
+  for (const [unit, size] of STEPS) {
+    if (Math.abs(amount) < size) return relative.format(Math.round(amount), unit);
+    amount /= size;
+  }
+  return "";
+}
+
 // Words that are not simply capitalised when an underscore is removed.
 // "id_proof" became "Id proof", which reads as a name rather than as the
 // initials it actually is. Keyed by the lower-case word so the lookup does

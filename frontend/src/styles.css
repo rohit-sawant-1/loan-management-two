@@ -216,6 +216,86 @@ a:hover { text-decoration-color: currentColor; }
   border-left: 1px solid rgba(255, 255, 255, 0.1);
 }
 
+/* ------------------------------------------------------------------ bell -- */
+/* Piece 30. Same glass vocabulary as the links, and the panel is the same
+   light card as the account menu, at the same layer (above the bar at 50,
+   below a pop-up at 100 — see T-121). */
+.bell { position: relative; }
+.bell-button {
+  position: relative;
+  display: inline-grid; place-items: center;
+  width: 34px; height: 34px;
+  border: 1px solid transparent; border-radius: 50%;
+  background: transparent; color: rgba(255, 255, 255, 0.72);
+  cursor: pointer;
+  transition: background var(--ease), border-color var(--ease), color var(--ease);
+}
+.bell-button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.14); color: #fff;
+}
+.bell-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18); color: #fff;
+}
+/* The count. Red is the one place in the chrome that shouts, and it only
+   appears when there is something unread. */
+.bell-badge {
+  position: absolute; top: -1px; right: -2px;
+  min-width: 17px; height: 17px; padding: 0 4px;
+  display: grid; place-items: center;
+  border-radius: 999px;
+  background: var(--status-rejected); color: #fff;
+  font-size: 0.64rem; font-weight: 700; line-height: 1;
+  border: 2px solid #23324a;
+}
+
+.bell-panel {
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 60;
+  width: 344px; max-width: calc(100vw - 2rem);
+  background: var(--surface); color: var(--ink-700);
+  border: 1px solid var(--line); border-radius: var(--r-lg);
+  box-shadow: var(--shadow-lg);
+  animation: menu-in 120ms ease-out;
+  overflow: hidden;
+}
+.bell-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 0.75rem;
+  padding: 0.7rem 0.85rem;
+  border-bottom: 1px solid var(--line-soft);
+}
+.bell-head strong { font-size: 0.9rem; color: var(--ink-900); }
+.bell-clear {
+  border: 0; background: transparent; padding: 0;
+  font: inherit; font-size: 0.79rem; color: var(--ink-500);
+  cursor: pointer; text-decoration: underline; text-underline-offset: 2px;
+}
+.bell-clear:hover { color: var(--ink-900); }
+
+.bell-list { list-style: none; margin: 0; padding: 0; max-height: 380px; overflow-y: auto; }
+.bell-item {
+  display: flex; align-items: flex-start; gap: 0.6rem; width: 100%;
+  padding: 0.7rem 0.85rem;
+  border: 0; border-bottom: 1px solid var(--line-soft);
+  background: transparent; text-align: left; font: inherit; cursor: pointer;
+  transition: background var(--ease);
+}
+.bell-item:hover { background: var(--line-soft); }
+/* The dot keeps its space on a read notice, so the text of every row lines up. */
+.bell-dot {
+  width: 7px; height: 7px; margin-top: 0.42rem; flex: none;
+  border-radius: 50%; background: transparent;
+}
+.bell-item.unread .bell-dot { background: var(--status-submitted); }
+.bell-item.unread .bell-text strong { color: var(--ink-900); }
+.bell-text { display: flex; flex-direction: column; gap: 0.12rem; min-width: 0; }
+.bell-text strong { font-size: 0.845rem; font-weight: 600; color: var(--ink-700); }
+.bell-text span { font-size: 0.82rem; color: var(--ink-700); }
+.bell-text small { font-size: 0.74rem; color: var(--ink-500); }
+
+.bell-empty { margin: 0; padding: 1.4rem 0.95rem; text-align: center;
+  font-size: 0.83rem; color: var(--ink-500); }
+
 /* ---------------------------------------------------------- account menu -- */
 .account { position: relative; }
 .account-button {

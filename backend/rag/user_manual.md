@@ -42,6 +42,15 @@ any other applicant's data**. Attempting to open another customer's application
 returns a "forbidden" error. This is enforced by the server on every request,
 not merely hidden in the screens.
 
+**Notifications.** LAMS notifies people inside the app itself, with a bell in
+the top bar; it does not send email, text messages or push notifications. There
+are exactly three kinds. Bank staff — loan officers and branch managers — are
+notified when a customer asks to change an application they have already
+submitted, and when a customer uploads a document marked as a TEST document. A
+customer is notified when their own application's status changes, including
+when it is first submitted. Nothing else produces a notification, and a
+notification never contains an amount or an identity number.
+
 **Loan Officer (bank staff).** A loan officer may view all loan applications
 from every customer, create borrower profiles on a customer's behalf, move an
 application from `submitted` to `under_review`, approve or reject an application

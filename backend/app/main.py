@@ -25,7 +25,7 @@ from app.database import engine, init_db                     # noqa: E402
 from app.middleware.logging_middleware import logging_middleware  # noqa: E402
 from app.routers import (                                     # noqa: E402
     activity, admin, applicants, applications, auth, briefing, chat, dashboard, documents,
-    edit_requests, eligibility, settings as settings_router,
+    edit_requests, eligibility, notifications, settings as settings_router,
 )
 from app.utils.logging_config import configure_logging       # noqa: E402
 from app.utils.otel_config import instrument_sqlalchemy, setup_telemetry  # noqa: E402
@@ -87,6 +87,8 @@ app.include_router(activity.router, prefix="/api/v1/activity", tags=["activity"]
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
 # Piece 28: every signed-in screen reads the settings; only the admin changes them.
 app.include_router(settings_router.router, prefix="/api/v1/settings", tags=["settings"])
+# Piece 30: the bell. Everyone reads their own, and only their own.
+app.include_router(notifications.router, prefix="/api/v1/notifications", tags=["notifications"])
 # The headline feature (D-13): the manager's morning briefing.
 app.include_router(briefing.router, prefix="/api/v1/briefing", tags=["briefing"])
 # The one chat door. What sits behind it grows with each phase; the address does not.

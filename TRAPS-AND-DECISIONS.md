@@ -236,10 +236,12 @@ true. Same family as T-113 (the encryption the manual promises).
 **T-119 · Gemini is much slower late at night.** Rohit's own measurement,
 2026-09-22/23: at 3pm a normal chat answer came back in 3 to 8 seconds and only
 the manual ones took 70+; at midnight everything took about 75 seconds, and the
-logs showed `503 UNAVAILABLE`, "high demand". So a slow answer is not
-necessarily our code, and B2 (the slow manual answers) must be measured in the
-afternoon before anyone concludes anything. It also means **demo rehearsals
-should happen at the hour the demo happens.**
+logs showed `503 UNAVAILABLE`, "high demand". **Confirmed 2026-09-23 in the
+afternoon:** the same admin question that took 75 seconds at midnight answered
+in **15 seconds**, correctly. So a slow answer is not necessarily our code, and
+B2 (the slow manual answers) must be measured in the afternoon before anyone
+concludes anything. It also means **demo rehearsals should happen at the hour
+the demo happens.**
 
 **T-118 · "I don't have information about that in the user manual" can be wrong.**
 Seen 2026-09-22 while checking Piece 27's manual change. The first time the

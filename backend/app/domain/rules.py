@@ -338,3 +338,25 @@ SETTING_KEYS: tuple[str, ...] = tuple(SETTINGS)
 def setting_default(key: str):
     """What a setting is worth before anyone has changed it."""
     return SETTINGS[key]["default"]
+
+
+# ---------------------------------------------------------------------------
+# In-app notifications (Piece 30)
+# ---------------------------------------------------------------------------
+# A system entirely separate from the activity log. The log records everything
+# that happened, for an auditor; a notification is a message to one person.
+#
+# Only three things ever produce one, settled 2026-09-22. Nothing else does:
+# not setting changes, not ordinary uploads, not verifications, not logins.
+NOTIFICATION_AUDIENCES: tuple[str, ...] = ("staff", "applicant")
+
+# Which audience each kind of notification belongs to. The database enforces
+# this pairing itself, so a staff message can never be filed against a
+# customer's audience by mistake.
+NOTIFICATION_TYPES: dict[str, str] = {
+    "edit_requested": "staff",
+    "test_document_uploaded": "staff",
+    "application_status_changed": "applicant",
+}
+
+# The app's own notifications only: no email, no SMS, no push (settled).

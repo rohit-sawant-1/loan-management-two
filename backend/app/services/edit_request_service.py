@@ -28,7 +28,7 @@ from app.models.application import LoanApplication
 from app.models.edit_request import EditRequest, EditRequestStatus
 from app.models.user import User, UserRole
 from app.schemas.edit_request import ApplicationEditBody, EditRequestCreate
-from app.services import activity_service, eligibility_service
+from app.services import activity_service, eligibility_service, notification_service
 from app.services.errors import Forbidden, NotFound, RuleViolation
 
 logger = structlog.get_logger()
@@ -175,6 +175,11 @@ def create_request(
         details={"request_id": request.id, "fields": data.fields, "reason": data.reason},
         **(meta or {}),
     )
+    # Piece 30, trigger 1: every loan officer and the branch manager get one
+    # notice each, in this same commit. Setting the relationship by hand first
+    # so the message can name the customer without a second query.
+    request.application = application
+    notification_service.notify_staff_edit_requested(db, request)
     db.commit()
     logger.info("edit_requested", operation="create_edit_request", application_id=application.id,
                 request_id=request.id, fields=data.fields,

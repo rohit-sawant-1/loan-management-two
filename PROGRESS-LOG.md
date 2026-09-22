@@ -4,6 +4,23 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — Piece 30: the bell, and the notifications behind it
+
+**Asked for:** you confirmed Pieces 27 and 28 work in the browser, said the glass bar looks good, and asked for the next piece. You also tried "change application 21 to under review" as the admin: **15 seconds, correct answer.**
+**Built:** the app's own notifications, as a system entirely separate from the activity log — its own table, its own service, its own addresses. Nothing in one touches the other, and there is a test that proves it: a status change writes exactly the same number of activity rows whether notifications happen or not.
+- **Three triggers and no others.** Staff hear when a customer asks to edit a submitted application, and (from Piece 32) when a customer uploads a document marked TEST. A customer hears when their own application's status changes, starting with the moment it is submitted. A setting change, an ordinary document, a verification, a sign-in: nothing.
+- **Who exactly gets one.** Every loan officer and branch manager whose account is switched on. Not a switched-off account, not the administrator, and never the customer. For status changes, only the one customer whose application it is.
+- **The bell** sits in the slot Piece 29 left for it, with a red count that appears only when something is unread. It asks the server every 30 seconds and whenever you change page. Clicking a notice marks it read and takes you to the thing it is about.
+- **Nothing private in the text.** No amounts, no identity numbers. "Priya asked to change application 2", not the figure she wants. A bell gets read over somebody's shoulder.
+- **The database keeps the two audiences apart.** A rule inside the table makes a staff message impossible to file against a customer, whatever the code does.
+
+14 new tests, **368 passing**. The front end builds and lints clean, and the manual has a Notifications paragraph, re-ingested at 58 chunks.
+**Found:** your 15-second answer this afternoon, against 75 seconds at midnight, is now written into T-119 as measured evidence. It matters for B2: the slow manual answers have to be measured in the afternoon, and demo rehearsals should happen at the hour the demo happens.
+**Realised:** notifications are saved in the same commit as the thing they are about. If the edit request fails to save, the notices about it are rolled back with it — nobody is told about something that did not happen.
+**Next:** the browser check for the bell, which is the one part no test covers: Priya asks to edit application 2, and Rajan's bell should show 1.
+
+---
+
 ## 2026-09-23 — The page stops jumping sideways when you change page
 
 **Asked for:** moving between pages from the navbar jerks a little left then right, and you wanted it smooth.

@@ -18,7 +18,7 @@ from app.models.application import ApplicationStatus, LoanApplication, LoanType
 from app.models.status_history import StatusHistory
 from app.models.user import User, UserRole
 from app.schemas.application import CreateApplicationSchema
-from app.services import activity_service, edit_request_service, eligibility_service
+from app.services import activity_service, notification_service, edit_request_service, eligibility_service
 from app.services.errors import Forbidden, NotFound, RuleViolation
 from app.utils.finance import format_rupees
 
@@ -114,6 +114,12 @@ def create_application(
                  "tenure_months": data.tenure_months, "eligibility_passed": assessment.eligible},
         **(meta or {}),
     )
+    # Piece 30, trigger 3: tell the customer their application is in.
+    # Submitting is the first status change, so it is the first thing their
+    # bell ever says. Same commit as the application itself, so there is never
+    # a notice about a save that did not happen.
+    application.applicant = applicant
+    notification_service.notify_applicant_status(db, application, None, ApplicationStatus.submitted)
     db.commit()
     db.refresh(application)
     logger.info("application_created", operation="create_application",
@@ -290,6 +296,9 @@ def update_status(
     # edit request that is still waiting or unlocked can never be used, so it
     # is closed now, in the same commit as the status change.
     edit_request_service.close_open_requests(db, application, user=user, meta=meta)
+    # Piece 30, trigger 3: only the customer whose application this is hears
+    # about it. Staff never get one of these.
+    notification_service.notify_applicant_status(db, application, old_status, new_status)
     db.commit()
     db.refresh(application)
     logger.info("status_updated", operation="update_status", application_id=application.id,

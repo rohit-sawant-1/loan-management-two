@@ -24,6 +24,9 @@ from app.schemas.edit_request import (
 )
 from app.schemas.admin import AdminUserListResponse
 from app.schemas.settings import RealUploadsBody, SettingResponse, SettingsResponse
+from app.schemas.notification import (
+    NotificationListResponse, NotificationResponse, UnreadCountResponse,
+)
 
 __all__ = [
     "RegisterRequest", "ApplicantSignupRequest", "LoginRequest", "TokenResponse", "UserResponse",
@@ -37,4 +40,5 @@ __all__ = [
     "EditRequestResponse", "EditRequestListResponse",
     "AdminUserListResponse",
     "RealUploadsBody", "SettingResponse", "SettingsResponse",
+    "NotificationListResponse", "NotificationResponse", "UnreadCountResponse",
 ]
