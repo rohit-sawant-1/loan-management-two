@@ -310,3 +310,31 @@ EDIT_NOTE_MAX: int = 1000   # also the cap on an optional approval note
 def is_editable(status) -> bool:
     """True if an application in this status may have an edit requested or saved."""
     return _v(status) in EDITABLE_STATUSES
+
+
+# ---------------------------------------------------------------------------
+# System settings the administrator can change (Piece 28)
+# ---------------------------------------------------------------------------
+# One entry per setting. This is the only list of them: the database check, the
+# service, the API and the admin screen all read it, so adding a setting later
+# means adding one line here and nothing else.
+#
+# `default` is what the app uses when nothing has been stored yet, so a fresh
+# database behaves exactly as it did before this piece existed.
+SETTINGS: dict[str, dict] = {
+    "real_uploads_enabled": {
+        "type": "bool",
+        "default": False,
+        "label": "Real document uploads",
+        # What each position means, in the words the admin screen shows.
+        "off_text": "Documents are recorded by their file name, exactly as they are now.",
+        "on_text": "Customers upload real files. The upload screen is still being built, so names are recorded until it is finished.",
+    },
+}
+
+SETTING_KEYS: tuple[str, ...] = tuple(SETTINGS)
+
+
+def setting_default(key: str):
+    """What a setting is worth before anyone has changed it."""
+    return SETTINGS[key]["default"]

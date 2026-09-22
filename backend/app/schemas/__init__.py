@@ -23,6 +23,7 @@ from app.schemas.edit_request import (
     EditRequestResponse, EditRequestListResponse,
 )
 from app.schemas.admin import AdminUserListResponse
+from app.schemas.settings import RealUploadsBody, SettingResponse, SettingsResponse
 
 __all__ = [
     "RegisterRequest", "ApplicantSignupRequest", "LoginRequest", "TokenResponse", "UserResponse",
@@ -35,4 +36,5 @@ __all__ = [
     "EditRequestCreate", "ApproveBody", "RefuseBody", "ApplicationEditBody",
     "EditRequestResponse", "EditRequestListResponse",
     "AdminUserListResponse",
+    "RealUploadsBody", "SettingResponse", "SettingsResponse",
 ]

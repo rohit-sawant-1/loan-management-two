@@ -1,5 +1,5 @@
 """
-The seven database tables.
+The eight database tables.
 
 Importing this package registers every table with `Base`, which is what
 `init_db()` relies on to create them all.
@@ -12,6 +12,7 @@ from app.models.document import Document, DocumentType
 from app.models.status_history import StatusHistory
 from app.models.activity_log import ActivityLog, ActorType
 from app.models.edit_request import EditRequest, EditRequestStatus
+from app.models.app_setting import AppSetting
 
 __all__ = [
     "User", "UserRole",
@@ -21,4 +22,5 @@ __all__ = [
     "StatusHistory",
     "ActivityLog", "ActorType",
     "EditRequest", "EditRequestStatus",
+    "AppSetting",
 ]

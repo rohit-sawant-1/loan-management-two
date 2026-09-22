@@ -4,6 +4,21 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — Piece 28: the admin's switch for real document uploads
+
+**Asked for:** on to the next piece.
+**Built:** the settings system, and the first setting in it. The admin's page now has a **Settings** card with a switch called "Real document uploads". Off is exactly what the app has always done — a document is recorded by its type and file name. On is what Piece 31's real uploads will read; until that screen exists, anyone adding a document sees a line saying uploads are on but the upload screen is still being built.
+- **Where it is kept:** a new `app_settings` table, one row per setting. Not `.env`, because that belongs to one machine and needs a restart; a switch the admin flips has to reach everybody straight away.
+- **Who can do what:** everyone signed in can *read* the settings, because the screens change with them. Only the admin can *change* one. Every change is written to the activity log with their name, and the manager can filter the Activity page for it.
+- **One list, not several:** the setting, its default, its label and the sentence explaining each position all live in `rules.py`. The database check, the API and the screen read from there, so adding a setting later is one line in one file.
+
+23 new tests, **354 passing**. The front end builds and lints clean, and the manual now has the switch in it, re-ingested at 56 chunks.
+**Found:** the manual has always promised that documents must be PDF, JPG or PNG and under 5 MB — and the code has never stored a file at all, only a name. Nobody had written that down (T-120). Section 4 now says plainly that the file isn't stored yet, which is also the honest thing for the chatbot to be quoting. Piece 31 makes the original promise true.
+**Realised:** two small things worth knowing. Pydantic would happily read `"yes"` or `1` as `true` in the switch's body, so the switch is now `StrictBool` — true or false, nothing else; two tests caught it. And the key check is a database trigger rather than a rule inside the table, because the list of settings is meant to grow: a rule baked into the table today would refuse a setting added in Piece 31, and SQLite can't change one without rebuilding the table.
+**Next:** Piece 29, the top navigation bar, which moves the sidebar to a sticky bar across the top and leaves a spot for the notification bell that Piece 30 fills.
+
+---
+
 ## 2026-09-23 — Piece 27a: the assistant stops talking to the admin like a customer
 
 **Asked for:** you signed in as the admin and typed "change application 21 to under review". The assistant said it couldn't change submitted applications and told you to email support@bank.com about "your application". You asked me to think through every other thing an admin might try, and write the right reply for each. No live testing tonight, because Gemini is slow at midnight.

@@ -20,7 +20,7 @@ from app.services import activity_service
 router = APIRouter()
 
 # Which records can be asked about by type. Keeps the address from becoming a free-text query.
-_ENTITY_TYPES = ("application", "applicant", "document", "user")
+_ENTITY_TYPES = ("application", "applicant", "document", "user", "setting")
 
 
 class ActivityListResponse(BaseModel):

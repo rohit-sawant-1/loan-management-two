@@ -4,12 +4,15 @@
 // account, but it can't do loan business. This page shows who has an account
 // and in which role. Piece 28 adds the system settings here.
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { api, errorMessage } from "../api/client";
 import ErrorBanner from "../components/ErrorBanner";
 import Spinner from "../components/Spinner";
+import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
-import { formatDate } from "../utils/format";
+import Icon from "../components/ui/Icon";
+import Modal from "../components/ui/Modal";
+import { formatDate, formatDateTime } from "../utils/format";
 
 // The roles in the order a bank would list them, with a name for one and for many.
 const ROLES = [
@@ -19,6 +22,109 @@ const ROLES = [
   { role: "admin", one: "Administrator", many: "Administrators" },
 ];
 const ROLE_NAME = Object.fromEntries(ROLES.map((r) => [r.role, r.one]));
+
+// Piece 28: the one system setting there is so far. OFF is what the app has
+// always done; ON is what Piece 31's real uploads will read.
+//
+// Switching it changes how the app behaves for every person using it, so it
+// asks first. The words for each position come from the server, which reads
+// them from rules.py — the screen never keeps its own copy of what a setting
+// means.
+function SettingsCard() {
+  const [setting, setSetting] = useState(null);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+  const [wanted, setWanted] = useState(null);   // the value the pop-up is asking about
+  const [busy, setBusy] = useState(false);
+
+  const load = useCallback(() => {
+    api.get("/admin/settings/real-uploads")
+      .then((res) => { setSetting(res.data); setError(""); })
+      .catch((err) => setError(errorMessage(err)));
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  const closeModal = useCallback(() => { if (!busy) setWanted(null); }, [busy]);
+
+  async function save() {
+    setBusy(true);
+    try {
+      const res = await api.put("/admin/settings/real-uploads", { enabled: wanted });
+      setSetting(res.data);
+      setNotice(wanted ? "Real document uploads are on." : "Real document uploads are off.");
+      setError("");
+      setWanted(null);
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  if (!setting) return null;
+
+  const on = setting.value;
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>Settings</h2>
+      </div>
+
+      <ErrorBanner message={error} onClose={() => setError("")} />
+      {notice && (
+        <div className="banner banner-ok">
+          <Icon name="check" size={16} />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      <div className="setting-row">
+        <label className="switch">
+          <input
+            type="checkbox"
+            checked={on}
+            onChange={(e) => setWanted(e.target.checked)}
+            aria-describedby="real-uploads-help"
+          />
+          <span className="switch-track" aria-hidden="true"><span className="switch-knob" /></span>
+          <span className="switch-label">{setting.label}</span>
+        </label>
+        <span className={on ? "pill pill-ok" : "pill"}>{on ? "On" : "Off"}</span>
+      </div>
+
+      <p className="muted" id="real-uploads-help">{on ? setting.on_text : setting.off_text}</p>
+
+      <p className="hint">
+        {setting.updated_by
+          ? `Last changed by ${setting.updated_by} on ${formatDateTime(setting.updated_at)}.`
+          : "Never changed. This is the setting the app started with."}
+      </p>
+
+      <Modal
+        open={wanted !== null}
+        onClose={closeModal}
+        title={wanted ? "Switch real document uploads on?" : "Switch real document uploads off?"}
+        tone={wanted ? "warn" : "default"}
+        footer={
+          <>
+            <Button type="button" onClick={closeModal} disabled={busy}>Go back</Button>
+            <Button type="button" variant="primary" loading={busy} onClick={save}>
+              {wanted ? "Switch on" : "Switch off"}
+            </Button>
+          </>
+        }
+      >
+        <p>{wanted ? setting.on_text : setting.off_text}</p>
+        <p className="muted">
+          This applies to everybody using the app, not just to you, and it is recorded in the
+          activity log with your name against it.
+        </p>
+      </Modal>
+    </div>
+  );
+}
 
 export default function Admin() {
   const [data, setData] = useState(null);
@@ -101,7 +207,7 @@ export default function Admin() {
             )}
           </div>
 
-          <p className="hint" style={{ marginTop: "1rem" }}>System settings will appear on this page.</p>
+          <SettingsCard />
         </>
       )}
     </>

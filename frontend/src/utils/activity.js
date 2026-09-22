@@ -34,6 +34,8 @@ export const ACTIONS = {
   edit_request_refused:  { text: "Edit request refused",     icon: "close" },
   application_edited:    { text: "Application edited",       icon: "refresh" },
   edit_request_closed:   { text: "Edit request closed",      icon: "info" },
+  // Piece 28: the administrator changing a system setting.
+  setting_changed:       { text: "Setting changed",          icon: "settings" },
 };
 
 export const describe = (action) => ACTIONS[action] || { text: label(action), icon: "info" };
@@ -49,6 +51,8 @@ export const DETAIL_LABELS = {
   ai_status: "AI status", arguments: "Details", tools: "Steps taken",
   applicant_id: "Applicant", amount_requested: "Amount", purpose: "Purpose",
   sources: "Manual extracts used",
+  // Piece 28. `key` is which setting changed; "from" and "to" are labelled above.
+  key: "Setting",
   decision: "Verdict", risk_score: "Risk score", agents_run: "Agents that ran",
   compliance_passed: "Compliance passed", errors: "What went wrong",
   // Piece 25

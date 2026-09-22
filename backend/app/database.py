@@ -118,7 +118,9 @@ def _install_database_checks() -> None:
     covers that case. The triggers are rebuilt on every startup, so they always
     carry today's numbers from `rules.py`. See `app/db_checks.py`.
     """
-    from app.db_checks import install_loan_application_checks
+    from app.db_checks import install_app_setting_checks, install_loan_application_checks
 
     with engine.begin() as conn:
         install_loan_application_checks(conn)
+        # Piece 28: only a setting the app knows about may be stored.
+        install_app_setting_checks(conn)

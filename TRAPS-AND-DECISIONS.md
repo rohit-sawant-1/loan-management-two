@@ -219,6 +219,13 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-120 · The manual has always promised document uploads the code never did.**
+Section 4 says documents must be PDF, JPG or PNG and under 5 MB, and Section 3
+says the customer "uploads" them. The app has only ever recorded a type and a
+file name — no file is stored anywhere. Found while writing Piece 28's manual
+change. Section 4 now says so plainly, and Piece 31 makes the original promise
+true. Same family as T-113 (the encryption the manual promises).
+
 **T-119 · Gemini is much slower late at night.** Rohit's own measurement,
 2026-09-22/23: at 3pm a normal chat answer came back in 3 to 8 seconds and only
 the manual ones took 70+; at midnight everything took about 75 seconds, and the

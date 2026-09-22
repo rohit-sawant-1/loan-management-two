@@ -791,6 +791,26 @@ input[type="checkbox"], input[type="radio"] {
 .pill-ai { background: #ede9fe; color: #5b21b6; }
 .pill-warn { background: var(--warn-bg); color: var(--warn-ink); }
 .pill-ok { background: var(--ok-bg); color: var(--ok-ink); }
+/* The administrator's settings (Piece 28): one row per setting, with a switch
+   built from a plain checkbox so it stays keyboard- and screen-reader-friendly. */
+.setting-row { display: flex; align-items: center; gap: 0.75rem; margin-bottom: 0.4rem; }
+.switch { display: inline-flex; align-items: center; gap: 0.6rem; cursor: pointer; margin: 0; }
+/* The real checkbox is hidden from sight but still there for the keyboard. */
+.switch input { position: absolute; opacity: 0; width: 0; height: 0; }
+.switch-track {
+  position: relative; width: 42px; height: 24px; border-radius: 999px;
+  background: #cbd5e1; transition: background var(--ease); flex: none;
+}
+.switch-knob {
+  position: absolute; top: 3px; left: 3px; width: 18px; height: 18px;
+  border-radius: 50%; background: #fff; transition: transform var(--ease);
+  box-shadow: 0 1px 2px rgba(15, 23, 42, 0.35);
+}
+.switch input:checked + .switch-track { background: var(--ok-ink); }
+.switch input:checked + .switch-track .switch-knob { transform: translateX(18px); }
+.switch input:focus-visible + .switch-track { outline: 2px solid var(--focus); outline-offset: 2px; }
+.switch-label { font-weight: 550; }
+
 /* Where an action would be, for the administrator (Piece 27). */
 .view-only {
   display: inline-flex; align-items: center; gap: 0.35rem;

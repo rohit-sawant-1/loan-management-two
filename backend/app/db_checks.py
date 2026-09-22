@@ -81,3 +81,34 @@ def install_loan_application_checks(connection) -> None:
             f"CREATE TRIGGER {name} BEFORE {event} ON loan_applications "
             f"FOR EACH ROW BEGIN {body} END"
         ))
+
+
+# The same idea for `app_settings` (Piece 28): only a key the app knows about
+# may be stored. Rebuilt on every startup, so a setting added to `rules.py`
+# later is allowed without touching the database by hand.
+APP_SETTING_TRIGGERS = {
+    "app_settings_check_insert": "INSERT",
+    "app_settings_check_update": "UPDATE",
+}
+
+
+def _app_setting_rules() -> str:
+    return f"""
+        SELECT CASE
+            WHEN NEW.key NOT IN ({quoted_list(rules.SETTING_KEYS)})
+                THEN RAISE(ABORT, 'key is not a known setting')
+        END;
+    """
+
+
+def install_app_setting_checks(connection) -> None:
+    """Drop and rebuild the `app_settings` triggers from today's registry."""
+    if connection.dialect.name != "sqlite":
+        return
+    body = _app_setting_rules()
+    for name, event in APP_SETTING_TRIGGERS.items():
+        connection.execute(text(f"DROP TRIGGER IF EXISTS {name}"))
+        connection.execute(text(
+            f"CREATE TRIGGER {name} BEFORE {event} ON app_settings "
+            f"FOR EACH ROW BEGIN {body} END"
+        ))

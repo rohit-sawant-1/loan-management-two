@@ -5,6 +5,7 @@
 import { useState } from "react";
 import { api, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import { useSettings } from "../settings/useSettings";
 import ErrorBanner from "./ErrorBanner";
 import ViewOnly from "./ViewOnly";
 import Button from "./ui/Button";
@@ -14,6 +15,9 @@ import { formatDate, label } from "../utils/format";
 
 export default function DocumentChecklist({ applicationId, data, onChange }) {
   const { isStaff, isAdmin } = useAuth();
+  // Piece 28: the admin's switch. OFF is exactly the form below; ON adds a
+  // line saying so, until Piece 31 builds the real upload screen.
+  const { realUploads } = useSettings();
   const [docType, setDocType] = useState("id_proof");
   const [fileName, setFileName] = useState("");
   const [fieldError, setFieldError] = useState("");
@@ -117,6 +121,15 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
         <ViewOnly>View only. The administrator can't add documents.</ViewOnly>
       ) : (
         <form onSubmit={addDocument} noValidate>
+          {realUploads && (
+            <div className="banner banner-warn" style={{ marginBottom: "0.6rem" }}>
+              <Icon name="info" size={16} />
+              <span>
+                Real document uploads are switched on, but the upload screen is still being
+                built. Documents are recorded by name until it is finished.
+              </span>
+            </div>
+          )}
           <div className="toolbar" style={{ marginBottom: "0.35rem" }}>
             <label>
               Document type

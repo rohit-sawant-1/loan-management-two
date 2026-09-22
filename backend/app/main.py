@@ -25,7 +25,7 @@ from app.database import engine, init_db                     # noqa: E402
 from app.middleware.logging_middleware import logging_middleware  # noqa: E402
 from app.routers import (                                     # noqa: E402
     activity, admin, applicants, applications, auth, briefing, chat, dashboard, documents,
-    edit_requests, eligibility,
+    edit_requests, eligibility, settings as settings_router,
 )
 from app.utils.logging_config import configure_logging       # noqa: E402
 from app.utils.otel_config import instrument_sqlalchemy, setup_telemetry  # noqa: E402
@@ -85,6 +85,8 @@ app.include_router(dashboard.router, prefix="/api/v1/dashboard", tags=["dashboar
 app.include_router(activity.router, prefix="/api/v1/activity", tags=["activity"])
 # Piece 27: the System Administrator's own screens.
 app.include_router(admin.router, prefix="/api/v1/admin", tags=["admin"])
+# Piece 28: every signed-in screen reads the settings; only the admin changes them.
+app.include_router(settings_router.router, prefix="/api/v1/settings", tags=["settings"])
 # The headline feature (D-13): the manager's morning briefing.
 app.include_router(briefing.router, prefix="/api/v1/briefing", tags=["briefing"])
 # The one chat door. What sits behind it grows with each phase; the address does not.

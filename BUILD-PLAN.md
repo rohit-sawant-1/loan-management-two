@@ -1549,6 +1549,14 @@ sign in as the admin and type *"change application 21 to under review"*.
 - **D10**: if the switch is turned OFF after real files exist, what happens? Recommended: existing files stay viewable, and only *new* uploads go back to name-only. Confirm when Piece 31 is built.
 - **Who sees the current mode:** everyone needs to *read* it (the form changes), and only the admin can *change* it.
 
+**Status: built 2026-09-23, tag `v2.11.0`.** Where the build differs from the plan below:
+- **The words for each position live in `rules.SETTINGS`** (`off_text`, `on_text`) and are served with the setting, so the screen has no second copy of what the switch means. A new read address, `GET /api/v1/admin/settings/real-uploads` (admin only), carries them along with who changed it and when — the plan's screen needed that and had nowhere to get it.
+- **The key check is a trigger, not a CHECK rule in the table.** A CHECK rule is baked in when the table is created, so a database made today would refuse a setting added in Piece 31, and SQLite can't alter a CHECK without rebuilding the table. The trigger is rebuilt from the registry on every startup. Piece 25's table could use a CHECK because its list of statuses never grows; this list is meant to.
+- **The body takes `StrictBool`.** Plain `bool` in Pydantic accepts `"yes"`, `"true"` and `1`. A switch that changes the app for everybody takes `true` or `false` and nothing else. Two tests were failing until this changed, which is how it was found.
+- **The manual gained a sentence** in Section 4 saying documents are recorded by name today and the file itself is not stored yet (Rule 12). It has always promised PDF/JPG/PNG uploads under 5 MB, which the code has never done — see T-120.
+- **`entity_type="setting"`** was added to the activity page's filter list, so a manager can search for setting changes.
+- **Not tried against a live Gemini.** Rohit asked to skip AI testing that night (T-119). The manual was re-ingested: 56 chunks.
+
 ### What exists
 There's no settings table and no settings screen. There's nowhere to store an app-wide flag; `.env` is per-machine and needs a restart.
 
@@ -2233,3 +2241,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 25 | Edit requests: customers ask, staff approve or refuse, every step logged; the database checks its own rules for applications | 2026-09-22 | `v2.5.0` to `v2.9.0` |
 | 27 | Admin role: a System Administrator that sees everything and can't do loan business | 2026-09-22 | `v2.10.0` |
 | 27a | What the assistant says to the admin: a third prompt, so it stops talking to the admin like a customer | 2026-09-23 | `v2.10.1` |
+| 28 | Admin settings, and the switch for real document uploads | 2026-09-23 | `v2.11.0` |

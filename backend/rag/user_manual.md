@@ -59,7 +59,10 @@ which money actually leaves the bank.
 rather than the lending. The administrator may view every customer, every loan
 application, every document, every request to change an application, the
 dashboard, the full activity log, and the list of every user account and its
-role. The administrator **cannot do any loan business**: it cannot create
+role. The administrator also manages the system's own settings, such as whether
+customers upload real document files; only the administrator can change a
+setting, and every change is recorded in the activity log.
+The administrator **cannot do any loan business**: it cannot create
 an application or a borrower profile, add or verify a document, move, approve,
 reject or disburse an application, or approve or refuse a change request. The
 administrator is not a branch manager and cannot run the underwriting review.
@@ -108,6 +111,11 @@ system are `id_proof`, `income_proof`, `bank_statement`, `property_docs`,
 (`id_proof`, `income_proof`, `bank_statement`), plus:
 
 - `vehicle_quotation` — a vehicle quotation or proforma invoice from the dealer
+
+**How documents are recorded today.** The system records each document's type
+and file name; the file itself is not stored yet. The system administrator can
+switch real file uploads on once that part of the system is finished, and the
+format and size rules below apply from that point.
 
 Documents must be in PDF, JPG or PNG format and each file must be no larger
 than 5 MB. The same document type may be uploaded more than once; every copy is
