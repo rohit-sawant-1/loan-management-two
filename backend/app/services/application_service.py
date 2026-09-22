@@ -18,7 +18,7 @@ from app.models.application import ApplicationStatus, LoanApplication, LoanType
 from app.models.status_history import StatusHistory
 from app.models.user import User, UserRole
 from app.schemas.application import CreateApplicationSchema
-from app.services import activity_service, eligibility_service
+from app.services import activity_service, edit_request_service, eligibility_service
 from app.services.errors import Forbidden, NotFound, RuleViolation
 from app.utils.finance import format_rupees
 
@@ -286,6 +286,10 @@ def update_status(
         details={"from": old_status.value, "to": new_status.value, "remarks": remarks},
         **(meta or {}),
     )
+    # Piece 25: once the application leaves "submitted" or "under review", an
+    # edit request that is still waiting or unlocked can never be used, so it
+    # is closed now, in the same commit as the status change.
+    edit_request_service.close_open_requests(db, application, user=user, meta=meta)
     db.commit()
     db.refresh(application)
     logger.info("status_updated", operation="update_status", application_id=application.id,

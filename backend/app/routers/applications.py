@@ -18,7 +18,8 @@ from app.schemas.application import (
     ApplicationListResponse, ApplicationResponse, ApplicationSummary,
     CreateApplicationSchema, StatusUpdateRequest,
 )
-from app.services import application_service
+from app.schemas.edit_request import ApplicationEditBody
+from app.services import application_service, edit_request_service
 from app.services.activity_service import request_meta
 from app.services.errors import Forbidden, NotFound, RuleViolation
 
@@ -120,6 +121,29 @@ def get_application(
         return application_service.get_application(db, application_id, viewer=user)
     except (NotFound, Forbidden) as e:
         raise _http(e)
+
+
+@router.patch("/{application_id}", response_model=ApplicationResponse)
+def edit_application(
+    application_id: int,
+    data: ApplicationEditBody,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """
+    Piece 25: the customer saves an edit that bank staff approved. Only the
+    fields they were approved to change, only once, and only while the
+    application is still submitted or under review. Everything else is refused.
+    """
+    try:
+        application = edit_request_service.apply_edit(
+            db, application_id, data, user=user, meta=request_meta(request)
+        )
+    except (NotFound, Forbidden, RuleViolation) as e:
+        raise _http(e)
+    # Reload with relationships so the response carries history and documents.
+    return application_service.get_application(db, application.id, viewer=user)
 
 
 @router.patch("/{application_id}/status")

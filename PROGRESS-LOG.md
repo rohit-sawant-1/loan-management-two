@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-22 — Piece 25 step 2: edit requests work end to end on the server
+
+**Asked for:** "go" on step 2, the part that makes asking, approving, refusing and saving actually work.
+**Built:** `edit_request_service.py` with the whole flow, plus five new addresses: ask, read, the staff queue, approve and refuse. `PATCH /applications/{id}` saves an approved edit. A status change now also closes any request still waiting or unlocked, in the same save. 28 new API tests; the suite is 285 passing (257 before), the trainer's 20 still pass, and Phase 4's eight tool tests pass against the new code.
+**Found:** nothing broke, but one design point is worth knowing. A refused save (for example, 72 months on a personal loan) does *not* use up the approval, so the customer can fix the number and try again. Only a successful save locks editing.
+**Realised:** every step lands in the activity log under the application's number: `edit_requested`, `edit_request_approved`, `edit_request_refused`, `application_edited` (with the before and after values and the old eligibility result) and `edit_request_closed`.
+**Next:** Piece 25 step 3, the customer's side in React: the "Request an edit" card on the application page, the two-step pop-up, the unlocked-fields form, and the support-email note.
+
+---
+
 ## 2026-09-22 — Piece 25 step 1: the groundwork for edit requests, and the database now checks its own rules
 
 **Asked for:** your top priority, B1. Let a customer ask to change a submitted application, have staff approve or refuse, and log every step. Then, while planning, you asked whether every input field is validated, and wanted checks on all three layers: the form, the server and the database.
