@@ -4,6 +4,22 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-22 — Piece 25 finished: edit requests on screen, in the manual, and in the chatbot
+
+**Asked for:** no more step-by-step and no quizzes. Finish the edit feature.
+**Built:** steps 3 to 5 in one go.
+- **Customer:** a "Changes to this application" card on their page. It has the two-step pop-up, the unlocked-fields form, the refusal reason, and the support@bank.com note.
+- **Staff:** a new "Edit requests" page with filters and approve/refuse pop-ups.
+- **Activity page:** the five new events have labels, and edits read "Amount (before) / (after)".
+- **Manual:** updated in five places, plus the T-102 fix, then re-ingested (50 chunks).
+
+The front end builds, and the suite is 286 passing.
+**Found:** the chatbot answered "how do I contact the bank staff?" by refusing it as off-topic and inventing a customer service hotline (T-106). It now searches the manual and says support@bank.com. The first question, "can I change my application?", was right straight away. Both answers took about 55–65 seconds, which is B2's slowness, not something new.
+**Realised:** checking was build, lint, API tests and asking the real chatbot; I didn't click through the screens in a browser. The Wipro laptop needs a pull, a backend restart and a re-ingest before it shows any of this (T-107).
+**Next:** Piece 26 (database checks for the other tables), or B2 (the 65-second answers) if the demo is close. Your call.
+
+---
+
 ## 2026-09-22 — Piece 25 step 2: edit requests work end to end on the server
 
 **Asked for:** "go" on step 2, the part that makes asking, approving, refusing and saving actually work.

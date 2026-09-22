@@ -215,7 +215,8 @@ def get_dashboard_summary() -> str:
 def search_loan_policy(query: str) -> str:
     """Use this for any question about the BANK'S POLICY rather than a
     specific application: eligibility rules, required documents, interest
-    rates, fees, processing times, or how the loan process works. This is
+    rates, fees, processing times, how the loan process works, how to change
+    an application after submitting it, or how to contact the bank. This is
     the only tool that knows the content of the bank's user manual. Do not
     use this for questions about a specific application's status."""
     def run():

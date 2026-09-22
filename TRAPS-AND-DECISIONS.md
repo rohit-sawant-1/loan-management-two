@@ -219,6 +219,22 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-106 · The chatbot treated "how do I contact the bank?" as out of scope, and made up a hotline.**
+Found 2026-09-22 while checking Piece 25. The agent's prompt told it to refuse
+anything not about loans, so it never searched the manual and answered "call
+our customer service hotline", a number that doesn't exist. Fixed in
+`agent/prompts.py` (contact questions go to the manual; never invent phone
+numbers, websites or emails) and in the `search_loan_policy` description. It
+now answers "support@bank.com" from the manual. Worth remembering for any new
+kind of question: if the prompt's scope rule doesn't mention it, the agent may
+refuse it instead of searching.
+
+**T-107 · The Wipro laptop needs a `git pull` and its own re-ingest before it
+shows Piece 25.** Its `chroma_db/` still holds the old manual ("cannot be
+modified after submission"), and its database lacks the new table until the
+backend restarts on the new code. Steps: pull, restart the backend (it creates
+the table and triggers by itself), then `venv\Scripts\python.exe -m rag.ingest`.
+
 **T-105 · SQLite checked almost nothing by itself before Piece 25.**
 Found 2026-09-22. It ignores `VARCHAR(500)` (a 5,000-character purpose would
 have been stored), it doesn't check that a status or loan type is a real one,
@@ -246,7 +262,7 @@ has an input, so it has never shown. The edit-request pop-up does, so its
 `chunk_1`, ...) and overwrites them, but never deletes ids past the new count.
 If an edit makes the manual shorter, the old tail chunks stay searchable. For
 Piece 25 that would mean the old "cannot be modified after submission" text
-lives on, and the chatbot could still quote it. Fixed in Piece 25 step 5.
+lives on, and the chatbot could still quote it. **Fixed 2026-09-22** (Piece 25 step 5): ingestion now deletes any id not in the new set. Tested offline in `tests/ours/test_ingest_stale_chunks.py`.
 
 **T-101 · A review only works when the backend is on port 8000.**
 Found 2026-09-11 while verifying the audit fixes against a running server. The

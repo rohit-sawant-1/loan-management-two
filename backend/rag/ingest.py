@@ -178,6 +178,15 @@ def ingest_manual(path: str = DEFAULT_MANUAL, force: bool = False) -> int:
                         reason="manual unchanged since last ingestion")
         else:
             store.add_documents(documents=chunks, ids=ids)
+            # Fixed ids overwrite, but they never delete (T-102). If the manual
+            # got shorter, the old chunks past the new end would stay in the
+            # collection, and a question could still find text that is no longer
+            # in the manual. So anything not in today's set of ids is removed.
+            stale = sorted(set(raw.get(include=[])["ids"]) - set(ids))
+            if stale:
+                raw.delete(ids=stale)
+                logger.info("rag_stale_chunks_removed", operation="embed",
+                            collection=collection, removed=len(stale))
             raw.modify(metadata={"manual_fingerprint": fingerprint,
                                  "embed_model": info["embed_model"]})
             total = raw.count()

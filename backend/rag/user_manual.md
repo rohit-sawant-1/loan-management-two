@@ -35,7 +35,9 @@ LAMS has three kinds of user, and each sees a different part of the system.
 
 **Applicant (the customer).** An applicant may submit loan applications, upload
 documents against their own applications, view their own application status and
-history, and check their eligibility before applying. An applicant **cannot see
+history, check their eligibility before applying, and ask to change their own
+application while it is still `submitted` or `under_review` (see Section 6). An
+applicant **cannot see
 any other applicant's data**. Attempting to open another customer's application
 returns a "forbidden" error. This is enforced by the server on every request,
 not merely hidden in the screens.
@@ -43,7 +45,8 @@ not merely hidden in the screens.
 **Loan Officer (bank staff).** A loan officer may view all loan applications
 from every customer, create borrower profiles on a customer's behalf, move an
 application from `submitted` to `under_review`, approve or reject an application
-under review, add remarks explaining a decision, and verify uploaded documents.
+under review, add remarks explaining a decision, verify uploaded documents, and
+approve or refuse a customer's request to change their application.
 A loan officer **cannot disburse a loan** — that is, cannot release the money.
 
 **Branch Manager.** A branch manager may do everything a loan officer can do,
@@ -178,8 +181,30 @@ submit a brand-new application. Only a branch manager may perform the
 `approved` → `disbursed` move. Every status change is recorded in the audit log
 with who made it, when, and the remarks they wrote.
 
-Applications **cannot be modified after submission**. If the details are wrong,
-the customer withdraws the application and submits a new one.
+### Changing an application after it is submitted
+
+A customer can ask to change the **amount**, the **tenure** or the **purpose** of
+their application, but only while its status is `submitted` or `under_review`.
+Once an application is approved, rejected or disbursed, it can no longer be
+changed. The **loan type can never be changed**: if the wrong loan type was
+chosen, the customer submits a new application.
+
+Changing an application takes three steps:
+
+1. On the application's page, the customer presses **Request an edit**, ticks the
+   details they want to change, and writes why (10 to 1,000 characters).
+2. A loan officer or the branch manager reviews the request and either approves
+   it or refuses it. A refusal always includes a reason, which the customer sees
+   on the application's page.
+3. If the request is approved, the customer can change the details they asked
+   for, **once**. The new figures must meet the same limits as a new
+   application, and the bank checks eligibility again automatically with the
+   new figures.
+
+Only one request can be open on an application at a time. If the application is
+approved or rejected while a request is still waiting, the request is closed
+automatically. Every request, every decision and every change is recorded in
+the audit log.
 
 ---
 
@@ -289,8 +314,12 @@ a CIBIL score below the threshold, incomplete or unverified documents, and
 problems with the property valuation on a home loan.
 
 **Can I change my application after submitting it?**
-No. Applications cannot be modified after submission. Withdraw the application
-and submit a new one with the correct details.
+Yes, while it is still `submitted` or `under_review`. Open the application, press
+**Request an edit**, choose what to change (the amount, the tenure or the
+purpose) and explain why. A loan officer or the branch manager approves or
+refuses the request. If they approve it, you can make the change once. The loan
+type cannot be changed, and an application that has been approved, rejected or
+disbursed cannot be changed at all. See Section 6 for the full steps.
 
 **How long must I have been in my job?**
 Salaried applicants need at least **6 months** with their current employer.
@@ -334,6 +363,11 @@ status and a full history of every change, with the date and the remarks.
 A loan officer reviews it and approves or rejects it. If it is approved, a branch
 manager releases the funds.
 
+**How do I contact the bank staff?**
+Email **support@bank.com** with any question about your application. To change
+the details of an application, use **Request an edit** on the application's page
+instead: that request goes straight to the loan officers and the branch manager.
+
 ---
 
 ## Section 12 — Troubleshooting
@@ -356,6 +390,13 @@ the order given in Section 6. A rejected or disbursed application cannot move at
 all.
 
 **I am locked out.** Sessions expire after 24 hours. Sign in again.
+
+**I cannot change my application.** Changes are only possible while the
+application is `submitted` or `under_review`, and only after bank staff approve
+your edit request. Each approval allows one change. See Section 6.
+
+**Contacting the bank.** For any question the app does not answer, email
+**support@bank.com**.
 
 ---
 
