@@ -18,6 +18,7 @@ import { api, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import ActivityDetails from "../components/ActivityDetails";
 import DocumentChecklist from "../components/DocumentChecklist";
+import EditRequestCard from "../components/EditRequestCard";
 import ErrorBanner from "../components/ErrorBanner";
 import Spinner from "../components/Spinner";
 import StatusBadge from "../components/StatusBadge";
@@ -66,7 +67,7 @@ function Money({ value, suffix = "" }) {
 
 export default function ApplicationDetail() {
   const { id } = useParams();
-  const { isStaff, isManager } = useAuth();
+  const { isApplicant, isStaff, isManager } = useAuth();
   const [app, setApp] = useState(null);
   const [docs, setDocs] = useState(null);
   const [activity, setActivity] = useState([]);
@@ -157,6 +158,9 @@ export default function ApplicationDetail() {
   const options = (NEXT[app.status] || []).filter((s) => isManager || !MANAGER_ONLY.has(s));
   const managerNeeded = (NEXT[app.status] || []).some((s) => MANAGER_ONLY.has(s)) && !isManager;
   const readyDocs = docs ? (docs.missing?.length ?? 0) === 0 : null;
+  // The server adds this line when an approved edit re-checked eligibility
+  // (RECHECK_LINE in backend/app/services/edit_request_service.py).
+  const rechecked = (app.eligibility_summary || "").includes("Re-checked after an approved edit");
 
   return (
     <>
@@ -216,19 +220,25 @@ export default function ApplicationDetail() {
             </div>
           )}
 
+          {/* Piece 25: the customer asks to change the application here. */}
+          {isApplicant && <EditRequestCard app={app} onSaved={load} />}
+
           {/* Piece 19: the server's own eligibility assessment, taken at the
-              moment of submission and never changed afterwards — a permanent
-              record of what the bank knew and what its rules said. */}
+              moment of submission. Since Piece 25 an approved edit re-checks it
+              with the new figures; the stored text then ends with a line
+              saying so, and the old assessment stays in the activity log. */}
           {app.eligibility_summary && (
             <div className="card">
               <div className="card-head">
-                <h2>Eligibility at submission</h2>
+                <h2>{rechecked ? "Eligibility, re-checked after an edit" : "Eligibility at submission"}</h2>
                 <span className={app.eligibility_passed ? "pill pill-ok" : "pill pill-warn"}>
                   {app.eligibility_passed ? "Passed" : "Did not pass"}
                 </span>
               </div>
               <p className="muted" style={{ marginTop: 0 }}>
-                Assessed automatically by the server when this application was submitted
+                {rechecked
+                  ? "Assessed again automatically by the server after an approved edit changed the figures"
+                  : "Assessed automatically by the server when this application was submitted"}
                 {app.eligibility_checked_at ? `, on ${formatDateTime(app.eligibility_checked_at)}` : ""}.
                 This is the bank's own record, separate from anything shown to the applicant
                 while filling in the form.
