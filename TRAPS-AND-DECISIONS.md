@@ -244,7 +244,9 @@ edit-request table (CHECK rules), all built from `rules.py` in
 `backend/app/db_checks.py`. The other tables still have none. That's Piece 26.
 
 **T-104 · The support address lives in two places.** `support@bank.com` is a
-placeholder, shown on the customer's application page (`SUPPORT_EMAIL` in
+placeholder for the **loan officers' inbox**, for writing to staff directly. It is
+not a help address: the page and the manual both send questions to the Assistant
+first (Rohit, 2026-09-22). It is shown on the customer's application page (`SUPPORT_EMAIL` in
 `frontend/src/utils/editRequests.js`, Piece 25 step 3) and written in the user
 manual so the chatbot can quote it (step 5). When the real address is known,
 change both together and re-ingest the manual, or the chatbot and the screen

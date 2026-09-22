@@ -16,6 +16,7 @@
 // function on every keystroke would pull the cursor out of the box (T-103).
 
 import { useCallback, useEffect, useState } from "react";
+import { Link } from "react-router-dom";
 import { api, errorMessage } from "../api/client";
 import {
   EDITABLE_FIELDS, FIELD_LABELS, REASON_MAX, REASON_MIN, REQUEST_STATUS, SUPPORT_EMAIL,
@@ -244,11 +245,15 @@ export default function EditRequestCard({ app, onSaved }) {
         </>
       )}
 
+      {/* Questions go to the Assistant first: it answers from the bank's manual
+          and can read this application. The email is only for writing to the
+          loan officers' inbox directly, for anything the Assistant can't settle. */}
       <p className="support-note">
         <Icon name="info" size={15} />
         <span>
-          Questions about your application? Contact{" "}
-          <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
+          Have a question? <Link to="/assistant">Ask the Assistant</Link>. It can explain the
+          bank's rules and tell you where this application stands. To write to the loan
+          officers directly, email <a href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>.
         </span>
       </p>
 

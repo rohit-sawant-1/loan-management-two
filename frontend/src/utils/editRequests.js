@@ -22,8 +22,10 @@ export const REASON_MAX = 1000;
 export const NOTE_MIN = 10;
 export const NOTE_MAX = 1000;
 
-// A placeholder until the bank has a real address. The user manual quotes the
-// same address so the chatbot gives it too; change both together (T-104).
+// The loan officers' inbox, for writing to staff directly. Questions go to the
+// Assistant first; this is not a general help address. A placeholder until the
+// bank has a real one. The user manual quotes the same address so the chatbot
+// gives it too; change both together (T-104).
 export const SUPPORT_EMAIL = "support@bank.com";
 
 // How each request status reads on screen, and the pill colour it gets.

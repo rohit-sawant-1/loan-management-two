@@ -364,9 +364,12 @@ A loan officer reviews it and approves or rejects it. If it is approved, a branc
 manager releases the funds.
 
 **How do I contact the bank staff?**
-Email **support@bank.com** with any question about your application. To change
-the details of an application, use **Request an edit** on the application's page
-instead: that request goes straight to the loan officers and the branch manager.
+For questions, ask the **Assistant** in the app first. It answers from this
+manual and can tell you where your application stands. To write to the loan
+officers directly, email **support@bank.com**, the loan officers' inbox. To
+change the details of an application, use **Request an edit** on the
+application's page instead: that request goes straight to the loan officers and
+the branch manager.
 
 ---
 
@@ -395,8 +398,8 @@ all.
 application is `submitted` or `under_review`, and only after bank staff approve
 your edit request. Each approval allows one change. See Section 6.
 
-**Contacting the bank.** For any question the app does not answer, email
-**support@bank.com**.
+**Contacting the bank.** Ask the Assistant in the app first. To write to the
+loan officers directly, email **support@bank.com**.
 
 ---
 
