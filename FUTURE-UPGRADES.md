@@ -118,3 +118,23 @@ Left out of Piece 25 on purpose (2026-09-22), so the base feature gets finished 
 | Ask for, approve and refuse edit requests from the chatbot | Natural next step once Piece 25 works on screen | Needs a new write tool with the YES confirmation, an MCP handler, and permission checks. The manual update in Piece 25 already lets the chatbot *explain* the process. | Small |
 | Edit requests in the Streamlit front-end | Keeping the two front-ends level | Rule 5: React first, then decide if Streamlit needs it | Small |
 | A count of waiting requests next to "Edit requests" in the sidebar | Came up planning Piece 25 | One extra request on every page load; nice, not needed | Tiny |
+
+## Document intelligence — production hardening (from the 2026-09-22 plan)
+
+Deliberately left out of Pieces 27–38, which build only what the demo needs. These are what a real bank would add.
+
+| Idea | Why it waits | Size |
+|---|---|---|
+| Antivirus or sandbox scanning of uploads (ClamAV) | Not practical on this Windows laptop; the "rebuild every file" step covers most of the risk for the demo | Medium |
+| Object storage (S3 or Azure Blob) instead of a folder, and PostgreSQL instead of SQLite | Needs a server; Piece 31 keeps a small storage interface so it's a swap later | Large |
+| Encryption keys in a key vault instead of `.env` | Needs cloud infrastructure | Medium |
+| Retention and deletion schedules for documents (DPDP Act) | A policy decision for a real bank | Medium |
+| **DigiLocker** for fetching genuine Aadhaar/PAN with the customer's consent, and the **RBI Account Aggregator** for genuine bank statements | Real authenticity, but needs registration as a regulated partner | Large |
+| PAN verification through Protean/NSDL | Needs registration as an entity | Medium |
+| A paid Gemini tier or a bank-hosted model, so REAL documents could be read by AI | Google's free tier may use the data (T-108) | Setting change + contract |
+| Server-Sent Events instead of polling for notifications | Polling every 30 seconds is enough for the demo | Small |
+| Notifications for more events, and email or SMS | Only three triggers were asked for | Small each |
+| Tamper detection on scans (edited fonts, doctored metadata) | Hard to do honestly; it can only ever flag, never prove | Large |
+| Flagging the same file uploaded by two different customers | The fingerprint is stored from Piece 31; the check itself is for later | Small |
+| Letting staff attach documents in chat on a customer's behalf | Piece 37 starts with customers only | Small |
+| Admin reading other people's chat history | Kept private for now | Small |

@@ -219,6 +219,49 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-115 · Staff sign-up accepts a role, so an "admin" could register themselves.**
+Found 2026-09-22 while planning Piece 27. `POST /auth/register` takes an optional
+`role` and only refuses `applicant` and `branch_manager`
+(`auth_service.py:42-45`). The moment `UserRole.admin` exists, it must refuse
+`admin` too. That's in Piece 27's plan.
+
+**T-114 · Aadhaar numbers may not be stored in full.** UIDAI requires the first 8
+digits to be masked before any copy is stored. Store `XXXX XXXX 1234` only, and
+black out those digits on stored images, TEST documents included. Pieces 33–34.
+
+**T-113 · The manual promises encryption that doesn't exist.** Section 10 says
+"Financial data is encrypted at rest." Nothing is encrypted today. Piece 31
+encrypts uploaded files and corrects the manual's wording (a Rule 12 conflict
+until then).
+
+**T-112 · The project lives inside OneDrive.** Everything in it, including
+`loan_app.db` today, is copied to Microsoft's cloud automatically. Rohit will
+move the folder. Uploaded files must go to `UPLOAD_DIR` from `.env`, outside
+the project, whatever happens (Piece 31).
+
+**T-111 · The chat's document tool description lists only 5 types.** The MCP
+`upload_document_metadata` docstring (`mcp_server/mcp_app.py:173`) leaves out
+`vehicle_quotation`. It's harmless (the API accepts it), but the AI may think
+auto loans can't get that document.
+
+**T-110 · Customer-typed text reaches the AI unmarked.** The loan purpose goes
+straight into the chatbot's application lookup (`agent/tools.py:143`). A
+customer could write instructions there ("ignore your rules…"). The fix is
+"spotlighting": wrap customer text in clear markers and tell the agent that it's
+information, never instructions. Worth doing alongside Piece 37.
+
+**T-109 · Existing EMIs have no upper limit at signup.** `existing_monthly_emi`
+is only `>= 0`. A typo can put in any size of number, and it moves
+affordability (D-27). A Piece 26 item.
+
+**T-108 · Gemini's free tier and personal data.** Google's terms for unpaid use
+say it may use what we send to improve its products, people may read it, and
+"Do not submit sensitive, confidential, or personal information." The chatbot
+already sends seed customers' names, incomes and CIBIL scores. Fine for fake
+data, but **no REAL document (image or text) goes to Gemini** (settled
+2026-09-22). TEST documents may. A paid tier or a private model would change
+this, as one setting.
+
 **T-106 · The chatbot treated "how do I contact the bank?" as out of scope, and made up a hotline.**
 Found 2026-09-22 while checking Piece 25. The agent's prompt told it to refuse
 anything not about loans, so it never searched the manual and answered "call
@@ -931,6 +974,36 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 ---
 
 # Settled
+
+### 2026-09-22 · The Document intelligence programme (Pieces 27–38): decisions
+Planned over several rounds with Rohit. The full detail is in `BUILD-PLAN.md`.
+- **Order:** 27 Admin → 28 settings switch → 29 top bar → 30 notifications →
+  31 real uploads → 32 TEST documents → 33 kinds and fields → 34 reading
+  documents → 35 several at once → 36 chat history → 37 documents in chat →
+  38 the form in chat. One at a time, each checked in the browser first.
+- **Admin = System Administrator:** sees the whole system and administers it,
+  but has **no loan-business authority** (no creating, approving, rejecting,
+  disbursing or changing loan records) and is not a branch manager. It's done
+  by sorting every address into VIEW or ACT, **not** by adding admin to
+  `STAFF_ROLES`.
+- **Notifications are a completely separate system** from the activity log.
+  They're the app's own (no email, SMS or push). Only three triggers: staff
+  when a customer asks to edit a submitted application, staff when a customer
+  uploads a TEST document, and an applicant when their own application's status
+  changes.
+- **TEST documents count** towards the checklist, always visibly ("4/4
+  submitted, including 2 TEST documents"). Submitted, identified, TEST and
+  verified stay four separate facts. **Identification is not authenticity.**
+- **No Ollama or local LLM.** Gemini is the only LLM. Local non-AI processing is
+  preferred. **REAL documents never go to Gemini** by default; TEST may (T-108).
+- **Storage:** SQLite for the details, and files in a folder outside the
+  project, encrypted. **No MongoDB.** Production would be PostgreSQL plus object
+  storage.
+- **Security is proportional:** must-haves are built, and production hardening
+  is in `FUTURE-UPGRADES.md`.
+- **Extracted data never overwrites the profile**; only Piece 24's approval can.
+- **Piece 24 (profile changes):** the customer proposes values and staff
+  approve; proof documents are required, so it's built after Pieces 31–34.
 
 ### 2026-09-22 · D-28 — Customers may edit an application after submitting it
 **Answer: yes, the trainer asked for this change himself.** This goes against

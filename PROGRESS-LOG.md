@@ -4,6 +4,28 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-22 — Planned the Document intelligence programme (Pieces 27–38); nothing built
+
+**Asked for:** first Piece 24 (profile changes). It grew into real document uploads, then reading documents, a demo/real switch for a new Admin role, TEST documents, notifications, a top navigation bar, several documents at once, and documents and history in the chatbot. You asked for it all to be planned in detail as separate pieces, which you'll implement yourself, one at a time.
+**Built:** no code. Pieces 27–38 are written into `BUILD-PLAN.md`, each with its goal, what exists today, the data, the addresses, the screens, the tests and a browser check, plus the build order. Decisions are in `TRAPS-AND-DECISIONS.md` (Settled), the new traps are T-108 to T-115, and production hardening is in `FUTURE-UPGRADES.md`.
+**Found:**
+- Documents today are only typed names; no file is stored anywhere, and MongoDB isn't needed.
+- The manual promises encryption that doesn't exist (T-113).
+- The project folder syncs to OneDrive (T-112).
+- Staff sign-up would let anyone register as an admin (T-115).
+- Gemini's free tier may use what we send (T-108).
+- The loan purpose reaches the AI unmarked (T-110).
+- Aadhaar numbers may not be stored in full (T-114).
+**Realised:**
+- Admin sees everything but can't do loan business.
+- Notifications are their own system, with three triggers.
+- TEST documents count, but are always marked.
+- Identification isn't authenticity.
+- There's no local LLM: Gemini only, and never for REAL documents.
+**Next:** Piece 27, the Admin role, when you start implementing.
+
+---
+
 ## 2026-09-22 — Piece 25 finished: edit requests on screen, in the manual, and in the chatbot
 
 **Asked for:** no more step-by-step and no quizzes. Finish the edit feature.

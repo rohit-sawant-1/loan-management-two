@@ -1160,6 +1160,15 @@ The model decides *what to propose*; Python decides *what runs*.
 
 # PIECE 24 — The customer's own profile page, with edits that staff approve
 
+> **Update 2026-09-22.** Its open questions were answered while planning the Document intelligence programme below:
+> - **The customer proposes the new values; staff approve**, and approving applies them. The old value keeps being used until then.
+> - **Editable by request:** phone, annual income, employment status, years with employer, existing EMIs.
+> - **Not editable:** name, email, date of birth, CIBIL score (it comes from the bureau).
+> - **Proof documents are required** for everything except phone, so this piece is built **after Pieces 31–34** (real uploads and reading documents).
+> - An approval re-checks eligibility on open applications (as Piece 25 does).
+> - Staff see requests on a *Profiles* tab of the Edit requests page, plus a staff page for each customer.
+> - A payslip's extracted net pay can *suggest* the new income, but never sets it on its own.
+
 Asked for by Rohit on 2026-09-16, straight after the D-27 fix. **Not planned in
 detail yet — this is a placeholder so the ask does not get lost.** The next
 session plans it properly and asks him the open questions before building.
@@ -1269,6 +1278,862 @@ Needs its own plan first. The trainer's database tests insert rows directly,
 some with made-up values (for example `phone="1234567890"` in DB-01, which our
 schema would refuse), so every trigger has to be checked against those tests
 before it's added.
+
+---
+
+# DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
+
+Planned 2026-09-22 with Rohit, across several rounds. **Nothing here is built yet.** Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+
+## Build order
+
+| Order | Piece | One line | Needs first | Size |
+|---|---|---|---|---|
+| 1st | **27 — Admin role** | A System Administrator who can see everything but can't do loan business | — | Small |
+| 2nd | **28 — Admin settings + document mode switch** | Admin turns "real document uploads" on or off | 27 | Small |
+| 3rd | **29 — Top navigation bar** | The sidebar becomes a sticky, see-through bar at the top, with a spot for the bell | — | Small–medium |
+| 4th | **30 — In-app notifications** | Separate notification tables; the bell shows staff and customer notices | 29 | Medium |
+| 5th | **31 — Real upload foundation** | Real files: safety gate, rebuild, standards, TEST/REAL, encrypted storage outside the project | 28 | Large |
+| 6th | **32 — TEST-document workflow** | TEST badges everywhere, staff notified, admin can clear TEST documents | 30, 31 | Small–medium |
+| 7th | **33 — Document kinds + fields, typed by hand** | Aadhaar shows Aadhaar fields, and so on; the user types them; no AI | 31 | Medium |
+| 8th | **34 — Reading documents** | Local OCR, patterns and checksums fill the fields; Gemini only for TEST documents | 33 | Large |
+| 9th | **35 — Several documents at once** | A batch of up to 5, each processed on its own, missing fields per document | 34 | Medium |
+| 10th | **36 — Saved chat sessions** | The Assistant keeps past conversations | — | Medium |
+| 11th | **37 — Documents in the chatbot** | 📎 in chat → the same pipeline | 34, 35, 36 | Medium |
+| 12th | **38 — Per-document missing-field form in the chat** | A structured form inside the chat, one Confirm & submit | 37 | Small–medium |
+
+**Can move earlier:** 29 and 30 don't depend on any document work, and 36 stands alone. **Parked, and they come after this programme:** Piece 24 (profile changes with proof, needs 31–34), Piece 26 (database checks for the other tables), B2 (slow chatbot answers).
+
+**How every piece is done** (the same loop as always):
+1. Read the piece below and the files it names.
+2. Answer its open decisions, if any.
+3. Build it.
+4. Run `pytest tests/ours tests/phase1 -q`, plus the non-AI Phase 3 and 4 tests (`tests/phase3/test_context.py`, the offline tests in `tests/phase3/test_tools.py`, and `tests/phase4/test_mcp_server.py`). Then `npm run build` and `npm run lint` in `frontend/`.
+5. Update `user_manual.md` if any rule changed (Rule 12), and re-ingest.
+6. Log it, commit it, and tag it (middle digit: v2.10.0, v2.11.0, and so on).
+7. Check it in the browser with the demo logins, **before** starting the next piece.
+
+## Decisions that apply to every piece (settled 2026-09-22)
+
+- **Admin = System Administrator.** It sees the whole system and administers it. It has **no loan-business authority** (no creating, approving, rejecting, disbursing or changing loan records), and it is **not** a branch manager.
+- **Notifications are a completely separate system from the activity log**, with their own tables, service, recipients, types and read/unread state. Only three triggers exist:
+  - **staff**: a customer asks to edit a submitted application
+  - **staff**: a customer uploads a document declared TEST
+  - **applicant**: *their own* application's status changes
+
+  The app's own notifications only: no email, SMS or push.
+- **TEST documents count towards the checklist**, but are always visibly marked ("4/4 submitted, including 2 TEST documents"). Four facts stay separate: *submitted*, *identified as a kind*, *marked TEST*, *verified/authenticated*. Counting never means authentic.
+- **Identification ≠ authenticity.** "Looks like a PAN card" is never "a genuine PAN card".
+- **No Ollama or local LLM.** Gemini is the only LLM. Local *non-LLM* processing (PDF text, image work, OCR, patterns, checksums, parsing) is preferred wherever it works.
+- **REAL documents never go to Gemini** by default: not the image, not the text. **TEST documents may.** Google's free-tier terms let it use submissions and have people read them, and say not to send personal data (T-108).
+- **Uploaded files live outside the project folder**, at a path set in `.env`, and are encrypted. The project currently sits in OneDrive, which Rohit will move (T-112).
+- **Security is proportional.** Must-have protections for the demo are built. Production hardening goes to `FUTURE-UPGRADES.md` (the "Document intelligence — production hardening" section).
+- **Extracted document data never overwrites the profile.** Profile changes only happen through Piece 24's staff approval.
+- **The trainer's name-only document route stays exactly as it is**, because Phase 1 UNIT-07 and Phase 4 MCP-06 use it.
+
+---
+
+# PIECE 27 — Admin role
+
+**Goal:** a new **System Administrator** role that can **view** the whole system and administer it, but **can't act** in the loan business. Branch manager, loan officer and customer behave exactly as before.
+
+**Needs first:** nothing. **Open decisions:** none (D1 settled).
+
+### What exists today (inspected 2026-09-22)
+- `UserRole` in `backend/app/models/user.py:16-20` has `applicant`, `loan_officer`, `branch_manager`, mirrored in `rules.ROLES` (`rules.py:49`). The `role` column is plain text in SQLite, so **no database change is needed** for a new value.
+- `rules.STAFF_ROLES = {"loan_officer", "branch_manager"}` (`rules.py:52`) is used in three sensitive places:
+  - which chatbot tools a role gets (`agent/agent.py:107-124`; staff get the write tools)
+  - who may run a four-agent review (`routers/chat.py:331`)
+  - the chat's per-role agent cache
+
+  **So `admin` must NOT be added to `STAFF_ROLES`.**
+- **Sign-up gap:** `POST /auth/register` accepts a `role` and only refuses `applicant` and `branch_manager` (`services/auth_service.py:42-45`). Once `admin` exists, anyone could register as an admin unless it's refused too.
+- Guards in `backend/app/dependencies.py:65-84`: `require_role(...)`, `require_staff` (officer or manager), `require_manager`.
+- Many addresses use plain `get_current_user` and treat "not a customer" as staff, because the services only restrict `applicant`. For *views* that already gives an admin the right access. For three *creating actions* it would wrongly let an admin act.
+- Seeding (`backend/seed.py:86-103`) returns early if Anita exists, so an admin added there would never reach the existing `loan_app.db`.
+- React:
+  - `AuthContext.jsx:53-55` defines `isApplicant`, `isStaff`, `isManager`
+  - `App.jsx:20-39` has `RequireAuth` / `PublicOnly` and role arrays, and every redirect goes to `/applications`
+  - `Login.jsx:25` goes to `/applications`
+  - `Layout.jsx:41-48` builds the sidebar links by role
+  - the "New application" buttons (`ApplicationList.jsx:113, 215`) and the add-document form (`DocumentChecklist.jsx:114`) show to anyone
+
+### VIEW vs ACT: every address and what changes
+
+| Address | View or act | Guard today | Admin after | Change |
+|---|---|---|---|---|
+| `GET /applications`, `GET /applications/{id}` | view | any login (customers scoped) | ✅ sees all | none |
+| `GET /applicants/{id}` | view | any login | ✅ | none |
+| `GET /applicants` (list) | view | `require_staff` | ✅ | → `require_staff_view` |
+| `GET /applications/{id}/documents` | view | any login | ✅ | none |
+| `GET /applications/{id}/edit-requests` | view | any login | ✅ | none |
+| `GET /edit-requests` (the queue) | view | `require_staff` | ✅ | → `require_staff_view` |
+| `GET /dashboard/summary` | view | `require_staff` | ✅ | → `require_staff_view` |
+| `GET /activity`, `GET /activity/entity/{type}/{id}` | view (audit) | `require_manager` | ✅ | → `require_audit_view` |
+| `GET /admin/users` | view (**new**) | — | ✅ admin only | new, `require_admin` |
+| `POST /applications` (create) | **act** | any login | ❌ | → `require_business_actor` |
+| `POST /applications/{id}/documents` (add) | **act** | any login | ❌ | → `require_business_actor` |
+| `POST /applications/check-eligibility` | **act** (part of creating; writes an activity row) | any login | ❌ | → `require_business_actor` |
+| `POST /applicants` (create profile) | act | `require_staff` | ❌ | none |
+| `PATCH /applications/{id}/status` (approve, reject, disburse) | act | `require_staff` (+ manager for disburse) | ❌ | none |
+| `PATCH /applications/{id}/documents/{doc}/verify` | act | `require_staff` | ❌ | none |
+| `POST /edit-requests/{id}/approve` and `/refuse` | act | `require_staff` | ❌ | none |
+| `POST /applications/{id}/edit-requests`, `PATCH /applications/{id}` | act (customer only) | owner check in the service | ❌ (already refused) | none |
+| `GET /briefing` (Morning Briefing) | the manager's daily work list; uses Gemini | `require_manager` | ❌ **kept manager-only**: it's an operational tool, not monitoring | none |
+| `POST /chat` | view, through the chatbot | any login | ✅ **read-only chatbot**: not in `STAFF_ROLES`, so no write tools and no reviews; its lookups use the view access above | none |
+| `GET /auth/me` | view | any login | ✅ | none |
+
+### Backend changes
+1. **`models/user.py`:** add `admin = "admin"` to `UserRole`. **`rules.py`:** add `"admin"` to `ROLES` and a constant `ADMIN_ROLE = "admin"`, with a comment saying why it is *not* in `STAFF_ROLES`.
+2. **`dependencies.py`**, new guards built on `require_role`, each with a comment:
+   - `require_admin = require_role(UserRole.admin)`
+   - `require_staff_view = require_role(UserRole.loan_officer, UserRole.branch_manager, UserRole.admin)`: "can look at staff screens"
+   - `require_audit_view = require_role(UserRole.branch_manager, UserRole.admin)`: "can read the audit log"
+   - `require_business_actor(user = Depends(get_current_user))`: raises 403 with *"The system administrator can view records but cannot create or change them."* if `user.role == UserRole.admin`, otherwise returns the user.
+3. **Swap the guards on the 7 rows marked in the table** (applicants list, queue, dashboard, both activity routes, create application, add document, eligibility check). Nothing else changes, and `require_staff` / `require_manager` stay exactly as they are.
+4. **`auth_service.register_staff`:** refuse `UserRole.admin` with *"Administrator accounts are created by the bank, not by registration"* (router already turns `RuleViolation` into 422).
+5. **New `backend/app/routers/admin.py`:** `GET /api/v1/admin/users` (`require_admin`) returns every user (`id`, `name`, `email`, `role`, `is_active`, `created_at`) plus `counts_by_role`. Schema `AdminUserResponse` / `AdminUserListResponse` in a new `schemas/admin.py`. Register in `main.py` with prefix `/api/v1/admin`.
+6. **`seed.py`:** a new idempotent `ensure_admin(db)` that creates `System Administrator` / `admin@bank.com` / `Admin@123` **if missing**. `main()` calls it **before** the "Seed data already present" early return, so the existing database gets the admin too. Add `ADMIN_PW` next to the other passwords, and print the admin login at the end.
+
+### Frontend changes
+7. **`auth/AuthContext.jsx`:** add `isAdmin`, `canViewStaffScreens` (staff or admin) and `canViewAudit` (manager or admin), plus an exported helper `homeFor(user)` (admin → `/admin`, everyone else → `/applications`).
+8. **`App.jsx`:**
+   - `RequireAuth`'s role-mismatch redirect, `PublicOnly` and the `*` route all go to `homeFor(user)`
+   - `ADMIN = ["admin"]`
+   - `/dashboard` and `/edit-requests` → `[...STAFF, "admin"]`; `/activity` → `["branch_manager", "admin"]`
+   - `/applications/new` → `["applicant", ...STAFF]`
+   - new `/admin` → `ADMIN`
+9. **`pages/Login.jsx`:** `login()` already returns the user, so navigate to `location.state?.from || homeFor(me)`.
+10. **`components/Layout.jsx`**, links for admin: **Administration** (new), **All applications**, **Dashboard**, **Edit requests**, **Activity**, **Assistant**. Hide "New application" for admin. `Dashboard`/`Edit requests` use `canViewStaffScreens`, and `Activity` uses `canViewAudit`.
+11. **Hide action controls from admin**, with a small muted "View only" line where they would be:
+    - `ApplicationList.jsx`: both "New application" buttons
+    - `DocumentChecklist.jsx`: the add-document form
+    - `EditRequests.jsx`: the Approve/Refuse buttons
+
+    "Update status" and "Mark verified" are already `isStaff`-only.
+12. **`pages/ApplicationDetail.jsx`:** the "Everything that happened" audit panel (lines ~92 and ~267) shows for `isManager || isAdmin`.
+13. **New `pages/Admin.jsx`, "System administration":**
+    - a short explanation of the role
+    - a count per role
+    - a table of all accounts (name, email, role, active, joined)
+    - a note: "Settings arrive in the next piece."
+
+    Use the existing `card`, `table-wrap`, `pill` and `EmptyState`.
+
+### Manual (Rule 12)
+14. `backend/rag/user_manual.md`, Section 2 "Roles and Permissions": add an **Administrator** paragraph. The administrator:
+    - can see every customer, application, document, edit request, the dashboard and the audit log
+    - manages system settings and user accounts
+    - **cannot** create, approve, reject or disburse anything, or change a loan record
+    - is created by the bank and can't register
+
+    Re-ingest: `venv\Scripts\python.exe -m rag.ingest`.
+
+### Tests: new `backend/tests/ours/test_admin_role.py` (offline, no Gemini)
+Helper `_admin_token(client)`: register a user, set `role = UserRole.admin` through `TestingSessionLocal`, then log in. The same pattern as `_manager` in `test_edit_requests.py`.
+- `POST /auth/register` with `"role": "admin"` → **422**; with no role → 201 and `loan_officer` (the trainer's default, unchanged).
+- Admin `GET /auth/me` → `role == "admin"`.
+- **Admin can view (200):**
+  - `GET /applications` and `/applications/{id}`
+  - `GET /applicants` and `/applicants/{id}`
+  - `GET /applications/{id}/documents`
+  - `GET /applications/{id}/edit-requests`
+  - `GET /edit-requests`
+  - `GET /dashboard/summary`
+  - `GET /activity` and `/activity/entity/application/{id}`
+  - `GET /admin/users` (counts include every role)
+- **Admin cannot act (403):**
+  - `POST /applications`
+  - `POST /applicants`
+  - `POST /applications/{id}/documents`
+  - `PATCH …/documents/{id}/verify`
+  - `PATCH /applications/{id}/status`
+  - `POST /edit-requests/{id}/approve` and `/refuse`
+  - `POST /applications/check-eligibility`
+  - `GET /briefing`
+  - `POST /applications/{id}/edit-requests`
+  - `PATCH /applications/{id}`
+- `GET /admin/users` → 403 for an officer, a manager and a customer.
+- `agent.agent.tools_for("admin")` contains **no** tool from `WRITE_TOOLS`.
+- `seed.ensure_admin(db)` run twice → exactly one admin row.
+- Existing suites unchanged: `tests/ours` + `tests/phase1` (286 before this piece).
+
+### Must not break
+- Trainer Phase 1 (registration defaults to loan officer; `test_db`), Phase 3 tool and prompt tests, Phase 4 MCP tests (they call the API as the service account `anita@bank.com`, a manager: unchanged).
+- The manager's disbursement rule (`application_service.py:271`), the chatbot's write tools and reviews (still `STAFF_ROLES` only), and every customer-scoping check.
+
+### Browser check
+1. Run `seed.py` (or restart; `ensure_admin` also runs), then log in as **admin@bank.com / Admin@123**. You land on **System administration** with every account listed.
+2. All applications → open one. Everything is visible, but there's **no** Update status, Add document or New application; a "View only" note shows instead.
+3. Edit requests: the queue is visible, marked View only, with no Approve or Refuse. Dashboard and Activity open.
+4. Assistant: "how many applications are under review?" gets an answer. "Assess application 7" is refused (staff only).
+5. Anita, Rajan, Priya: everything exactly as before, and nobody else has an Administration link.
+
+---
+
+# PIECE 28 — Admin settings + document mode switch
+
+**Goal:** the admin can turn **"Real document uploads"** ON or OFF for the whole app. **OFF = today's behaviour exactly** (type a file name). ON is the switch that Piece 31's real uploads will read. This piece builds the switch and the settings system, not the uploads.
+
+**Needs first:** 27. **Open decisions:**
+- **D10**: if the switch is turned OFF after real files exist, what happens? Recommended: existing files stay viewable, and only *new* uploads go back to name-only. Confirm when Piece 31 is built.
+- **Who sees the current mode:** everyone needs to *read* it (the form changes), and only the admin can *change* it.
+
+### What exists
+There's no settings table and no settings screen. There's nowhere to store an app-wide flag; `.env` is per-machine and needs a restart.
+
+### Data
+- **New table `app_settings`** (model `backend/app/models/app_setting.py`):
+
+  | Column | Type |
+  |---|---|
+  | `key` | String(64), primary key |
+  | `value` | Text, JSON-encoded |
+  | `updated_by` | String(150), nullable |
+  | `updated_at` | DateTime (timezone), `server_default=now()` / `onupdate` |
+
+  Registered in `models/__init__.py`. It's a new table, so `create_all` makes it with no migration.
+- **Registry in `rules.py`**: `SETTINGS = {"real_uploads_enabled": {"type": "bool", "default": False, "label": "Real document uploads"}}`. Unknown keys are refused everywhere. A CHECK rule on `key` limits it to the registry's keys.
+
+### Service and addresses
+- New `backend/app/services/settings_service.py`: `get(db, key)` returns the stored value or the registry default, `get_public(db)` returns a dict of every setting, and `set(db, key, value, *, user, meta)` validates the type against the registry, saves, and writes an **activity** row `setting_changed` (`{"key", "from", "to"}`). That's audit only: **no notification** (settled).
+- `GET /api/v1/settings` (any logged-in user) → `{"real_uploads_enabled": false}`.
+- `PUT /api/v1/admin/settings/real-uploads` (`require_admin`), body `{"enabled": true}` (Pydantic, `extra="forbid"`) → the new value.
+
+### Frontend
+- New hook `frontend/src/settings/useSettings.js`: fetches `GET /settings` once per page load, returns `{ realUploads, reload }`. The flag lives only in memory, like everything else (Rule 13 only allows the login token in the browser).
+- `pages/Admin.jsx`: a **Settings** card with a labelled toggle (checkbox styled as a switch), a sentence explaining each position ("OFF: documents are recorded by name, as today. ON: customers upload real files (available from Piece 31)."), who changed it last and when, and a confirmation pop-up before switching.
+- `DocumentChecklist.jsx`: reads `realUploads`. OFF → exactly today's form. ON → a small info banner ("Real uploads are switched on; the upload screen arrives with Piece 31. Names are recorded meanwhile.") above today's form. Piece 31 replaces this.
+- `utils/activity.js`: label `setting_changed` → "Setting changed" (icon `shield`), detail labels `key`, `from`, `to`.
+
+### Tests (`tests/ours/test_settings.py`)
+- The default is `false` with nothing stored.
+- `PUT` as admin → 200, and `GET` reflects it. As officer, manager or customer → 403. A non-boolean body or extra keys → 422.
+- An activity row `setting_changed` is written with from/to, and **no notification row** once Piece 30 exists (add that assertion then).
+- Setting an unknown key through the service → error.
+
+### Must not break
+The OFF path is byte-for-byte today's form. The trainer tests don't touch settings.
+
+### Browser check
+- Admin → System administration → Settings → switch ON (confirm), and it shows who changed it and when.
+- As Priya on an application: the info banner appears above the old form.
+- Switch OFF: the banner is gone.
+- Anita → Activity shows "Setting changed".
+
+---
+
+# PIECE 29 — Top navigation bar
+
+**Goal:** move the navigation from the left sidebar to a **sticky, translucent top bar**. It fits the current design, respects role-based links, and has a spot for the notification bell (filled in by Piece 30). **No functional changes.**
+
+**Needs first:** none. Build it after 27 so the admin links exist. **Open decisions:**
+- **D9**: with 6–7 links plus the bell and the account, what goes where? Recommended: page links in the bar; name, role and **Sign out** in an avatar menu on the right; at narrow widths the links scroll sideways, as the current small-screen layout already does.
+- **Colour:** keep the current dark brand colour as a translucent dark bar (`rgba(15, 23, 42, 0.78)`) with a blur, or a light translucent bar. Recommended: **dark translucent**, which matches today's sidebar.
+
+### What exists
+- `components/Layout.jsx`: `<div class="shell">` with `<aside class="sidebar">` (brand, `nav.sidebar-nav` links from an array with `show` flags, a footer with avatar and Sign out) and `<main class="page"><Outlet/></main>`. `isActive()` has a special case for `/applications`.
+- `styles.css:100-160`: sidebar styles, width from `--sidebar-w: 244px`.
+- `styles.css:779-803`: under 860px the sidebar already lays down as a top row with scrolling links.
+- **Sticky table headings:** `thead th { position: sticky; top: 0 }` (Session 29). Under a sticky top bar they would slide *under* the bar. They must stick at `top: var(--topbar-h)` instead.
+- Modals (`.modal-overlay`) must stay above the bar (z-index).
+
+### Changes
+- `Layout.jsx`: replace `aside.sidebar` with `header.topbar`:
+  - brand on the left
+  - `nav.topnav` with the **same links array and `show` rules** (no change to who sees what)
+  - on the right, a `<div className="topbar-actions">` holding an **empty `NotificationBell` slot** (a component that renders nothing until Piece 30) and an **avatar menu button** that opens a small panel with the name, role and Sign out
+
+  Keep `isActive()`. Add `aria-current="page"` on the active link and a "Skip to content" link for keyboard users.
+- `styles.css`:
+  - new tokens `--topbar-h: 58px`, `--topbar-bg: rgba(15, 23, 42, 0.78)`
+  - `.topbar { position: sticky; top: 0; z-index: 50; height: var(--topbar-h); backdrop-filter: saturate(1.4) blur(10px); background: var(--topbar-bg); border-bottom: 1px solid rgba(255,255,255,.08); }`
+  - `.shell` becomes a column
+  - `.page` keeps its max width, centred
+  - `thead th` sticky at `top: var(--topbar-h)`
+  - `.modal-overlay` z-index above 50
+  - the small-screen rules are reworked for the bar (links scroll sideways; the avatar menu stays)
+  - remove the sidebar-only rules once nothing uses them
+- `components/ui/Icon.jsx`: add a `bell` icon (needed in Piece 30; harmless now).
+
+### Tests
+Front-end only. `npm run build` and `npm run lint`: no new errors. The backend suite is untouched.
+
+### Browser check (all four roles; widths 1280, 980, 860, 390)
+- The bar stays at the top while scrolling a long list, and the page shows faintly through it.
+- Table headings stick just *below* the bar.
+- Pop-ups cover the bar.
+- Each role sees exactly the links it saw before, in the same order.
+- The avatar menu opens and closes (Escape, clicking outside) and Sign out works.
+- Keyboard: Tab reaches the skip link, every link, the avatar menu.
+
+---
+
+# PIECE 30 — In-app notifications (separate system)
+
+**Goal:** the app's own notifications, a bell with an unread count in the top bar, as a **system completely separate from the activity log** (its own tables, service, recipients, types, read/unread). **Only three triggers.**
+
+**Needs first:** 29 (the bell slot). **Open decisions:**
+- **Does the admin receive staff notifications?** Not specified. Recommended: **no** for now; "bank staff" means loan officers and branch managers.
+- **Is "application submitted" a status change** for the customer? Recommended: **yes**. The application's first status is `submitted`, so the customer gets "Application 9 submitted", and the same when staff submit on their behalf.
+
+### Triggers (the only ones)
+
+| # | Audience | When | Recipients | Called from |
+|---|---|---|---|---|
+| 1 | staff | a customer asks to edit an already-submitted application | every **active** loan officer and branch manager | `edit_request_service.create_request`, same commit |
+| 2 | staff | a customer uploads a document declared **TEST** | every active loan officer and branch manager | Piece 32 (the function is built and tested here, but called there) |
+| 3 | applicant | **their own** application's status changes (including the first `submitted`) | the applicant's login user, if the profile has one (staff-created profiles without a login get nothing) | `application_service.create_application` and `update_status`, same commit |
+
+**Not notified (settled):** setting changes, ordinary REAL uploads, verifications, logins, anything else.
+
+### Data
+**New table `notifications`**, model `backend/app/models/notification.py`, one row **per recipient**:
+
+| Column | Type |
+|---|---|
+| `id` | primary key |
+| `recipient_user_id` | FK `users.id`, indexed |
+| `audience` | enum `staff` / `applicant` |
+| `type` | enum `edit_requested` / `test_document_uploaded` / `application_status_changed` |
+| `title` | String(120) |
+| `body` | String(300) |
+| `link` | String(200): an in-app path such as `/applications/7` |
+| `entity_type` | String(40) |
+| `entity_id` | Integer |
+| `created_at` | indexed |
+| `read_at` | nullable |
+
+- **CHECK rules** keep the audiences apart: `edit_requested` and `test_document_uploaded` only with audience `staff`; `application_status_changed` only with audience `applicant`. That's enforced by the database itself.
+- **Index** on `(recipient_user_id, read_at, created_at)` for the unread count.
+- **Content rule:** no Aadhaar, PAN or account numbers and no amounts in text. For example, "Priya Sharma asked to change application 2" or "Application 7 is now Approved". A bell can be seen on a shared screen.
+
+### Service: `backend/app/services/notification_service.py`
+- `notify_staff_edit_requested(db, edit_request)`
+- `notify_staff_test_document(db, document)`, used by 32
+- `notify_applicant_status(db, application, old_status, new_status)`
+- `_staff_recipients(db)`: active users whose role is in `rules.STAFF_ROLES`
+- `list_for(db, user, *, unread_only, limit, before_id)`, `unread_count(db, user)`, `mark_read(db, user, id)`, `mark_all_read(db, user)`
+
+None of them commit; the caller's commit covers both the event and its notifications, so they succeed or fail together. **None of them read or write the activity log.**
+
+### Addresses (`backend/app/routers/notifications.py`, prefix `/api/v1/notifications`, any logged-in user, always **only their own**)
+- `GET ""?unread_only=false&limit=20&before_id=` → items (newest first) + `unread_count`
+- `GET /unread-count` → `{"count": n}` (tiny, for polling)
+- `POST /{id}/read` → 204. Someone else's notification → 404, not 403, so ids can't be probed.
+- `POST /read-all` → 204
+
+### Frontend
+- `components/NotificationBell.jsx` in the top-bar slot:
+  - a bell icon with a red count badge (hidden at 0; "9+" above 9)
+  - **polls `GET /unread-count` every 30 seconds** and on every route change
+  - clicking opens a panel of the latest 20 (title, body, relative time, unread dot)
+  - clicking an item marks it read and navigates to `link`
+  - "Mark all read"
+  - an empty state
+  - it closes on Escape or on clicking outside
+
+  The same component serves customers and staff; they simply get different notifications.
+- Staff and customers never see each other's types, because the server only returns the user's own rows.
+
+### Tests (`tests/ours/test_notifications.py`)
+- **Trigger 1:** a customer's edit request → one row for each active officer and manager (audience `staff`); the customer gets none; an inactive officer gets none; admin gets none.
+- **Trigger 3:** a status change → exactly one row for *that* applicant; another customer none; staff none. Creating an application → "submitted" notice to its owner.
+- `notify_staff_test_document` → staff rows only (called directly in this piece).
+- **No notification** for a setting change, a REAL document name-only add, or a verification.
+- The CHECK rule: inserting `edit_requested` with audience `applicant` fails.
+- Unread count, mark one, mark all. Reading someone else's → 404.
+- The activity log row count is identical with or without the notifications (they're independent).
+
+### Manual
+Section 2: staff are notified in the app about edit requests and TEST uploads; customers are notified when their application's status changes. Re-ingest.
+
+### Browser check
+1. Priya asks to edit application 2 → Rajan's and Anita's bell shows 1 → click → application 2 opens and the badge clears.
+2. Rajan moves application 2 to under review → Priya's bell shows "Application 2 is now Under review".
+3. Rahul's bell doesn't change.
+4. Change the Piece 28 setting → no bell anywhere.
+
+---
+
+# PIECE 31 — Real upload foundation
+
+**Goal:** with the admin switch **ON**, customers and staff upload **real files**. Every file passes a **safety gate**, is **rebuilt** (so nothing hidden survives), is checked against **per-document-type standards**, is marked **TEST / REAL / UNDECLARED** (fixed forever), and is stored **encrypted, outside the project folder**. Staff and admin can **view** files, and every view is logged. A **"Documents to check"** page lists unverified documents (finishing **B3**). With the switch **OFF** nothing changes. The trainer's name-only route is untouched.
+
+**Needs first:** 28. **Open decisions:**
+- **D10** (the switch goes OFF after real files exist): recommended, files stay viewable and new uploads use the name form.
+- **Does UNDECLARED need consent like REAL?** Recommended: **yes**, treat it as REAL.
+- **Final numbers in the standards table** below (researched defaults).
+
+### Current state (answers Rohit's storage questions)
+- Today a "document" is a SQLite row in `documents` (`id`, `application_id`, `doc_type`, `file_name`, `uploaded_at`, `verified`) created from typed JSON. **No file is stored anywhere.**
+- Linked to people through `documents.application_id → loan_applications.applicant_id → applicants.user_id`.
+- **MongoDB isn't needed.** SQLite keeps the metadata, and the bytes go in a folder behind a small storage interface. In production, that folder becomes S3 or Azure Blob, and SQLite becomes PostgreSQL.
+
+### Must-have protections (built here) vs production hardening (future)
+
+| Must-have now | Production later (`FUTURE-UPGRADES.md`) |
+|---|---|
+| The real type is read from the file's bytes (`filetype`), and must match its extension and the per-type allow-list | Antivirus (ClamAV) or a sandbox scan |
+| A 5 MB cap, enforced while reading | Object storage with its own access policies |
+| A PDF danger-marker scan (`/JavaScript`, `/JS`, `/OpenAction`, `/AA`, `/Launch`, `/EmbeddedFile`, `/RichMedia`, `/XFA`, `/SubmitForm`, `/GoToR`) → refuse and log `upload_blocked` | Keys held in a key vault (KMS) instead of `.env` |
+| Password-protected PDFs refused | Retention and deletion schedules (DPDP) |
+| **Rebuild (CDR):** images decoded and re-encoded with Pillow (strips hidden data such as GPS); PDFs **re-drawn page by page as pictures** with `pypdfium2` at 150 DPI and put into a new PDF | Separate upload servers |
+| Pillow's pixel limit (50 MP); page caps per type | Tamper detection on scans |
+| A random stored name (UUID) in `UPLOAD_DIR` (from `.env`, **outside the project**); refuse to start uploads if it's unset or inside the project folder | |
+| **Encrypted at rest** with `cryptography.Fernet`, key `UPLOAD_ENCRYPTION_KEY` in `.env` | |
+| Files served with the detected type, `X-Content-Type-Options: nosniff`, `Content-Security-Policy: default-src 'none'; sandbox`, and an encoded `Content-Disposition` | |
+| Display names cleaned (letters, digits, space, `. _ - ( )`, max 100) and never sent to the AI | |
+| Owner, staff or admin may view; only owner or staff may upload; every staff/admin view logged `document_viewed` | |
+| 30 uploads per user per hour; 100 MB per customer | |
+| SHA-256 stored (duplicates across customers can be flagged later) | |
+| Consent checkbox for REAL/UNDECLARED, stored with a timestamp | |
+
+### Per-document-type standards (in `rules.py` as `UPLOAD_STANDARDS`, mirrored in `frontend/src/utils/uploadStandards.js`)
+
+Researched from IBPS, NSDL PAN, UPSC, SSC and DigiLocker, plus our manual's 5 MB. Upload limit 5 MB everywhere. The server rebuilds each file to the standard, and refuses it with a plain reason if it can't.
+
+| Type | Accepted | Rebuilt as | Pixels | Stored size | Pages |
+|---|---|---|---|---|---|
+| `photograph` (**new, optional**) | JPEG, PNG | JPEG | exactly **200 × 230** (IBPS), centre-cropped; the original must be at least that | **20–50 KB** | — |
+| `signature` (**new, optional**) | JPEG, PNG | JPEG | exactly **140 × 60** (IBPS) | **10–20 KB** | — |
+| `id_proof` | PDF, JPEG, PNG | PDF stays PDF; images → JPEG | PDF pages drawn at 150 DPI; images long side ≤1600, short side ≥800 | image 30–300 KB; PDF ≤300 KB per page | 1–4 |
+| `income_proof` | PDF, JPEG, PNG | same | same | whole file ≤2 MB | 1–20 |
+| `bank_statement` | **PDF only** | PDF | same | ≤3 MB | 1–30 |
+| `property_docs` | PDF, JPEG, PNG | same | same | ≤3 MB | 1–30 |
+| `employment_letter` | PDF, JPEG, PNG | same | same | ≤1 MB | 1–5 |
+| `vehicle_quotation` | PDF, JPEG, PNG | same | same | ≤1 MB | 1–5 |
+
+Almost-blank images and pages are refused. `photograph` and `signature` are added to `rules.DOCUMENT_TYPES`, but **not** to any `REQUIRED_DOCUMENTS` list, so Phase 5 and the demo figures don't move. The trainer's UNIT-07 still refuses `passport_copy`.
+
+### Data
+- **New table `stored_files`**, model `models/stored_file.py`, with CHECK rules on `nature`, sizes > 0 and `content_type` in the allowed three:
+
+  | Column | Notes |
+  |---|---|
+  | `id` | |
+  | `applicant_id` | FK, indexed |
+  | `application_id` | nullable |
+  | `stored_name` | UUID + extension, unique |
+  | `display_name` | |
+  | `content_type` | |
+  | `size_bytes`, `original_size_bytes` | |
+  | `pages`, `width`, `height` | |
+  | `sha256` | indexed |
+  | `nature` | enum `test` / `real` / `undeclared` |
+  | `consent_at` | nullable |
+  | `uploaded_by` | |
+  | `uploaded_at` | |
+
+- **`documents.file_id`:** a nullable FK, added by extending `database._add_missing_columns()` to the `documents` table (the D-18 pattern). Name-only documents simply have no `file_id`.
+- **Nature is fixed:** a trigger (like `db_checks.py`) refuses any UPDATE that changes `stored_files.nature`.
+
+### Libraries (explain each before adding, Rule 3; all pip-only, fine on the Wipro laptop)
+- `pypdf`: opens a PDF to check for danger markers and passwords
+- `pypdfium2`: Chrome's PDF engine; draws pages as pictures and (Piece 34) reads their text
+- `cryptography`: Fernet encryption
+- Pin the already-installed `Pillow` and `filetype` too
+
+### Code
+- New `backend/app/services/file_service.py`, where every upload passes these stages in order:
+  1. `read_capped`
+  2. `detect_type`
+  3. `check_allowed_for(doc_type)`
+  4. `scan_pdf_markers`
+  5. `rebuild_image` / `rebuild_pdf`
+  6. `apply_standard` (pixels, KB, pages, blank)
+  7. `encrypt_and_store`
+  8. `sha256`
+
+  Each stage raises a `RuleViolation` with a plain sentence. The storage functions `save`, `open` and `delete` sit behind one small interface, so the folder can become object storage later.
+- `document_service.add_uploaded_document(...)`: creates the `stored_files` row and the `documents` row (`file_name` = the display name) in one commit, and records `document_added` (with `size_before`, `size_after`, `nature`) or `upload_blocked` (with the reason).
+- New addresses:
+  - `POST /api/v1/applications/{id}/documents/upload` (multipart: `doc_type`, `nature`, `consent`, `file`). Needs `require_business_actor` plus the owner-or-staff check, and **returns 409 if the switch is OFF**.
+  - `GET /api/v1/files/{file_id}`: owner, staff or admin. Decrypts and streams with the safe headers, and logs `document_viewed` for staff and admin.
+  - `GET /api/v1/documents/unverified`: `require_staff_view`.
+- `DocumentResponse` gains optional `file_id`, `size_bytes`, `original_size_bytes`, `content_type`, `nature`.
+
+### Frontend
+- `DocumentChecklist.jsx` with the switch ON, a real upload form:
+  - document type
+  - **"Is this a real document or a TEST document for a demo?"** (Real / Test, required)
+  - a **consent checkbox** for Real ("I agree this document is stored by the bank and checked by staff")
+  - a file picker for one file, plus the allowed types and sizes for the chosen type (from `uploadStandards.js`), checked before sending
+  - the list shows **"2.4 MB → 180 KB"**
+  - **View** fetches `/files/{id}` with the token as a blob and opens it in a new tab (in memory only, Rule 13)
+
+  With the switch OFF: today's form.
+- New `pages/DocumentsToCheck.jsx` (staff; admin view-only): unverified documents across all applications, newest first, with View and Mark verified (staff only). Add a route and a top-bar link.
+- `utils/activity.js`: labels for `document_viewed` and `upload_blocked`.
+
+### Manual
+- Section 4 and Section 12: the per-type table, 5 MB, automatic rebuilding, the photograph and signature sizes, "every document is checked by staff", and "the assistant never reads your documents".
+- **Section 10: correct "financial data is encrypted at rest"** to what is true: uploaded documents are encrypted; the database is protected by server access (T-113).
+- Re-ingest.
+
+### Tests (`tests/ours/test_uploads.py`; files built in memory, nothing real)
+- **Attacks refused:**
+  - a program renamed `.pdf`, and HTML renamed `.jpg`
+  - an SVG
+  - a JPEG with a zip appended (the rebuilt file no longer contains the zip bytes)
+  - a PDF with `add_js` / OpenAction, and an encrypted PDF
+  - a pixel bomb, and too many pages
+  - over 5 MB
+  - an empty file
+  - a blank page
+  - a photograph smaller than 200×230, and a signature the wrong shape
+  - a path-trick display name, and a line-break display name
+- **Accepted:** a phone-sized JPEG → ~≤300 KB; a photograph → exactly 200×230 at 20–50 KB; a scan-like PDF (`Image.save(format="PDF")`) → rebuilt, ≤300 KB per page.
+- The encryption round trip: the bytes on disk aren't the original; `GET /files/{id}` returns the rebuilt file.
+- **Permissions:** another customer → 404/403; admin can view but not upload; the rate limit.
+- The switch OFF → upload 409; the name-only route still works (plus Phase 4 `test_mcp_server.py`).
+- Changing `nature` through SQL is refused.
+
+### Browser check (switch ON, `.env` with `UPLOAD_DIR` and the key set)
+- **Priya:** upload a phone photo of a payslip as Real (tick consent), and see "3.1 MB → 240 KB". Upload a `.pdf` that is really a text file, and see it refused with a plain reason.
+- **Rajan:** Documents to check → View → Mark verified.
+- **Anita → Activity:** `document_viewed` and `upload_blocked` are there.
+- Switch OFF: the old name form is back, and the uploaded file is still viewable.
+
+---
+
+# PIECE 32 — TEST-document workflow
+
+**Goal:** a document declared **TEST** is unmistakable everywhere, **staff are notified immediately** (notification trigger 2), the checklist counts it but says so, and the admin can clear demo clutter. **TEST ≠ genuine** is kept in the data, not just the screen.
+
+**Needs first:** 30, 31. **Open decisions:** the badge wording. Suggested: **"TEST DOCUMENT — for demonstration only. Not a genuine customer document."**
+
+### Changes
+- **Badges:** a `TestBadge` component (strong amber pill with an icon), shown on every row, on Documents to check, on the application's document card, and in the View tab title. The server always sends `nature`, and the screen never guesses it.
+- **Checklist summary:** `DocumentListResponse` gains `test_count` and `real_count` alongside `required` and `missing`. The card says **"Documents complete — 4/4 submitted, including 2 TEST documents"**. Missing items stay as they are.
+- **Four facts kept separate, on screen and in the data:** *submitted* (a row exists), *identified as a kind* (Piece 33/34), *marked TEST* (`nature`), and *verified* (`verified`). "Mark verified" on a TEST document is labelled **"Verified (test document — checked for the demo, not for authenticity)"**, and the stored `verified` flag stays as it is (Phase 5 unchanged).
+- **Phase 5 honesty:** the compliance checker (`multi_agent/agents/compliance_checker.py`) adds a note, **"Includes TEST documents — not genuine"**, when any document on the application is TEST. It's a note only; the verdict logic is unchanged. Check the Phase 5 tests still pass.
+- **Notification:** `document_service.add_uploaded_document` calls `notification_service.notify_staff_test_document(...)` when `nature == test`, in the same commit. REAL and UNDECLARED uploads notify nobody (settled).
+- **Admin clean-up:** `POST /api/v1/admin/test-documents/purge` (`require_admin`, body `{"confirm": "DELETE TEST DOCUMENTS"}`). It deletes every TEST `stored_files` row, its encrypted file and its `documents` row, logs `test_documents_purged` with the count (activity only), and adds a button with a confirmation pop-up on the Admin page.
+- **The SPECIMEN backstop** (declared REAL but the text says SPECIMEN) needs the document's text, so it's built in **Piece 34**.
+
+### Tests
+- A TEST upload → a notification row for each active officer and manager, and none for the customer or admin.
+- A REAL upload → no notification.
+- `test_count` is right.
+- The Phase 5 compliance note appears with a TEST document.
+- Purge: admin only; the files are gone from disk; REAL documents are untouched.
+- `nature` can't be changed.
+
+### Browser check
+- Priya uploads a SPECIMEN Aadhaar as **Test** → the amber badge shows, and the checklist says "including 1 TEST document".
+- Rajan's bell → "Priya Sharma uploaded a TEST document on application 1".
+- Admin → Purge TEST documents → gone.
+
+---
+
+# PIECE 33 — Document kinds, their fields, and manual entry
+
+**Goal:** after uploading, the user says **which document it is** (Aadhaar, PAN, payslip…), and a **form with that document's fields** appears, grouped per document. The user types the values. Required fields stay required. Each value records **where it came from**. **No AI and no OCR in this piece.** Piece 34 adds automatic filling into the same structure.
+
+**Needs first:** 31. **Open decisions:**
+- Confirm the field lists below.
+- **Address** is a new field that doesn't exist anywhere in the app today. Confirm it's wanted.
+
+### Document inventory (from the code and manual) and the proposed fields
+Present today: 6 types (`rules.DOCUMENT_TYPES`) + the manual's Section 4 descriptions. A **kind** sits *inside* a type, so `doc_type` and every trainer test are untouched.
+
+| Kind | Inside type | Fields (R = required) | Checked against |
+|---|---|---|---|
+| Aadhaar | `id_proof` | Name R, DOB R, Gender, Aadhaar number R (**stored masked: `XXXX XXXX 1234`**), Address (new) | Verhoeff checksum; profile name and DOB |
+| PAN | `id_proof` | Name R, Father's name, DOB R, PAN R | format `AAAAA9999A`; profile |
+| Passport | `id_proof` | Surname R, Given names R, Passport number R, Nationality, DOB R, Sex, Expiry R | not expired; profile |
+| Driving licence | `id_proof` | Name R, DL number R, DOB R, Valid until R | not expired; profile |
+| Salary slip | `income_proof` | Employer R, Employee name R, Pay month R, Gross pay, Net pay R | name; 12 × net vs declared income |
+| Form 16 | `income_proof` | Employer, Employee PAN, Assessment year R, Gross salary R | PAN vs PAN on file |
+| ITR | `income_proof` | Assessment year R, Total income R | declared income |
+| Bank statement | `bank_statement` | Account holder R, Bank, Account number (masked), Period from R, Period to R | covers ≥ 6 months |
+| Property document | `property_docs` | Document kind (deed/NOC/plan) R, Property address, Date | staff review |
+| Employment letter | `employment_letter` | Employer R, Employee name R, Designation, Date of joining R | years with employer |
+| Vehicle quotation | `vehicle_quotation` | Dealer R, Make/model R, On-road price R, Date | loan amount ≤ price |
+
+Not in the app, so not proposed: educational certificates, generic "loan documents".
+
+### Data
+- **Registry** `backend/app/domain/document_kinds.py`, a sibling of `rules.py`: each kind's `doc_type`, label, and fields (`key`, `label`, `required`, `type` (text/date/number/id/select), `validator`, `mask`). Mirrored in `frontend/src/utils/documentKinds.js`.
+- **Validators** `backend/app/domain/validators.py` (plain Python):
+  - Verhoeff (Aadhaar)
+  - PAN format
+  - date plausibility (DOB not in the future, age 18–100; expiry after today)
+  - money > 0
+  - name match to the profile, with `difflib` from the standard library (a warning, not a block)
+- **New table `document_extractions`:**
+
+  | Column | Notes |
+  |---|---|
+  | `id` | |
+  | `file_id` | FK |
+  | `application_id` | |
+  | `declared_kind` | |
+  | `detected_kind` | nullable, Piece 34 |
+  | `detection_score` | nullable |
+  | `status` | `needs_input` / `confirmed` / `discarded` |
+  | `batch_id` | nullable, Piece 35 |
+  | `verification_level` | `not_verified` / `consistency_checked` / `cryptographically_verified` / `staff_verified` |
+  | `document_id` | nullable; set on confirm |
+  | `created_by`, `confirmed_by`, `confirmed_at` | |
+
+- **New table `extracted_fields`:** `id`, `extraction_id`, `field_key`, `value` (**masked where the registry says**), `machine_value` (what the machine read, kept when the user changes it), `source` (`qr` / `mrz` / `text_layer` / `ocr` / `gemini` / `user`), `confidence` (0–1), `state` (`extracted` / `uncertain` / `missing` / `user_entered` / `user_corrected`), `check_note`.
+- CHECK rules on both tables.
+- **The full Aadhaar number is never stored anywhere** (UIDAI; T-114). Before saving, it's reduced to the last 4 digits.
+
+### Flow and addresses
+1. The upload (Piece 31) returns a file → the user picks the **kind** → `POST /api/v1/applications/{id}/extractions` `{file_id, declared_kind}` creates an extraction with every field in state `missing`.
+2. `GET /api/v1/extractions/{id}` returns the form data.
+3. `PATCH /api/v1/extractions/{id}/fields` `{field_key: value, ...}` sets `state` to `user_entered` (or `user_corrected` if a machine value existed) and runs the validators; problems come back per field.
+4. `POST /api/v1/extractions/{id}/confirm` checks that every required field is present and valid, then sets `confirmed` and links the `documents` row. **Only confirmed documents count** towards the checklist when the switch is ON.
+5. `POST /api/v1/extractions/{id}/discard`.
+
+Permissions: the owner or staff write (`require_business_actor`); admin views.
+
+**Profiles are never changed from here** (settled); a mismatch with the profile is shown as a warning.
+
+### Frontend
+- `components/DocumentReviewForm.jsx` (reused in chat in Piece 38): **one card per document**.
+  - The header shows the kind, the file name and the TEST badge.
+  - A table: **Field | Value | State**. State tags: *Extracted* (green), *Uncertain — please check* (amber, with a "this is right" tick), *Missing* (empty required box), *You entered*.
+  - Required fields are marked, and there are per-field errors from the validators.
+  - A **Confirm** button.
+  - Shown on the application page after an upload.
+
+### Tests
+- Required fields enforced.
+- Verhoeff: a good number passes, and one wrong digit fails.
+- PAN format.
+- **The Aadhaar is stored masked** (the database has only the last 4).
+- `user_corrected` keeps `machine_value`.
+- Can't confirm twice.
+- Another customer's extraction → 404.
+- Admin: view yes, edit no.
+- An unconfirmed draft doesn't count towards the checklist.
+
+### Browser check
+Priya uploads a TEST Aadhaar → picks "Aadhaar card" → the form shows Name, DOB, Gender, Aadhaar number, Address → a wrong Aadhaar digit is refused → Confirm. The document shows **"XXXX XXXX 1234"**.
+
+---
+
+# PIECE 34 — Reading documents: OCR, identification, extraction
+
+**Goal:** the Piece 33 form **fills itself in** from the file. Local, non-AI processing is used first. **Gemini is used only for TEST documents**, only for fields that rules can't read, and only on masked text, never images. Nothing is invented: no evidence means the field stays missing.
+
+**Needs first:** 33. **Open decisions:**
+- **A speed check on the Wipro laptop first.** Time RapidOCR on one A4 page. If it takes more than about 10 seconds a page, the fallback is Gemini reading the image **for TEST documents only**.
+- **Aadhaar redaction failure:** if the number can't be located on the image to black it out, what happens? Recommended: **refuse to store a REAL Aadhaar** and ask the customer for UIDAI's own *masked Aadhaar* download; for TEST documents, store it with a warning.
+
+### Pipeline (every step except the marked one is local and non-AI)
+
+| Step | Tool | Output |
+|---|---|---|
+| Text from digital PDFs | `pypdfium2` text layer | exact text, confidence 0.95 |
+| Text from scans and photos | **RapidOCR** (`rapidocr-onnxruntime`, a small OCR model on `onnxruntime`, already installed; not an LLM) | lines with a confidence and a position |
+| Aadhaar | **Secure QR first** (`zxing-cpp` decodes it; parse UIDAI's format; **verify UIDAI's signature** with `cryptography` and UIDAI's public certificate) → name, DOB, gender, address, last 4 digits. Otherwise OCR + pattern + **Verhoeff**. | a valid QR gives `cryptographically_verified` (it proves the QR was issued by UIDAI, not who is uploading it) |
+| Passport | **MRZ** (the two machine lines) parsed with its **check digits** | `consistency_checked` if the digits pass |
+| PAN, driving licence | patterns + nearby words ("Name", "Father's Name", "Date of Birth") | |
+| Identifying the kind | keyword/pattern scoring ("Unique Identification Authority", "Income Tax Department" + PAN pattern, `P<IND`, "Salary Slip"/"Payslip") | `detected_kind` + score; a **mismatch with the declared kind is shown, never switched** |
+| **Payslips, Form 16, ITR, bank statement header, employment letter, vehicle quotation** | **Gemini, TEST documents only.** It receives the **OCR text with Aadhaar, PAN and account numbers masked first**, and returns a fixed JSON form. **Grounding check:** every value must appear in the OCR text, or it's downgraded to *uncertain*. REAL and UNDECLARED: skipped, and the fields stay for manual entry with a note "not read automatically for real documents". | |
+| **SPECIMEN backstop** | if the text contains "SPECIMEN" or "SAMPLE" but the nature is REAL | a warning badge for staff ("declared real, looks like a test file"); **not a notification** (only the three triggers exist) |
+| Masking | the Aadhaar number reduced to its last 4; **the first 8 digits blacked out on the stored image** using the OCR positions | |
+
+**Confidence → state:**
+- Sources, strongest first:
+  - signed QR 1.0
+  - MRZ with valid check digits 0.99
+  - text layer 0.95
+  - OCR pattern: the OCR line's confidence
+  - Gemini grounded: at most 0.7
+- **≥ 0.85 → extracted**; **0.5–0.85 → uncertain** (the user must tick "this is right"); **lower, or not found → missing**.
+- A failed checksum or format forces *uncertain*.
+- **Nothing is ever filled without evidence.**
+
+**Identification ≠ authenticity, written into the screen and the manual.** We can't verify:
+- PAN (Protean's service needs registration)
+- passport genuineness (the chip can't be read from a scan)
+- Aadhaar online (licensed agencies only)
+- salary slips
+
+DigiLocker and the Account Aggregator are the future routes.
+
+### Background processing
+Reading can take seconds, and the web client times out after 15 seconds. So:
+- `POST …/extractions` returns at once with status `processing`.
+- The work runs in a FastAPI background task.
+- The screen checks `GET /extractions/{id}` every 2 seconds until it's `needs_input`.
+- No Redis or Celery.
+
+### Code
+- `backend/app/services/text_service.py` (text layer / OCR)
+- `document_reader.py` (identify, extract per kind, validate, confidence, mask, redact)
+- `document_ai.py` (the **one** function that calls Gemini, through `llm_provider.get_llm()`; it refuses unless `nature == test`)
+- a UIDAI public certificate file in `backend/app/domain/certs/`
+
+**Libraries** (explain before adding): `rapidocr-onnxruntime` (brings `opencv-python-headless`) and `zxing-cpp`. Pinned.
+
+### Demo kit
+`backend/scripts/make_specimen_docs.py` generates **SPECIMEN** sample documents with Pillow:
+- an Aadhaar-style card (fake name, a checksum-valid fake number, **no real UIDAI QR**, so it shows as *not cryptographically verified*, which is honest)
+- a PAN-style card
+- a payslip
+- a bank statement page
+
+Each is watermarked **"SPECIMEN — NOT A REAL DOCUMENT"**, and they're written to `backend/demo_documents/`. They exist so the ADH demo never needs a real document.
+
+### Tests
+- Verhoeff and MRZ samples (ICAO specimen lines).
+- QR signature verification with a test key pair.
+- Identification scores on specimen text.
+- The grounding check downgrades a value not in the text.
+- **REAL never calls Gemini** (the stub asserts it's not called), and TEST does.
+- Masking and redaction: the stored image's pixels at the number's position are black.
+- The background status flow.
+- OCR tests marked `slow`.
+
+### Browser check
+Priya uploads the **SPECIMEN Aadhaar** as Test:
+- after a few seconds the form fills (Name, DOB, Address *extracted*; the number shows `XXXX XXXX 1234`; *not cryptographically verified*)
+- she fills anything missing and confirms
+
+Uploading the same file as **Real** → staff see "declared real, looks like a test file".
+
+---
+
+# PIECE 35 — Several documents at once
+
+**Goal:** upload **up to 5 documents in one go** (Aadhaar + PAN + bank statement + payslip). **Each is processed separately.** One failing doesn't block the others. Missing fields are shown **per document**, with one "Confirm & submit".
+
+**Needs first:** 34. **Open decisions:** none expected (5 files, 5 MB each).
+
+### Design
+- A `batch_id` (UUID) created on the screen and sent with each upload. `document_extractions.batch_id` is already in place from Piece 33.
+- The screen sends the files **one request each** (at most 2 at a time), so each gets its own safety check, rebuild, extraction and status.
+- `GET /api/v1/extraction-batches/{batch_id}` gives each document's status, kind, TEST/REAL and missing required fields.
+- **"What is this?" dropdown per file**, pre-filled by keyword matching on the file name (and in Piece 37, on the chat text), and corrected by `detected_kind` when confident. A mismatch is shown, never silently switched.
+- **Confirm & submit** confirms each document separately and reports per document: "Aadhaar saved · PAN needs 1 more field · Bank statement refused: password-protected".
+
+### Frontend
+- The upload form accepts several files (showing each with its own type and Real/Test choice).
+- Below it, a `DocumentReviewForm` card **per document**, with the missing fields inside each card.
+
+### Tests
+- A batch of 3 where 1 is refused: the other 2 continue.
+- Per-document missing fields.
+- A 6th file refused.
+- The batch summary is correct.
+- Each document's `nature` is independent.
+
+### Browser check
+Priya selects the SPECIMEN Aadhaar, PAN and payslip together, marks all three Test → three cards → Aadhaar asks for nothing, PAN asks for the number → one Confirm & submit → three results.
+
+---
+
+# PIECE 36 — Saved chat sessions
+
+**Goal:** the Assistant keeps conversations. A side list shows past chats; open one and carry on. Kept on the **server** (Rule 13), light and fast.
+
+**Needs first:** none (it can be built any time). **Open decisions:**
+- **Can the admin read other people's chats?** Recommended: **no.** Chats are private to their owner, even for the admin.
+- **How many earlier turns does the AI see?** Recommended: **0 for now** (answers already take about 60 seconds, B2); a setting `CHAT_CONTEXT_TURNS`, up to 4 later.
+
+### What exists
+`POST /chat` answers each message on its own (`session_id` accepted and ignored). The conversation lives in `Assistant.jsx` state and is gone on refresh.
+
+### Data
+- **`chat_sessions`:** `id`, `user_id` FK (indexed), `title` (the first message's first 60 characters; **no AI call**), `created_at`, `updated_at` (indexed), `archived`.
+- **`chat_messages`:** `id`, `session_id` FK, `role` (`user` / `assistant`), `content`, `mode`, `tools_used` (JSON), `sources` (JSON), `extraction_batch_id` (nullable, Piece 37), `created_at`.
+- **Indexes** on `(user_id, updated_at)` and `(session_id, created_at)`.
+
+### Addresses
+- `GET /api/v1/chat/sessions?limit=20&before=`
+- `POST /api/v1/chat/sessions`
+- `PATCH /api/v1/chat/sessions/{id}` (rename, archive)
+- `GET /api/v1/chat/sessions/{id}/messages?limit=30&before_id=`
+
+All are **owner only** (others → 404). `POST /chat` now uses `session_id`: it creates a session if none is given, refuses someone else's, and saves both the question and the answer. The activity row stays as it is.
+
+### Performance (assessed)
+Two small indexed tables. The page loads 20 sessions and the last 30 messages, with older ones loaded on scroll. **Storing history costs almost nothing. Sending it to the AI is the expensive part**, so it's off by default.
+
+### Frontend
+`Assistant.jsx`:
+- a left panel with **New chat** and the list of sessions (title, date)
+- opening one loads its last 30 messages
+- "Load earlier" at the top
+- the current session is kept in the page's address (`/assistant/:sessionId`), so a refresh reopens it
+
+### Tests
+- Owner only.
+- Pagination.
+- Messages saved in order.
+- The AI receives 0 earlier turns (stub).
+- Refusing a foreign `session_id`.
+
+### Browser check
+Chat as Priya → refresh → the conversation is still there → New chat → the old one is in the list → open it and continue.
+
+---
+
+# PIECE 37 — Documents in the chatbot
+
+**Goal:** in the Assistant, the user attaches files (📎) and says what they are, for example *"This is my Aadhaar and PAN, both fake for the demo."* They go through **the same pipeline** (31–35). The chat shows **document cards** built by React from real data, never as text the AI wrote.
+
+**Needs first:** 34, 35, 36. **Open decisions:**
+- **Customers only at first?** Recommended: yes. Staff attaching on a customer's behalf comes later.
+- **Which application**, when the customer has several open? Recommended: the chat asks with a dropdown of their open applications. That's a plain choice, not the AI.
+
+### Scope, deliberately small
+The chatbot **may**:
+- accept supported documents
+- identify them
+- start extraction
+- ask for missing fields
+- help confirm them
+- answer questions about **confirmed** fields ("what date of birth did you read?", answered from the stored fields)
+
+It **may not** change a status, approve, verify, or touch another application.
+
+### Design
+- **Attachments don't go through the AI.**
+  - The screen uploads each file to `POST /api/v1/chat/attachments` (the same service as Piece 31: `session_id`, application, `doc_type`, `nature`).
+  - It creates a batch (Piece 35) linked to the chat message (`chat_messages.extraction_batch_id`).
+- **TEST/REAL from the message:** keyword matching ("fake", "test", "demo", "specimen") **pre-ticks "Test"**, and the user confirms the choice on the attach panel. Never assumed silently.
+- **What the AI sees:** only a summary line such as *"2 documents attached: Aadhaar (TEST), PAN (TEST); 1 field missing."* **Document text is never put in the prompt**, so hidden instructions inside a document have nowhere to go (OWASP LLM01).
+- **Limits:** up to 5 files per message, 5 MB each; the same rate limits as Piece 31.
+
+### Tests
+- Attach → a batch is created and linked to the message.
+- The prompt the AI receives never contains the document's text (stub captures it).
+- "fake" pre-ticks Test.
+- Another customer's application refused.
+- The limits.
+
+### Browser check
+Priya: 📎 SPECIMEN Aadhaar + PAN, typing "these are fake for the demo" → both are marked Test → cards appear in the chat.
+
+---
+
+# PIECE 38 — Per-document missing-field form inside the chat
+
+**Goal:** when documents attached in chat have missing fields, the chat shows a **structured form grouped per document** (Aadhaar: DOB; PAN: PAN number) with **one Confirm & submit**, and reports the result per document. It survives a refresh.
+
+**Needs first:** 37. **Open decisions:** none expected.
+
+### Design
+- Reuse `DocumentReviewForm` (Piece 33) inside the assistant's message bubble, one card per document. It's rendered from `GET /extraction-batches/{id}`, not from anything the AI wrote.
+- The chat's text says only what it can prove: *"I read most of your Aadhaar, but not your date of birth."* That's generated from the field states in code, not by the AI.
+- **Confirm & submit** confirms each document through the Piece 33 address and posts a per-document result message into the session (Piece 36), so it's there after a refresh.
+- Uncertain fields need the "this is right" tick. Required stays required.
+
+### Tests
+- Confirming from chat gives the same result as from the application page.
+- Per-document grouping.
+- A refresh reloads the form in its current state.
+
+### Browser check
+Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN (the number unreadable) → two small forms in the chat → she fills both → Confirm & submit → "Aadhaar saved · PAN saved" → the application's checklist shows them with TEST badges.
 
 ---
 
