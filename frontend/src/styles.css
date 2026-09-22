@@ -10,7 +10,7 @@
    status pills end up being the only saturated colour on screen, which makes
    them easier to read, not harder.
 
-   Organised as: tokens, base, shell, sidebar, page, cards, forms, buttons,
+   Organised as: tokens, base, shell, topbar, account menu, page, cards, forms, buttons,
    banners, badges, tables, toolbar, detail, timeline, checklist, dashboard,
    modal, empty state, spinner, odds and ends, small screens.
    =========================================================================== */
@@ -18,11 +18,11 @@
 /* ---------------------------------------------------------------- tokens -- */
 :root {
   /* Ink and structure */
-  --ink-900: #0f172a;   /* sidebar, headings, primary buttons */
+  --ink-900: #0f172a;   /* top bar, headings, primary buttons */
   --ink-800: #1e293b;
   --ink-700: #334155;   /* body text */
   --ink-500: #64748b;   /* muted text, axis labels */
-  --ink-400: #94a3b8;   /* sidebar inactive links */
+  --ink-400: #94a3b8;   /* inactive links in the top bar */
   --line:    #e2e8f0;   /* hairline borders */
   --line-soft: #eef2f7;
   --surface: #ffffff;   /* cards */
@@ -50,7 +50,11 @@
   --shadow:    0 1px 3px rgba(15, 23, 42, 0.06), 0 1px 2px rgba(15, 23, 42, 0.04);
   --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
 
-  --sidebar-w: 244px;
+  /* The bar across the top (Piece 29). The height is a token because the
+     sticky table headings have to start exactly below it. */
+  --topbar-h: 58px;
+  --topbar-bg: rgba(15, 23, 42, 0.78);
+  --page-max: 1240px;
   --ease: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
 
@@ -84,26 +88,40 @@ a:hover { text-decoration-color: currentColor; }
 :focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; border-radius: var(--r-sm); }
 
 /* ----------------------------------------------------------------- shell -- */
-.shell { display: flex; min-height: 100%; }
+.shell { display: flex; flex-direction: column; min-height: 100%; }
 
-/* --------------------------------------------------------------- sidebar -- */
-.sidebar {
-  width: var(--sidebar-w);
-  flex: none;
-  background: var(--ink-900);
+/* For keyboard users: the first thing Tab reaches, and invisible until it has
+   the focus. Without it, reaching the page means tabbing through every link in
+   the bar on every page. */
+.skip-link {
+  position: absolute; left: -9999px; top: 0; z-index: 100;
+  padding: 0.55rem 0.9rem; border-radius: 0 0 var(--r-sm) 0;
+  background: var(--surface); color: var(--ink-900);
+  font-size: 0.85rem; font-weight: 550; text-decoration: none;
+  box-shadow: var(--shadow-lg);
+}
+.skip-link:focus { left: 0; }
+
+/* ---------------------------------------------------------------- topbar -- */
+/* Sticky, so it is there wherever you have scrolled to, and translucent with a
+   blur, so the page shows faintly through it and it reads as floating above
+   the content rather than being the top of it. */
+.topbar {
+  position: sticky; top: 0; z-index: 50;
+  background: var(--topbar-bg);
+  backdrop-filter: saturate(1.4) blur(10px);
+  -webkit-backdrop-filter: saturate(1.4) blur(10px);
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
   color: #fff;
-  display: flex;
-  flex-direction: column;
-  position: sticky;
-  top: 0;
-  height: 100vh;
+}
+.topbar-inner {
+  display: flex; align-items: center; gap: 1rem;
+  height: var(--topbar-h);
+  width: 100%; max-width: var(--page-max); margin: 0 auto;
+  padding: 0 1.9rem;
 }
 
-.sidebar-brand {
-  display: flex; align-items: center; gap: 0.65rem;
-  padding: 1.15rem 1.15rem 1rem;
-  border-bottom: 1px solid rgba(255, 255, 255, 0.07);
-}
+.topbar-brand { display: flex; align-items: center; gap: 0.6rem; flex: none; }
 .brand-mark {
   display: grid; place-items: center;
   width: 34px; height: 34px; flex: none;
@@ -112,55 +130,84 @@ a:hover { text-decoration-color: currentColor; }
   border: 1px solid rgba(255, 255, 255, 0.1);
   color: #fff;
 }
-.brand-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
-.brand-text strong { font-size: 0.9rem; font-weight: 620; color: #fff; }
-.brand-text small  { font-size: 0.72rem; color: var(--ink-400); }
+.brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
+.brand-text strong { font-size: 0.88rem; font-weight: 620; color: #fff; }
+.brand-text small  { font-size: 0.7rem; color: var(--ink-400); }
 
-.sidebar-nav { display: flex; flex-direction: column; gap: 2px; padding: 0.85rem 0.6rem; flex: 1; }
-.sidebar-nav a {
-  display: flex; align-items: center; gap: 0.7rem;
-  padding: 0.58rem 0.7rem;
+/* The links. They scroll sideways rather than wrap, so the bar stays one row
+   high whatever the role and the screen width. */
+.topnav {
+  display: flex; align-items: center; gap: 0.15rem;
+  flex: 1; min-width: 0; overflow-x: auto;
+  scrollbar-width: none;
+}
+.topnav::-webkit-scrollbar { display: none; }
+.topnav a {
+  display: inline-flex; align-items: center; gap: 0.5rem;
+  padding: 0.45rem 0.7rem;
   border-radius: var(--r-sm);
   color: var(--ink-400);
   text-decoration: none;
-  font-size: 0.885rem; font-weight: 500;
-  position: relative;
+  font-size: 0.87rem; font-weight: 500;
+  white-space: nowrap;
   transition: background var(--ease), color var(--ease);
 }
-.sidebar-nav a:hover { background: rgba(255, 255, 255, 0.055); color: #e2e8f0; }
-.sidebar-nav a.active { background: rgba(255, 255, 255, 0.1); color: #fff; font-weight: 580; }
-/* the little bright bar on the active link */
-.sidebar-nav a.active::before {
-  content: ""; position: absolute; left: -0.6rem; top: 20%; bottom: 20%;
-  width: 3px; border-radius: 0 3px 3px 0; background: #60a5fa;
-}
+.topnav a:hover { background: rgba(255, 255, 255, 0.055); color: #e2e8f0; }
+.topnav a.active { background: rgba(255, 255, 255, 0.1); color: #fff; font-weight: 580; }
 
-.sidebar-foot { padding: 0.85rem 0.7rem 1rem; border-top: 1px solid rgba(255, 255, 255, 0.07); }
-.who { display: flex; align-items: center; gap: 0.6rem; padding: 0 0.25rem 0.7rem; }
+.topbar-actions { display: flex; align-items: center; gap: 0.4rem; flex: none; }
+
+/* ---------------------------------------------------------- account menu -- */
+.account { position: relative; }
+.account-button {
+  display: inline-flex; align-items: center; gap: 0.25rem;
+  padding: 0.2rem 0.3rem 0.2rem 0.2rem;
+  border: 1px solid transparent; border-radius: 999px;
+  background: transparent; color: var(--ink-400);
+  cursor: pointer;
+  transition: background var(--ease), border-color var(--ease);
+}
+.account-button:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.12); }
 .avatar {
   display: grid; place-items: center;
   width: 32px; height: 32px; flex: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.11);
+  background: rgba(255, 255, 255, 0.14);
   font-size: 0.75rem; font-weight: 650; color: #fff;
 }
-.who-text { display: flex; flex-direction: column; line-height: 1.3; min-width: 0; }
-.who-text strong { font-size: 0.83rem; font-weight: 570; color: #fff;
-  white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-.who-text small  { font-size: 0.72rem; color: var(--ink-400); }
 
-.signout {
-  display: flex; align-items: center; gap: 0.55rem; width: 100%;
-  padding: 0.5rem 0.7rem;
-  border: 1px solid rgba(255, 255, 255, 0.1); border-radius: var(--r-sm);
-  background: transparent; color: var(--ink-400);
-  font: inherit; font-size: 0.84rem; cursor: pointer;
-  transition: background var(--ease), color var(--ease);
+/* The panel is a light card hanging off a dark bar, so it reads as part of the
+   page rather than part of the bar. Above the bar's own z-index. */
+.account-menu {
+  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
+  min-width: 230px; padding: 0.4rem;
+  background: var(--surface); color: var(--ink-700);
+  border: 1px solid var(--line); border-radius: var(--r);
+  box-shadow: var(--shadow-lg);
 }
-.signout:hover { background: rgba(255, 255, 255, 0.07); color: #fff; }
+.account-who {
+  display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start;
+  padding: 0.6rem 0.65rem 0.7rem;
+  border-bottom: 1px solid var(--line-soft); margin-bottom: 0.35rem;
+}
+.account-who strong { font-size: 0.88rem; color: var(--ink-900); }
+.account-who small  { font-size: 0.78rem; color: var(--ink-500); word-break: break-all; }
+.account-item {
+  display: flex; align-items: center; gap: 0.55rem; width: 100%;
+  padding: 0.5rem 0.65rem;
+  border: 0; border-radius: var(--r-sm);
+  background: transparent; color: var(--ink-700);
+  font: inherit; font-size: 0.87rem; text-align: left; cursor: pointer;
+  transition: background var(--ease);
+}
+.account-item:hover { background: var(--line-soft); color: var(--ink-900); }
 
 /* ------------------------------------------------------------------ page -- */
-.page { flex: 1; min-width: 0; padding: 1.6rem 1.9rem 3rem; max-width: 1240px; }
+.page {
+  flex: 1; min-width: 0;
+  width: 100%; max-width: var(--page-max); margin: 0 auto;
+  padding: 1.6rem 1.9rem 3rem;
+}
 
 .page-head {
   display: flex; align-items: center; justify-content: space-between;
@@ -339,7 +386,9 @@ th, td { text-align: left; padding: 0.7rem 0.95rem; vertical-align: middle; }
 /* The column headings stay put at the top of the window while the rows scroll
    under them, so you never lose track of which column you are reading. */
 thead th {
-  position: sticky; top: 0; z-index: 2;
+  /* Below the bar, not under it: top 0 would slide the headings behind the
+     sticky top bar and hide them (Piece 29). */
+  position: sticky; top: var(--topbar-h); z-index: 2;
   font-size: 0.72rem; font-weight: 660; text-transform: uppercase; letter-spacing: 0.05em;
   color: var(--ink-500); background: #f8fafc;
   white-space: nowrap;
@@ -694,7 +743,9 @@ th.sorted { color: var(--ink-900); }
 
 /* ----------------------------------------------------------------- modal -- */
 .modal-overlay {
-  position: fixed; inset: 0; z-index: 50;
+  /* Above the sticky top bar's z-index of 50 (Piece 29), or the bar would
+     float on top of the dark overlay. */
+  position: fixed; inset: 0; z-index: 100;
   background: rgba(15, 23, 42, 0.45);
   display: grid; place-items: center;
   padding: 1.25rem;
@@ -829,24 +880,29 @@ code.small, .mono {
   .detail-grid { grid-template-columns: 1fr; }
 }
 
+@media (max-width: 1100px) {
+  /* The bar runs out of room before the page does. The words under the brand
+     go first, then the brand's own name. */
+  .brand-text small { display: none; }
+}
+
+@media (max-width: 980px) {
+  .brand-text { display: none; }
+}
+
 @media (max-width: 860px) {
   /* Narrow screens need the table to scroll sideways. That does stop the
      heading sticking, which is the right trade on a small screen. */
   .table-scroll { overflow-x: auto; }
   thead th { position: static; }
 
-  /* The sidebar lies down across the top and the links scroll sideways. */
-  .shell { flex-direction: column; }
-  .sidebar { width: auto; height: auto; position: static; flex-direction: row;
-    align-items: center; gap: 0.5rem; padding: 0.5rem 0.75rem; flex-wrap: wrap; }
-  .sidebar-brand { border-bottom: 0; padding: 0.25rem 0.5rem 0.25rem 0; }
-  .brand-text small { display: none; }
-  .sidebar-nav { flex-direction: row; padding: 0; gap: 0.2rem; overflow-x: auto; flex: 1; }
-  .sidebar-nav a { white-space: nowrap; padding: 0.45rem 0.65rem; }
-  .sidebar-nav a.active::before { display: none; }
-  .sidebar-foot { border-top: 0; padding: 0; display: flex; align-items: center; gap: 0.5rem; }
-  .who { padding: 0; }
-  .who-text { display: none; }
-  .signout span { display: none; }
+  .topbar-inner { padding: 0 0.9rem; gap: 0.5rem; }
   .page { padding: 1.15rem 1rem 2.5rem; }
+}
+
+@media (max-width: 560px) {
+  /* Icons only, so every link still fits across a phone without the bar
+     becoming a screenful of its own. */
+  .topnav a span { display: none; }
+  .topnav a { padding: 0.45rem 0.55rem; }
 }

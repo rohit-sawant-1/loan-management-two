@@ -4,6 +4,22 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — Piece 29: the sidebar moves to the top of the screen
+
+**Asked for:** you checked Pieces 27 and 28 in the browser, said both work, and asked for the next piece.
+**Built:** the navigation is now a bar across the top instead of a column down the left. It sticks to the top as you scroll, and it is slightly see-through with a blur, so the page moves underneath it. Nothing about who sees which link changed — each role has exactly the same links, in the same order, as before.
+- **Your name, role and Sign out** moved into a small menu behind your initials on the right. Seven links plus a name and a button do not fit across a laptop screen. The menu closes on Escape, on a click anywhere else, and when you move to another page.
+- **A gap on the right for the bell**, which is a real component that draws nothing at all until Piece 30 fills it in.
+- **Two things that would have broken quietly.** Table headings stick to the top while you scroll a long list, and with a sticky bar above them they would have slid underneath it and disappeared — they now stop exactly below the bar. And a pop-up has to cover the bar rather than the other way round, so its layer was raised.
+- **Narrow screens:** at 1100px the "Branch portal" line goes, at 980px the brand name goes, and on a phone the links become just their icons, so the bar stays one row high.
+
+Front end builds and lints clean, with the same 11 warnings that were already there. No backend file changed, so the 354 tests are untouched.
+**Found:** closing the menu when the page changes set off a new lint warning, because doing it in an effect draws the page twice — once with the menu open, once with it shut. React has a documented way to do that while rendering instead, which is what it does now. Worth knowing, because the same warning is on nine other files from before.
+**Realised:** the old sidebar styles are gone rather than left lying around, and nothing else in the app referred to them — only the round brand badge is shared, and the three sign-in pages still use it.
+**Next:** Piece 30, the notifications themselves: their own tables, the three triggers, and the bell's unread count.
+
+---
+
 ## 2026-09-23 — Piece 28: the admin's switch for real document uploads
 
 **Asked for:** on to the next piece.

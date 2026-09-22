@@ -1609,6 +1609,12 @@ The OFF path is byte-for-byte today's form. The trainer tests don't touch settin
 - **D9**: with 6–7 links plus the bell and the account, what goes where? Recommended: page links in the bar; name, role and **Sign out** in an avatar menu on the right; at narrow widths the links scroll sideways, as the current small-screen layout already does.
 - **Colour:** keep the current dark brand colour as a translucent dark bar (`rgba(15, 23, 42, 0.78)`) with a blur, or a light translucent bar. Recommended: **dark translucent**, which matches today's sidebar.
 
+**Status: built 2026-09-23, tag `v2.12.0`. Both recommendations above were taken** — links in the bar, the account behind the initials, dark translucent. Say the word if you want the light bar instead; it is two token values (`--topbar-bg` and the link colours). Where the build differs from the plan below:
+- **The account menu closes on a page change by comparing the address while rendering**, not in an effect. An effect would draw the new page once with the menu still open and again with it shut, which is exactly what the linter's "cascading renders" warning is about. It was a new warning until this changed, and the count is back to the 11 that were already there.
+- **Three widths, not one.** Under 1100px the brand's "Branch portal" line goes, under 980px the brand name goes, and under 560px the links become icons only. One breakpoint left the bar wrapping onto two rows on a phone.
+- **The bell is a real component that renders nothing** (`components/NotificationBell.jsx`), so Piece 30 changes that one file and the bar's layout is already final.
+- **The `bell` icon is in `Icon.jsx` now**, unused until Piece 30, as the plan says.
+
 ### What exists
 - `components/Layout.jsx`: `<div class="shell">` with `<aside class="sidebar">` (brand, `nav.sidebar-nav` links from an array with `show` flags, a footer with avatar and Sign out) and `<main class="page"><Outlet/></main>`. `isActive()` has a special case for `/applications`.
 - `styles.css:100-160`: sidebar styles, width from `--sidebar-w: 244px`.
@@ -2242,3 +2248,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 27 | Admin role: a System Administrator that sees everything and can't do loan business | 2026-09-22 | `v2.10.0` |
 | 27a | What the assistant says to the admin: a third prompt, so it stops talking to the admin like a customer | 2026-09-23 | `v2.10.1` |
 | 28 | Admin settings, and the switch for real document uploads | 2026-09-23 | `v2.11.0` |
+| 29 | The sidebar becomes a sticky top bar, with the account behind its initials | 2026-09-23 | `v2.12.0` |

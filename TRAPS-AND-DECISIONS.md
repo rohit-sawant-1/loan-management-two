@@ -219,6 +219,13 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-121 · Anything sticky now has to know the top bar's height.** Piece 29 put a
+sticky bar at the top, so `thead th` sticks at `top: var(--topbar-h)` instead of
+`top: 0`, and the modal overlay sits at z-index 100 above the bar's 50. Any new
+sticky heading, floating panel or drawer has to do the same, or it will slide
+under the bar or be covered by it. The height is the token `--topbar-h`; never
+type 58px.
+
 **T-120 · The manual has always promised document uploads the code never did.**
 Section 4 says documents must be PDF, JPG or PNG and under 5 MB, and Section 3
 says the customer "uploads" them. The app has only ever recorded a type and a
