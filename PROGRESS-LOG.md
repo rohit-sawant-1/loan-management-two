@@ -4,6 +4,20 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — The top bar, rebuilt: actual glass this time
+
+**Asked for:** you said the bar looked trash and, in particular, did not look translucent, and asked for something that suits a professional finance product.
+**Built:** both complaints were fair, and the second one was a plain mistake on my part.
+- **It was 78% opaque.** That is paint with a hint of transparency, not glass. It is 0.68 now, with a wider blur and the colour behind it boosted, which is as see-through as it goes before white text stops being comfortable to read on it.
+- **Glass over one flat colour still looks like paint.** The page was one flat grey, so the blur had nothing to pick up. There are now two very soft pools of bank blue across the top of the page, fixed in place, so they stay behind the bar while everything else scrolls. That is what actually makes it read as glass, even before you scroll.
+- **The bar itself was cramped and plain.** It is taller now, with thin dividers separating the brand, the links and your account; the links are pills; the page you are on is a brighter pane of the same glass with a lit top edge, rather than a flat grey block; there is a small capitalised "BRANCH PORTAL" under the name; and your initials sit in a slate gradient with a chevron that turns when the menu opens.
+
+**Found:** I cannot see the screen from here — there is no browser in this session — so this is careful work, not checked work. You are the only one who can say whether it looks right now.
+**Realised:** the honest lesson is that I picked 0.78 out of the plan without asking what it would actually look like over a flat grey page. Translucency is a property of two things, not one.
+**Next:** you look at it and tell me. If dark glass is not the look you want at all, a light one is two values; say so and it is a five-minute change. Then Piece 30.
+
+---
+
 ## 2026-09-23 — Piece 29: the sidebar moves to the top of the screen
 
 **Asked for:** you checked Pieces 27 and 28 in the browser, said both work, and asked for the next piece.

@@ -51,9 +51,20 @@
   --shadow-lg: 0 10px 30px rgba(15, 23, 42, 0.12), 0 2px 8px rgba(15, 23, 42, 0.06);
 
   /* The bar across the top (Piece 29). The height is a token because the
-     sticky table headings have to start exactly below it. */
-  --topbar-h: 58px;
-  --topbar-bg: rgba(15, 23, 42, 0.78);
+     sticky table headings have to start exactly below it.
+
+     The alpha is the whole trick. At 0.78 the bar was 78% opaque and read as
+     a flat dark strip; at 0.68, with a wider blur and the colour boosted, a
+     white card or a status pill passing underneath is visible as a soft shape
+     through the glass. It does not go lower than this: white text on the
+     lighter result would drop under the contrast a person can comfortably
+     read. */
+  --topbar-h: 62px;
+  --topbar-bg: rgba(15, 23, 42, 0.68);
+  --topbar-blur: saturate(180%) blur(20px);
+  /* Links in the bar: bright enough to read against the glass, and plainly
+     dimmer than the one you are on. */
+  --topbar-ink: rgba(255, 255, 255, 0.76);
   --page-max: 1240px;
   --ease: 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
@@ -66,7 +77,16 @@ body {
   margin: 0;
   font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
   color: var(--ink-700);
-  background: var(--page);
+  /* A very faint wash of bank blue across the top of the page, fixed in place
+     so it stays behind the top bar while the content scrolls. Without it the
+     page is one flat grey, and glass over one flat colour looks like paint:
+     there is nothing for the blur to pick up. Two soft pools rather than a
+     straight gradient, so the tint has no visible edge anywhere. */
+  background:
+    radial-gradient(1100px 320px at 16% -80px, rgba(59, 130, 246, 0.10), transparent 72%),
+    radial-gradient(900px 280px at 88% -110px, rgba(99, 102, 241, 0.07), transparent 72%),
+    var(--page);
+  background-attachment: fixed;
   -webkit-font-smoothing: antialiased;
 }
 
@@ -103,36 +123,54 @@ a:hover { text-decoration-color: currentColor; }
 .skip-link:focus { left: 0; }
 
 /* ---------------------------------------------------------------- topbar -- */
-/* Sticky, so it is there wherever you have scrolled to, and translucent with a
-   blur, so the page shows faintly through it and it reads as floating above
-   the content rather than being the top of it. */
+/* Sticky, so it is there wherever you have scrolled to, and glass rather than
+   paint: what is behind it shows through, blurred and slightly brightened.
+   The hairline along the bottom is light on the inside and dark on the
+   outside, which is what makes an edge look like glass rather than a border. */
 .topbar {
   position: sticky; top: 0; z-index: 50;
   background: var(--topbar-bg);
-  backdrop-filter: saturate(1.4) blur(10px);
-  -webkit-backdrop-filter: saturate(1.4) blur(10px);
-  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: var(--topbar-blur);
+  -webkit-backdrop-filter: var(--topbar-blur);
+  box-shadow:
+    inset 0 -1px 0 rgba(255, 255, 255, 0.07),
+    0 1px 0 rgba(15, 23, 42, 0.06),
+    0 14px 34px -28px rgba(2, 6, 23, 0.9);
   color: #fff;
 }
 .topbar-inner {
-  display: flex; align-items: center; gap: 1rem;
+  display: flex; align-items: center; gap: 0.9rem;
   height: var(--topbar-h);
   width: 100%; max-width: var(--page-max); margin: 0 auto;
   padding: 0 1.9rem;
 }
 
-.topbar-brand { display: flex; align-items: center; gap: 0.6rem; flex: none; }
+/* --- the brand, then a hairline, then the links ------------------------- */
+.topbar-brand {
+  display: flex; align-items: center; gap: 0.65rem; flex: none;
+  padding-right: 0.9rem;
+  border-right: 1px solid rgba(255, 255, 255, 0.1);
+}
 .brand-mark {
   display: grid; place-items: center;
   width: 34px; height: 34px; flex: none;
-  border-radius: 9px;
-  background: linear-gradient(135deg, #334155, #1e293b);
-  border: 1px solid rgba(255, 255, 255, 0.1);
+  border-radius: 10px;
+  background: linear-gradient(140deg, #3b4d6b, #16213a);
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  box-shadow: 0 1px 2px rgba(2, 6, 23, 0.4), inset 0 1px 0 rgba(255, 255, 255, 0.12);
   color: #fff;
 }
-.brand-text { display: flex; flex-direction: column; line-height: 1.2; min-width: 0; }
-.brand-text strong { font-size: 0.88rem; font-weight: 620; color: #fff; }
-.brand-text small  { font-size: 0.7rem; color: var(--ink-400); }
+.brand-text { display: flex; flex-direction: column; line-height: 1.25; min-width: 0; }
+.brand-text strong {
+  font-size: 0.875rem; font-weight: 600; color: #fff; letter-spacing: -0.005em;
+  white-space: nowrap;
+}
+/* A small capitalised line under the name, the way a bank labels a section. */
+.brand-text small {
+  font-size: 0.62rem; font-weight: 600; letter-spacing: 0.09em; text-transform: uppercase;
+  color: rgba(255, 255, 255, 0.48);
+  white-space: nowrap;
+}
 
 /* The links. They scroll sideways rather than wrap, so the bar stays one row
    high whatever the role and the screen width. */
@@ -143,62 +181,90 @@ a:hover { text-decoration-color: currentColor; }
 }
 .topnav::-webkit-scrollbar { display: none; }
 .topnav a {
-  display: inline-flex; align-items: center; gap: 0.5rem;
-  padding: 0.45rem 0.7rem;
-  border-radius: var(--r-sm);
-  color: var(--ink-400);
+  display: inline-flex; align-items: center; gap: 0.48rem;
+  padding: 0.46rem 0.72rem;
+  border: 1px solid transparent; border-radius: 999px;
+  color: var(--topbar-ink);
   text-decoration: none;
-  font-size: 0.87rem; font-weight: 500;
+  font-size: 0.855rem; font-weight: 500; letter-spacing: -0.003em;
   white-space: nowrap;
-  transition: background var(--ease), color var(--ease);
+  transition: background var(--ease), color var(--ease), border-color var(--ease);
 }
-.topnav a:hover { background: rgba(255, 255, 255, 0.055); color: #e2e8f0; }
-.topnav a.active { background: rgba(255, 255, 255, 0.1); color: #fff; font-weight: 580; }
+.topnav a .icon { opacity: 0.72; transition: opacity var(--ease); }
+.topnav a:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.topnav a:hover .icon { opacity: 1; }
+/* The page you are on: a brighter pane of the same glass, with a lit top edge
+   so it looks raised out of the bar rather than painted onto it. */
+.topnav a.active {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.16);
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.16);
+  color: #fff; font-weight: 600;
+}
+.topnav a.active .icon { opacity: 1; }
 
-.topbar-actions { display: flex; align-items: center; gap: 0.4rem; flex: none; }
+.topbar-actions {
+  display: flex; align-items: center; gap: 0.35rem; flex: none;
+  padding-left: 0.85rem;
+  border-left: 1px solid rgba(255, 255, 255, 0.1);
+}
 
 /* ---------------------------------------------------------- account menu -- */
 .account { position: relative; }
 .account-button {
-  display: inline-flex; align-items: center; gap: 0.25rem;
-  padding: 0.2rem 0.3rem 0.2rem 0.2rem;
+  display: inline-flex; align-items: center; gap: 0.35rem;
+  padding: 0.22rem 0.5rem 0.22rem 0.22rem;
   border: 1px solid transparent; border-radius: 999px;
-  background: transparent; color: var(--ink-400);
+  background: transparent; color: rgba(255, 255, 255, 0.6);
   cursor: pointer;
-  transition: background var(--ease), border-color var(--ease);
+  transition: background var(--ease), border-color var(--ease), color var(--ease);
 }
-.account-button:hover { background: rgba(255, 255, 255, 0.07); border-color: rgba(255, 255, 255, 0.12); }
+.account-button:hover {
+  background: rgba(255, 255, 255, 0.09);
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+.account-button[aria-expanded="true"] {
+  background: rgba(255, 255, 255, 0.14);
+  border-color: rgba(255, 255, 255, 0.18);
+  color: #fff;
+}
 .avatar {
   display: grid; place-items: center;
-  width: 32px; height: 32px; flex: none;
+  width: 31px; height: 31px; flex: none;
   border-radius: 50%;
-  background: rgba(255, 255, 255, 0.14);
-  font-size: 0.75rem; font-weight: 650; color: #fff;
+  background: linear-gradient(140deg, #4c648e, #223250);
+  font-size: 0.74rem; font-weight: 650; letter-spacing: 0.02em; color: #fff;
+  border: 1px solid rgba(255, 255, 255, 0.18);
 }
+.account-chevron { transition: transform var(--ease); }
+.account-button[aria-expanded="true"] .account-chevron { transform: rotate(180deg); }
 
 /* The panel is a light card hanging off a dark bar, so it reads as part of the
    page rather than part of the bar. Above the bar's own z-index. */
 .account-menu {
-  position: absolute; right: 0; top: calc(100% + 8px); z-index: 60;
-  min-width: 230px; padding: 0.4rem;
+  position: absolute; right: 0; top: calc(100% + 10px); z-index: 60;
+  min-width: 244px; padding: 0.4rem;
   background: var(--surface); color: var(--ink-700);
-  border: 1px solid var(--line); border-radius: var(--r);
+  border: 1px solid var(--line); border-radius: var(--r-lg);
   box-shadow: var(--shadow-lg);
+  animation: menu-in 120ms ease-out;
 }
+@keyframes menu-in { from { opacity: 0; transform: translateY(-4px); } }
 .account-who {
-  display: flex; flex-direction: column; gap: 0.25rem; align-items: flex-start;
-  padding: 0.6rem 0.65rem 0.7rem;
+  display: flex; flex-direction: column; gap: 0.3rem; align-items: flex-start;
+  padding: 0.65rem 0.7rem 0.75rem;
   border-bottom: 1px solid var(--line-soft); margin-bottom: 0.35rem;
 }
-.account-who strong { font-size: 0.88rem; color: var(--ink-900); }
-.account-who small  { font-size: 0.78rem; color: var(--ink-500); word-break: break-all; }
+.account-who strong { font-size: 0.89rem; color: var(--ink-900); }
+.account-who small  { font-size: 0.775rem; color: var(--ink-500); word-break: break-all; }
 .account-item {
   display: flex; align-items: center; gap: 0.55rem; width: 100%;
-  padding: 0.5rem 0.65rem;
+  padding: 0.55rem 0.7rem;
   border: 0; border-radius: var(--r-sm);
   background: transparent; color: var(--ink-700);
   font: inherit; font-size: 0.87rem; text-align: left; cursor: pointer;
-  transition: background var(--ease);
+  transition: background var(--ease), color var(--ease);
 }
 .account-item:hover { background: var(--line-soft); color: var(--ink-900); }
 

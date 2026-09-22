@@ -1615,6 +1615,11 @@ The OFF path is byte-for-byte today's form. The trainer tests don't touch settin
 - **The bell is a real component that renders nothing** (`components/NotificationBell.jsx`), so Piece 30 changes that one file and the bar's layout is already final.
 - **The `bell` icon is in `Icon.jsx` now**, unused until Piece 30, as the plan says.
 
+**Second pass, same day (`v2.12.1`), after Rohit said it looked cheap and not translucent.** He was right on both counts:
+- **It was 78% opaque**, which is paint, not glass. Now 0.68 with a 20px blur and the colour behind it boosted, which is as transparent as it can be while white text stays comfortably readable on it.
+- **Glass over one flat colour still looks like paint**, because the blur has nothing to pick up. The page now carries two very soft pools of bank blue across its top, fixed in place so they stay behind the bar while the content scrolls.
+- **The bar was cramped.** 62px tall now, hairline dividers separating the brand, the links and the account, pill-shaped links, the current page as a brighter pane of the same glass with a lit top edge, a small capitalised "BRANCH PORTAL" under the name, and the initials in a slate gradient with the chevron turning when the menu opens.
+
 ### What exists
 - `components/Layout.jsx`: `<div class="shell">` with `<aside class="sidebar">` (brand, `nav.sidebar-nav` links from an array with `show` flags, a footer with avatar and Sign out) and `<main class="page"><Outlet/></main>`. `isActive()` has a special case for `/applications`.
 - `styles.css:100-160`: sidebar styles, width from `--sidebar-w: 244px`.
@@ -2249,3 +2254,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 27a | What the assistant says to the admin: a third prompt, so it stops talking to the admin like a customer | 2026-09-23 | `v2.10.1` |
 | 28 | Admin settings, and the switch for real document uploads | 2026-09-23 | `v2.11.0` |
 | 29 | The sidebar becomes a sticky top bar, with the account behind its initials | 2026-09-23 | `v2.12.0` |
+| 29b | The bar rebuilt: real glass, and dressed properly | 2026-09-23 | `v2.12.1` |
