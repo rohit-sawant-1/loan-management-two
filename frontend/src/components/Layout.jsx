@@ -137,6 +137,14 @@ export default function Layout() {
     navigate("/login");
   }
 
+  // Start each page at the top. React Router leaves the scroll position where
+  // it was, so opening a page from halfway down a long list used to drop you
+  // halfway down the new one — which also made the fade below look like a
+  // glitch rather than a transition.
+  useEffect(() => {
+    window.scrollTo(0, 0);
+  }, [pathname]);
+
   // Each entry: where it goes, what it says, which icon, and who may see it.
   // The admin sees everything but creates nothing, so it has no "New application".
   const links = [
@@ -192,7 +200,10 @@ export default function Layout() {
         </div>
       </header>
 
-      <main className="page" id="main">
+      {/* The key changes with the address, which remounts the page and so
+          restarts its fade-in. Without it the animation runs once, on the
+          first load, and never again. */}
+      <main className="page" id="main" key={pathname}>
         <Outlet />
       </main>
     </div>

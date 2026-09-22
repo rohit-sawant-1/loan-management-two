@@ -4,6 +4,17 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — The page stops jumping sideways when you change page
+
+**Asked for:** moving between pages from the navbar jerks a little left then right, and you wanted it smooth.
+**Built:** the jerk was the scrollbar, not the transition. A long page like Applications has one; a short page does not. When it disappears the window gets about 15 pixels wider, so everything centred — the bar and the page — slides right and then back. The browser can reserve that space permanently, which is one line, and the jump is gone. It only started showing in Piece 29 because the page is centred now; next to a fixed sidebar, only the right-hand edge moved and nobody noticed.
+Then the actual smoothness: each page fades in over about a sixth of a second, and the window goes back to the top when you change page, which React Router does not do by itself. Opening a page from halfway down a long list used to drop you halfway down the new one.
+**Found:** the fade is opacity only, on purpose. Sliding the page even a few pixels would mean any pop-up inside it positions itself against the page instead of the window, which would put every confirmation dialog in the wrong place.
+**Realised:** anyone who has asked their computer to keep animation to a minimum gets no fade at all; the browser tells us, and it is three lines to respect it.
+**Next:** your call on whether the bar looks right now, then Piece 30.
+
+---
+
 ## 2026-09-23 — The top bar, rebuilt: actual glass this time
 
 **Asked for:** you said the bar looked trash and, in particular, did not look translucent, and asked for something that suits a professional finance product.

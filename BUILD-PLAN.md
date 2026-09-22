@@ -1618,6 +1618,7 @@ The OFF path is byte-for-byte today's form. The trainer tests don't touch settin
 **Second pass, same day (`v2.12.1`), after Rohit said it looked cheap and not translucent.** He was right on both counts:
 - **It was 78% opaque**, which is paint, not glass. Now 0.68 with a 20px blur and the colour behind it boosted, which is as transparent as it can be while white text stays comfortably readable on it.
 - **Glass over one flat colour still looks like paint**, because the blur has nothing to pick up. The page now carries two very soft pools of bank blue across its top, fixed in place so they stay behind the bar while the content scrolls.
+- **Third pass (`v2.12.2`): the sideways jump when changing page.** Not the transition at all — the scrollbar. A long page has one, a short page does not, and losing it makes the window ~15px wider, so everything centred slides right and back. `html { scrollbar-gutter: stable }` keeps the space reserved either way. It only became visible in Piece 29 because the page is centred now; beside a fixed sidebar only the right-hand edge moved. Each page also fades in over 160ms (opacity only — a transform would break `position: fixed` pop-ups inside it) and starts at the top, since React Router leaves the scroll where it was.
 - **The bar was cramped.** 62px tall now, hairline dividers separating the brand, the links and the account, pill-shaped links, the current page as a brighter pane of the same glass with a lit top edge, a small capitalised "BRANCH PORTAL" under the name, and the initials in a slate gradient with the chevron turning when the menu opens.
 
 ### What exists
@@ -2255,3 +2256,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 28 | Admin settings, and the switch for real document uploads | 2026-09-23 | `v2.11.0` |
 | 29 | The sidebar becomes a sticky top bar, with the account behind its initials | 2026-09-23 | `v2.12.0` |
 | 29b | The bar rebuilt: real glass, and dressed properly | 2026-09-23 | `v2.12.1` |
+| 29c | No more sideways jump when changing page; pages fade in and start at the top | 2026-09-23 | `v2.12.2` |

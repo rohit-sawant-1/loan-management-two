@@ -73,6 +73,13 @@
 * { box-sizing: border-box; }
 html, body, #root { height: 100%; }
 
+/* Always keep room for the scrollbar, whether or not this page needs one.
+   Without it, moving from a long page to a short one takes the scrollbar away,
+   the window becomes about 15px wider, and everything centred — the bar and
+   the page both — jumps sideways and back. `stable` reserves the space without
+   drawing a track on pages that do not scroll. */
+html { scrollbar-gutter: stable; }
+
 body {
   margin: 0;
   font: 15px/1.55 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
@@ -273,6 +280,19 @@ a:hover { text-decoration-color: currentColor; }
   flex: 1; min-width: 0;
   width: 100%; max-width: var(--page-max); margin: 0 auto;
   padding: 1.6rem 1.9rem 3rem;
+  /* A short fade as each page arrives, so moving around the app feels like
+     one thing changing rather than the screen being swapped out. The page is
+     given a fresh key per address in Layout.jsx, which is what restarts it.
+     Opacity only, deliberately: a transform on this element would make any
+     `position: fixed` pop-up inside it position against the page instead of
+     the window. */
+  animation: page-in 160ms ease-out;
+}
+@keyframes page-in { from { opacity: 0; } }
+
+/* Anyone who has asked their system to keep animation to a minimum gets none. */
+@media (prefers-reduced-motion: reduce) {
+  .page { animation: none; }
 }
 
 .page-head {
