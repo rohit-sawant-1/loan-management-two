@@ -1244,7 +1244,7 @@ Every step lands in the activity log.
 | 1 | Rules, the new `application_edit_requests` table, schemas, the `check_free_text` helper, and the database's own checks (triggers on `loan_applications`, CHECK rules on the new table) | v2.5.0 ✅ |
 | 2 | `edit_request_service.py`, the new addresses, `PATCH /applications/{id}`, closing open requests on a status move, API tests | v2.6.0 ✅ |
 | 3 | React, the customer's side: `EditRequestCard` on the application page, the two-step pop-up, the unlocked-fields form, the support-email note | v2.7.0 ✅ |
-| 4 | React, the staff side: the "Edit requests" page and sidebar item, and activity labels for the five new events | v2.8.0 |
+| 4 | React, the staff side: the "Edit requests" page and sidebar item, and activity labels for the five new events | v2.8.0 ✅ |
 | 5 | Manual (Section 6, the FAQ, a new "Contacting the bank" section), the T-102 ingestion fix, re-ingest, and asking the chatbot twice | v2.9.0 |
 
 ### What this must not break

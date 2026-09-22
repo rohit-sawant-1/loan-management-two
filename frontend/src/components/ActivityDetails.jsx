@@ -3,6 +3,7 @@
 // panel on an application.
 
 import { DETAIL_LABELS, parseDetails, TOOL_NAMES } from "../utils/activity";
+import { FIELD_LABELS } from "../utils/editRequests";
 import { label, rupees, whole } from "../utils/format";
 
 function DetailValue({ name, value }) {
@@ -27,6 +28,14 @@ function DetailValue({ name, value }) {
       ? value.map((t) => TOOL_NAMES[t] || label(t)).join(", ")
       : <span className="muted">none needed</span>;
   }
+  // Piece 25: the fields a customer asked to change, in words.
+  if (name === "fields" && Array.isArray(value)) {
+    return value.map((f) => FIELD_LABELS[f] || label(f)).join(", ");
+  }
+  // A whole stored eligibility assessment keeps its line breaks.
+  if (name === "previous_eligibility_summary") {
+    return <pre className="eligibility-summary" style={{ margin: 0 }}>{value}</pre>;
+  }
   if (Array.isArray(value)) {
     return value.length ? value.join("; ") : <span className="muted">none</span>;
   }
@@ -42,22 +51,27 @@ export default function ActivityDetails({ raw }) {
   // up rather than anything a person could read. Flattening it one level turns
   // it into ordinary labelled rows, because the values inside are already the
   // plain things a manager wants: which application, which status, what reason.
+  //
+  // Piece 25 stores an edit as two groups, `before` and `after`. Flattened
+  // plainly those would print "Amount" twice with no way to tell which is
+  // which, so rows from those two groups say so: "Amount (before)".
   const rows = [];
   for (const [key, value] of Object.entries(parsed)) {
     if (value && typeof value === "object" && !Array.isArray(value)) {
+      const suffix = key === "before" || key === "after" ? ` (${key})` : "";
       for (const [innerKey, innerValue] of Object.entries(value)) {
-        rows.push([innerKey, innerValue]);
+        rows.push([innerKey, innerValue, suffix]);
       }
     } else {
-      rows.push([key, value]);
+      rows.push([key, value, ""]);
     }
   }
 
   return (
     <dl className="kv">
-      {rows.map(([key, value], i) => (
+      {rows.map(([key, value, suffix], i) => (
         <div key={`${key}-${i}`} style={{ display: "contents" }}>
-          <dt>{DETAIL_LABELS[key] || label(key)}</dt>
+          <dt>{DETAIL_LABELS[key] || label(key)}{suffix}</dt>
           <dd><DetailValue name={key} value={value} /></dd>
         </div>
       ))}

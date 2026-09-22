@@ -43,6 +43,7 @@ export default function Layout() {
     { to: "/applications/new", text: isApplicant ? "Apply for a loan" : "New application", icon: "plus", show: true },
     { to: "/assistant", text: "Assistant", icon: "shield", show: true },
     { to: "/dashboard", text: "Dashboard", icon: "dashboard", show: isStaff },
+    { to: "/edit-requests", text: "Edit requests", icon: "inbox", show: isStaff },
     { to: "/activity", text: "Activity", icon: "activity", show: isManager },
     { to: "/profile", text: "My profile", icon: "user", show: isApplicant },
   ].filter((l) => l.show);

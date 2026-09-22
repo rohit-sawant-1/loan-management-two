@@ -4,7 +4,8 @@
 // the same thing and was still printing raw stored data into a table cell. One
 // copy, imported by both, so the two screens can never drift apart.
 
-import { label, whole } from "./format";
+import { fieldList } from "./editRequests";
+import { label, rupees, whole } from "./format";
 
 // Plain words and an icon for each kind of event, instead of the stored name.
 export const ACTIONS = {
@@ -27,6 +28,12 @@ export const ACTIONS = {
   chat_message:          { text: "Asked the assistant",      icon: "activity" },
   chat_action_confirmed: { text: "Change made via assistant", icon: "shield" },
   chat_review:           { text: "Reviewed by the assistant", icon: "shield" },
+  // Piece 25: a customer asking to change their application, and what came of it.
+  edit_requested:        { text: "Edit requested",           icon: "file" },
+  edit_request_approved: { text: "Edit request approved",    icon: "check" },
+  edit_request_refused:  { text: "Edit request refused",     icon: "close" },
+  application_edited:    { text: "Application edited",       icon: "refresh" },
+  edit_request_closed:   { text: "Edit request closed",      icon: "info" },
 };
 
 export const describe = (action) => ACTIONS[action] || { text: label(action), icon: "info" };
@@ -44,6 +51,10 @@ export const DETAIL_LABELS = {
   sources: "Manual extracts used",
   decision: "Verdict", risk_score: "Risk score", agents_run: "Agents that ran",
   compliance_passed: "Compliance passed", errors: "What went wrong",
+  // Piece 25
+  request_id: "Edit request number", fields: "Asked to change", note: "Staff note",
+  eligibility_passed_before: "Passed eligibility before", eligibility_passed_after: "Passes eligibility now",
+  previous_eligibility_summary: "Eligibility before the edit",
 };
 
 // The assistant's tools, in words someone auditing a bank would use. These are
@@ -108,6 +119,21 @@ export function summarise(action, raw) {
   }
   // The verdict is the point of a review, so it goes in the table itself
   // rather than only in the panel behind "View".
+  // Piece 25. The fields asked for, or for a save, the first change made.
+  if ((action === "edit_requested" || action === "edit_request_approved") && d.fields) {
+    return label(fieldList(d.fields));
+  }
+  if (action === "edit_request_refused" && d.note) {
+    return d.note.length > 60 ? `${d.note.slice(0, 60)}…` : d.note;
+  }
+  if (action === "application_edited" && d.before && d.after) {
+    const [field] = Object.keys(d.after);
+    if (!field) return "";
+    const show = (v) => (field === "amount_requested" ? rupees(v)
+      : field === "tenure_months" ? `${v} months` : "new purpose");
+    return field === "purpose" ? "Purpose changed" : `${show(d.before[field])} → ${show(d.after[field])}`;
+  }
+  if (action === "edit_request_closed") return "The application moved on";
   if (action === "chat_review") {
     if (d.errors?.length) return "Could not run";
     return d.risk_score != null
