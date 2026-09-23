@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Piece 32 browser check: passed, with three bugs found on the way
+
+**Asked for:** the Piece 32 browser check, step by step, before anything else.
+**Built:** no new feature. Priya uploaded a dummy SPECIMEN Aadhaar, got the amber TEST badge and "including 1 TEST document", Rajan's and Anita's bells showed 1, and the admin purge removed it (file, rows and all, with an activity log entry), leaving her old ID proof alone. Two fixes along the way: typing in any pop-up lost focus after each key (T-124, v2.15.1), and the green success banners pushed the tick and the text to opposite edges (v2.15.2).
+**Found:** the "2/3 submitted" line counts files, not document types, so three ID proofs would read "3/3" (T-123, from Piece 14). Also, whether a same-type upload should replace the old one is now D-29.
+**Realised:** you questioned the count straight away, because it didn't match what you had actually uploaded. That's exactly what a browser check is for: no test looks at that line.
+**Next:** fix T-123, then decide D-29.
+
+---
+
 ## 2026-09-23 — Piece 32: the TEST-document workflow
 
 **Asked for:** the next piece in the Document intelligence programme, following straight on from Piece 31. Piece 30 had already built the staff notification for a TEST document upload but never called it; this piece was about actually wiring everything Piece 31's classification unlocks.
