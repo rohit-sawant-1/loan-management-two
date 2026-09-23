@@ -1972,6 +1972,11 @@ than duplicated in Piece 34. See `TRAPS-AND-DECISIONS.md`.
 **Needs first:** 31. **Open decisions:**
 - Confirm the field lists below.
 - **Address** is a new field that doesn't exist anywhere in the app today. Confirm it's wanted.
+- **Replace (from D-29, 2026-09-24).** Settled: several files per type stay side by side, and nothing replaces anything automatically. Ask Rohit whether this piece adds a **Replace** action on a document row. The old file would be kept in history as superseded and dropped from the checklist, never deleted. This is the first piece where "a second Aadhaar" can be told apart from "an Aadhaar plus a PAN", so the question belongs here.
+
+**Carried in from the Piece 32 browser check (2026-09-24):**
+- The checklist counts **types covered**, not files (`required − missing`, T-123). When "only confirmed documents count" arrives in this piece, keep it counting per type: a type is covered when at least one of its documents is confirmed.
+- Every pop-up is now safe for typing (T-124). The field form can use `Modal` freely.
 
 ### Document inventory (from the code and manual) and the proposed fields
 Present today: 6 types (`rules.DOCUMENT_TYPES`) + the manual's Section 4 descriptions. A **kind** sits *inside* a type, so `doc_type` and every trainer test are untouched.

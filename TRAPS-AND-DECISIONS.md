@@ -16,33 +16,6 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 ---
 
-### D-29 · A second upload of the same document type: replace the first, or keep both?
-
-**What's wrong:** Priya's application 2 now has two ID proofs, the old name-only
-one from the seed data and the new SPECIMEN PDF. Rohit's instinct is that a
-same-type upload should replace the old one. (The wrong count he also spotted is
-T-123, a plain bug.)
-
-**Why it matters:** several document types legitimately hold more than one file.
-An ID proof can be both Aadhaar and PAN, which is exactly how Piece 33's "kinds
-inside a type" is designed. Income proof is usually three months of payslips,
-and property documents are a deed, an NOC and a plan. Always replacing would
-throw away files that are meant to sit side by side. Deleting also conflicts
-with record-keeping: banks keep KYC and loan documents for years after the loan
-closes, so a replaced file is marked as superseded rather than destroyed.
-
-**My recommendation:** keep several files per type (no change to how uploads
-work today), fix the count (T-123), and add an explicit **Replace** button on a
-row later. A replaced file stays in history, marked superseded, and drops out of
-the checklist. This is purely additive, so Phase 1 UNIT-07 and Phase 4 MCP-06
-(the name-only route) are untouched. It fits best once Piece 33 exists, because
-then "same kind" (a second Aadhaar) can be told apart from "same type" (Aadhaar
-plus PAN).
-
-**Your answer:**
-
----
-
 ### D-22 · The eligibility timestamp is removed from the stored text, not converted
 
 **What's wrong:** the Application Detail card showed the same event at two times
@@ -1088,6 +1061,15 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 ---
 
 # Settled
+
+### 2026-09-24 · D-29 — Same-type uploads sit side by side, never replace automatically
+**Rohit's answer:** keep both, as now. Some types really do hold several files:
+Aadhaar and PAN as ID proof, three months of payslips, a deed plus an NOC plus a
+plan. The checklist counts types covered, not files (T-123, fixed in v2.15.3).
+**Carried into Piece 33:** a Replace action (the old file kept in history as
+superseded, dropped from the checklist, never deleted) is raised as a question
+there, once "a second Aadhaar" can be told apart from "an Aadhaar plus a PAN".
+Noted in `BUILD-PLAN.md` under Piece 33.
 
 ### 2026-09-22 · The Document intelligence programme (Pieces 27–38): decisions
 Planned over several rounds with Rohit. The full detail is in `BUILD-PLAN.md`.
