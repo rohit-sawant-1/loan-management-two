@@ -197,7 +197,8 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
         Uploaded
         {items.length > 0 && (
           <span className="muted" style={{ fontWeight: 400, fontSize: "0.85rem", marginLeft: "0.5rem" }}>
-            {items.length}/{required.length} submitted
+            {/* Count required types covered, not files: two ID proofs are still one type. */}
+            {required.length - missing.length}/{required.length} submitted
             {testCount > 0 && `, including ${testCount} TEST document${testCount === 1 ? "" : "s"}`}
           </span>
         )}

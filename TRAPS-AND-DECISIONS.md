@@ -261,7 +261,7 @@ show "2/3 submitted" while income proof and bank statement are still missing,
 and three ID proofs would show "3/3". The ticks above it are right, because they
 use the server's `missing` list. The bug dates from Piece 14, not Piece 32. Fix:
 count `required.length - missing.length` instead. Only the front end changes, and
-no trainer test reads this line. Linked to D-29.
+no trainer test reads this line. Linked to D-29. **Fixed 2026-09-24, v2.15.3.**
 
 **T-122 · A handful of full-suite tests failed near the end of an unrelated
 run, not yet identified.** While building Piece 32 (2026-09-23), a full
