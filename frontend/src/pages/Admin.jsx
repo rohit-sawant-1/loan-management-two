@@ -126,6 +126,99 @@ function SettingsCard() {
   );
 }
 
+// Piece 32: clears out demo documents. Only ever touches documents the
+// server itself classified TEST — a REAL or UNDECLARED document is never
+// affected, and `nature` can't be changed once set, so this is the only way
+// a TEST document ever leaves the system.
+const PURGE_PHRASE = "DELETE TEST DOCUMENTS";
+
+function PurgeTestDocumentsCard() {
+  const [open, setOpen] = useState(false);
+  const [typed, setTyped] = useState("");
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
+  const [notice, setNotice] = useState("");
+
+  function closeModal() {
+    if (busy) return;
+    setOpen(false);
+    setTyped("");
+  }
+
+  async function purge() {
+    setBusy(true);
+    setError("");
+    try {
+      const res = await api.post("/admin/test-documents/purge", { confirm: typed });
+      setNotice(
+        res.data.purged_count === 0
+          ? "There were no TEST documents to remove."
+          : `Removed ${res.data.purged_count} TEST document${res.data.purged_count === 1 ? "" : "s"}.`
+      );
+      setOpen(false);
+      setTyped("");
+    } catch (err) {
+      setError(errorMessage(err));
+    } finally {
+      setBusy(false);
+    }
+  }
+
+  return (
+    <div className="card">
+      <div className="card-head">
+        <h2>Demo documents</h2>
+      </div>
+
+      <ErrorBanner message={error} onClose={() => setError("")} />
+      {notice && (
+        <div className="banner banner-ok">
+          <Icon name="check" size={16} />
+          <span>{notice}</span>
+        </div>
+      )}
+
+      <p className="muted">
+        Every document the system recognised as TEST material — a specimen, sample or demo file —
+        can be cleared out in one go. Real customer documents are never touched.
+      </p>
+
+      <Button type="button" variant="danger" icon="trash" onClick={() => setOpen(true)}>
+        Purge TEST documents
+      </Button>
+
+      <Modal
+        open={open}
+        onClose={closeModal}
+        title="Purge every TEST document?"
+        tone="danger"
+        footer={
+          <>
+            <Button type="button" onClick={closeModal} disabled={busy}>Go back</Button>
+            <Button
+              type="button" variant="danger" loading={busy}
+              disabled={typed !== PURGE_PHRASE}
+              onClick={purge}
+            >
+              Purge
+            </Button>
+          </>
+        }
+      >
+        <p>This permanently deletes every document marked TEST, everywhere in the app. There is no undo.</p>
+        <p className="muted">
+          Real and undeclared documents are never affected. This is recorded in the activity log
+          with your name against it.
+        </p>
+        <label>
+          Type <strong>{PURGE_PHRASE}</strong> to confirm
+          <input value={typed} onChange={(e) => setTyped(e.target.value)} autoComplete="off" />
+        </label>
+      </Modal>
+    </div>
+  );
+}
+
 export default function Admin() {
   const [data, setData] = useState(null);
   const [error, setError] = useState("");
@@ -208,6 +301,7 @@ export default function Admin() {
           </div>
 
           <SettingsCard />
+          <PurgeTestDocumentsCard />
         </>
       )}
     </>

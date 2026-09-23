@@ -15,7 +15,7 @@ from app.models.stored_file import StoredFile
 from app.models.user import User, UserRole
 from app.schemas.common import clean_display_name
 from app.schemas.document import CreateDocumentSchema
-from app.services import activity_service, file_service, storage
+from app.services import activity_service, file_service, notification_service, storage
 from app.services.errors import Forbidden, NotFound, RuleViolation
 
 logger = structlog.get_logger()
@@ -191,6 +191,15 @@ def add_uploaded_document(
         },
         **(meta or {}),
     )
+
+    if result.nature == "test":
+        # Piece 32, notification trigger 2: staff hear about a demo
+        # document the moment it lands. Same commit as the upload, so a
+        # rolled-back document never leaves a dangling notice behind.
+        notification_service.notify_staff_test_document(
+            db, document, applicant_name=application.applicant.name,
+        )
+
     db.commit()
     db.refresh(document)
     logger.info("document_uploaded", application_id=application.id, document_id=document.id,

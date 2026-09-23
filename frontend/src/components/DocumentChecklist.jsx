@@ -7,6 +7,7 @@ import { api, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useSettings } from "../settings/useSettings";
 import ErrorBanner from "./ErrorBanner";
+import TestBadge from "./TestBadge";
 import ViewOnly from "./ViewOnly";
 import Button from "./ui/Button";
 import Icon from "./ui/Icon";
@@ -157,7 +158,7 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
-  const { items = [], required = [], missing = [] } = data || {};
+  const { items = [], required = [], missing = [], test_count: testCount = 0 } = data || {};
 
   async function verify(docId) {
     setBusy(true);
@@ -192,7 +193,15 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
         })}
       </ul>
 
-      <h3 style={{ margin: "1rem 0 0.5rem" }}>Uploaded</h3>
+      <h3 style={{ margin: "1rem 0 0.5rem" }}>
+        Uploaded
+        {items.length > 0 && (
+          <span className="muted" style={{ fontWeight: 400, fontSize: "0.85rem", marginLeft: "0.5rem" }}>
+            {items.length}/{required.length} submitted
+            {testCount > 0 && `, including ${testCount} TEST document${testCount === 1 ? "" : "s"}`}
+          </span>
+        )}
+      </h3>
       {items.length === 0 ? (
         <p className="muted">Nothing uploaded yet.</p>
       ) : (
@@ -207,7 +216,10 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
             <tbody>
               {items.map((d) => (
                 <tr key={d.id}>
-                  <td>{label(d.doc_type)}</td>
+                  <td>
+                    {label(d.doc_type)}{" "}
+                    {d.nature === "test" && <TestBadge />}
+                  </td>
                   <td>{d.file_name}</td>
                   <td className="mono">
                     {d.file_id
@@ -228,8 +240,14 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
                         </Button>
                       )}
                       {isStaff && !d.verified && (
-                        <Button size="sm" variant="ok" icon="check" disabled={busy} onClick={() => verify(d.id)}>
-                          Mark verified
+                        <Button
+                          size="sm" variant="ok" icon="check" disabled={busy}
+                          onClick={() => verify(d.id)}
+                          title={d.nature === "test"
+                            ? "Checked for the demo, not for authenticity"
+                            : undefined}
+                        >
+                          {d.nature === "test" ? "Verify (test document)" : "Mark verified"}
                         </Button>
                       )}
                     </div>

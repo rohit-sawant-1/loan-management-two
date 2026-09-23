@@ -9,6 +9,7 @@ import { api, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import ErrorBanner from "../components/ErrorBanner";
 import Spinner from "../components/Spinner";
+import TestBadge from "../components/TestBadge";
 import ViewOnly from "../components/ViewOnly";
 import Button from "../components/ui/Button";
 import EmptyState from "../components/ui/EmptyState";
@@ -105,7 +106,10 @@ export default function DocumentsToCheck() {
                     <tr key={d.id}>
                       <td>{formatDateTime(d.uploaded_at)}</td>
                       <td><Link to={`/applications/${d.application_id}`}>Application {d.application_id}</Link></td>
-                      <td>{label(d.doc_type)}</td>
+                      <td>
+                        {label(d.doc_type)}{" "}
+                        {d.nature === "test" && <TestBadge />}
+                      </td>
                       <td>{d.file_name}</td>
                       <td className="mono">
                         {d.file_id
@@ -125,8 +129,11 @@ export default function DocumentsToCheck() {
                             <Button
                               size="sm" variant="ok" icon="check"
                               loading={busyId === d.id} onClick={() => markVerified(d)}
+                              title={d.nature === "test"
+                                ? "Checked for the demo, not for authenticity"
+                                : undefined}
                             >
-                              Mark verified
+                              {d.nature === "test" ? "Verify (test document)" : "Mark verified"}
                             </Button>
                           )}
                         </div>

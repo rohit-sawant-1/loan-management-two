@@ -536,6 +536,11 @@ label:has(.field-error) textarea { border-color: #f0a3a3; }
 .badge-rejected     { background: var(--status-rejected); }
 .badge-disbursed    { background: var(--status-disbursed); }
 
+/* Piece 32: TEST documents. Deliberately not one of the five status colours
+   above, and deliberately not the same orange as under_review, so the two
+   are never mistaken for each other at a glance. */
+.badge-test { background: #b45309; }
+
 /* ---------------------------------------------------------------- tables -- */
 .table-wrap {
   background: var(--surface);

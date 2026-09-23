@@ -56,6 +56,8 @@ class DocumentListResponse(BaseModel):
     items: list[DocumentResponse]
     required: list[str]     # what this loan type needs
     missing: list[str]      # what has not been uploaded yet
+    test_count: int = 0     # Piece 32: how many uploaded documents are TEST
+    real_count: int = 0     # how many are REAL (undeclared counts as neither)
 
 
 class UnverifiedDocumentsResponse(BaseModel):

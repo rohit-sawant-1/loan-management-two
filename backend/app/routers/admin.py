@@ -11,7 +11,9 @@ from sqlalchemy.orm import Session
 from app.database import get_db
 from app.dependencies import require_admin
 from app.models.user import User
-from app.schemas.admin import AdminUserListResponse
+from app.schemas.admin import (
+    AdminUserListResponse, PurgeTestDocumentsBody, PurgeTestDocumentsResponse,
+)
 from app.schemas.auth import UserResponse
 from app.schemas.settings import RealUploadsBody, SettingResponse
 from app.services import admin_service, settings_service
@@ -19,6 +21,7 @@ from app.services.activity_service import request_meta
 from app.services.errors import RuleViolation
 
 REAL_UPLOADS = "real_uploads_enabled"
+PURGE_CONFIRMATION = "DELETE TEST DOCUMENTS"
 
 router = APIRouter()
 
@@ -65,3 +68,24 @@ def set_real_uploads(
         )
     except RuleViolation as e:
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=e.message)
+
+
+@router.post("/test-documents/purge", response_model=PurgeTestDocumentsResponse)
+def purge_test_documents(
+    body: PurgeTestDocumentsBody,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_admin),
+):
+    """
+    Delete every document the server marked TEST — the file, the row that
+    describes it, and the document pointing at it. Typing the phrase wrong
+    is the safeguard; there is no undo once this runs.
+    """
+    if body.confirm != PURGE_CONFIRMATION:
+        raise HTTPException(
+            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            detail=f'Type "{PURGE_CONFIRMATION}" exactly to confirm.',
+        )
+    count = admin_service.purge_test_documents(db, user=user, meta=request_meta(request))
+    return PurgeTestDocumentsResponse(purged_count=count)

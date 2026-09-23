@@ -606,3 +606,142 @@ def test_check_allowed_for_refuses_wrong_type_for_document():
     from app.services.errors import RuleViolation
     with pytest.raises(RuleViolation):
         file_service.check_allowed_for("bank_statement", "image/jpeg")   # PDF only
+
+
+# ---------------------------------------------------------------------------
+# Piece 32: the TEST-document workflow built on top of Piece 31's nature
+# ---------------------------------------------------------------------------
+
+def test_a_test_document_notifies_every_active_officer_and_manager(client, people, app_id, monkeypatch):
+    from app.models.notification import Notification, NotificationAudience, NotificationType
+
+    monkeypatch.setattr("app.services.file_service._gemini_confirms_specimen", lambda text, phrase: True)
+    specimen = _minimal_pdf_with_text("SPECIMEN DOCUMENT FOR TESTING ONLY")
+
+    response = _upload(client, people["customer"], app_id, "bank_statement", specimen,
+                       filename="statement.pdf", content_type="application/pdf")
+    assert response.status_code == 201, response.text
+    assert response.json()["nature"] == "test"
+
+    db = TestingSessionLocal()
+    rows = db.query(Notification).filter(
+        Notification.type == NotificationType.test_document_uploaded
+    ).all()
+    db.close()
+    assert len(rows) == 2   # the officer and the manager, both active
+    assert all(r.audience == NotificationAudience.staff for r in rows)
+
+
+def test_a_real_or_undeclared_upload_notifies_nobody(client, people, app_id):
+    from app.models.notification import Notification, NotificationType
+
+    response = _upload(client, people["customer"], app_id, "id_proof", _jpeg_bytes())
+    assert response.status_code == 201, response.text
+    assert response.json()["nature"] == "undeclared"
+
+    db = TestingSessionLocal()
+    rows = db.query(Notification).filter(
+        Notification.type == NotificationType.test_document_uploaded
+    ).all()
+    db.close()
+    assert rows == []
+
+
+def test_document_list_reports_the_test_count(client, people, app_id, monkeypatch):
+    monkeypatch.setattr("app.services.file_service._gemini_confirms_specimen", lambda text, phrase: True)
+    specimen = _minimal_pdf_with_text("SPECIMEN DOCUMENT FOR TESTING ONLY")
+    _upload(client, people["customer"], app_id, "bank_statement", specimen,
+           filename="statement.pdf", content_type="application/pdf")
+    _upload(client, people["customer"], app_id, "id_proof", _jpeg_bytes())   # undeclared
+
+    response = client.get(f"/api/v1/applications/{app_id}/documents", headers=_headers(people["officer"]))
+    assert response.status_code == 200, response.text
+    body = response.json()
+    assert body["test_count"] == 1
+    assert body["real_count"] == 0   # nothing in this piece ever produces "real" yet
+
+
+def test_compliance_note_mentions_test_documents(app_id, people, client, monkeypatch):
+    """The Phase 5 compliance checker adds a note, but never changes its verdict."""
+    from multi_agent.agents.compliance_checker import compliance_checker
+
+    base_state = {
+        "application_data": {"loan_type": "personal", "amount_requested": 200000, "tenure_months": 24},
+        "applicant_data": {"credit_score": 760, "date_of_birth": "1990-01-01"},
+        "risk_assessment": {}, "compliance_check": {},
+        "final_decision": "", "reasoning": "", "messages": [],
+        "current_agent": "", "errors": [],
+    }
+
+    without_test = compliance_checker({**base_state, "documents": [
+        {"doc_type": "id_proof", "verified": True, "nature": "undeclared"},
+    ]})
+    assert "TEST" not in without_test["compliance_check"]["compliance_notes"]
+
+    with_test = compliance_checker({**base_state, "documents": [
+        {"doc_type": "id_proof", "verified": True, "nature": "test"},
+    ]})
+    assert "Includes TEST documents" in with_test["compliance_check"]["compliance_notes"]
+    # A note only. The verdict itself is untouched by nature.
+    assert with_test["compliance_check"]["compliance_passed"] == without_test["compliance_check"]["compliance_passed"]
+
+
+# ---------------------------------------------------------------------------
+# Piece 32: the admin's purge
+# ---------------------------------------------------------------------------
+
+def _upload_test_document(client, people, app_id, monkeypatch):
+    monkeypatch.setattr("app.services.file_service._gemini_confirms_specimen", lambda text, phrase: True)
+    specimen = _minimal_pdf_with_text("SPECIMEN DOCUMENT FOR TESTING ONLY")
+    response = _upload(client, people["customer"], app_id, "bank_statement", specimen,
+                       filename="statement.pdf", content_type="application/pdf")
+    assert response.status_code == 201, response.text
+    return response.json()
+
+
+def test_purge_removes_test_documents_but_not_real_ones(client, people, app_id, monkeypatch):
+    from app.config import settings
+
+    test_doc = _upload_test_document(client, people, app_id, monkeypatch)
+    kept = _upload(client, people["customer"], app_id, "id_proof", _jpeg_bytes())
+    assert kept.status_code == 201, kept.text
+    kept_file_id = kept.json()["file_id"]
+
+    response = client.post("/api/v1/admin/test-documents/purge",
+                           json={"confirm": "DELETE TEST DOCUMENTS"},
+                           headers=_headers(people["admin"]))
+    assert response.status_code == 200, response.text
+    assert response.json()["purged_count"] == 1
+
+    db = TestingSessionLocal()
+    assert db.query(StoredFile).filter(StoredFile.id == test_doc["file_id"]).first() is None
+    assert db.query(StoredFile).filter(StoredFile.id == kept_file_id).first() is not None
+    db.close()
+
+    safe_files = list(Path(settings.upload_dir_safe).glob("*"))
+    assert safe_files == []
+
+    still_viewable = client.get(f"/api/v1/files/{kept_file_id}", headers=_headers(people["officer"]))
+    assert still_viewable.status_code == 200
+
+
+def test_purge_refuses_the_wrong_confirmation_phrase(client, people, app_id, monkeypatch):
+    _upload_test_document(client, people, app_id, monkeypatch)
+    response = client.post("/api/v1/admin/test-documents/purge",
+                           json={"confirm": "yes please"},
+                           headers=_headers(people["admin"]))
+    assert response.status_code == 422, response.text
+
+    db = TestingSessionLocal()
+    remaining = db.query(StoredFile).count()
+    db.close()
+    assert remaining == 1   # nothing was deleted
+
+
+def test_purge_is_admin_only(client, people, app_id, monkeypatch):
+    _upload_test_document(client, people, app_id, monkeypatch)
+    for who in ("officer", "manager", "customer"):
+        response = client.post("/api/v1/admin/test-documents/purge",
+                               json={"confirm": "DELETE TEST DOCUMENTS"},
+                               headers=_headers(people[who]))
+        assert response.status_code == 403, (who, response.text)

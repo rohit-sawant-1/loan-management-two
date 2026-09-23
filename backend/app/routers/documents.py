@@ -97,7 +97,12 @@ def list_documents(
         items, required, missing = document_service.list_documents(db, application_id, viewer=user)
     except (NotFound, Forbidden) as e:
         raise _http(e)
-    return DocumentListResponse(items=items, required=required, missing=missing)
+    test_count = sum(1 for d in items if d.nature == "test")
+    real_count = sum(1 for d in items if d.nature == "real")
+    return DocumentListResponse(
+        items=items, required=required, missing=missing,
+        test_count=test_count, real_count=real_count,
+    )
 
 
 @router.patch("/{application_id}/documents/{document_id}/verify", response_model=DocumentResponse)

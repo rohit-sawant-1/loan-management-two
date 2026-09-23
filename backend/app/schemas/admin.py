@@ -14,3 +14,12 @@ class AdminUserListResponse(BaseModel):
     total_count: int
     # Every role, even at zero: {"applicant": 6, "loan_officer": 1, ...}
     counts_by_role: dict[str, int]
+
+
+class PurgeTestDocumentsBody(BaseModel):
+    """Piece 32: the admin has to type the exact phrase, not just tick a box."""
+    confirm: str
+
+
+class PurgeTestDocumentsResponse(BaseModel):
+    purged_count: int

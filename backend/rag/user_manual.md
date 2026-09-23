@@ -140,6 +140,17 @@ uploaded more than once; every copy is kept. Only documents that have **not
 yet been verified** may be replaced. Once a loan officer has verified a
 document, it is fixed as part of the record.
 
+A document the system recognises as demonstration or specimen material is
+marked TEST and shown with a TEST badge wherever it appears, and the
+document checklist says how many of the uploaded documents are TEST. Loan
+officers and the branch manager are notified in-app the moment a TEST
+document is uploaded. Marking a document TEST is not the same as verifying
+it: a TEST document can still be marked verified for demonstration
+purposes, but this is clearly labelled as checking it for the demo, not for
+authenticity. The system administrator can permanently remove every TEST
+document from the system in one step; real and undeclared documents are
+never affected by this.
+
 ---
 
 ## Section 5 — Eligibility Criteria

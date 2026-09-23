@@ -4,6 +4,21 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — Piece 32: the TEST-document workflow
+
+**Asked for:** the next piece in the Document intelligence programme, following straight on from Piece 31. Piece 30 had already built the staff notification for a TEST document upload but never called it; this piece was about actually wiring everything Piece 31's classification unlocks.
+**Built:**
+- A TEST upload now notifies every active loan officer and branch manager, in the same database commit as the upload itself, so nobody gets told about a document that ended up not being saved.
+- The document checklist now says how many of the uploaded documents are TEST ("4/4 submitted, including 2 TEST documents"), and every TEST document gets an amber badge wherever it's shown — the applicant's checklist, the staff "Documents to check" page, and the row itself.
+- "Mark verified" on a TEST document is relabelled "Verify (test document)", so nobody reads a TEST document's verified tick as proof it's genuine.
+- Phase 5's compliance checker now adds a note, "Includes TEST documents — not genuine", when any document on the application is TEST. It's a note only — the pass/fail verdict is untouched, and both Phase 5 tests that check the verdict still pass unchanged.
+- The system administrator can now permanently purge every TEST document in one step, from a new card on the Admin page. It asks for the exact phrase "DELETE TEST DOCUMENTS" typed out, not just a tick box, since there's no undo. Real and undeclared documents are never touched.
+**Found:** the "SPECIMEN backstop" bullet in the old written plan for this piece turned out to already be built — Piece 31's classification does that exact check at upload time now, for every document, not just ones declared real. Dropped rather than duplicated.
+**Realised:** running the whole five-phase test suite in one go takes a long time (RAG and agent tests call real APIs), so for a change scoped to a few files it's faster and just as trustworthy to run only the touched test files plus Phase 5's — that's what confirmed this piece, at 133 of 133 passing.
+**Next:** a browser check by Rohit (upload a SPECIMEN-worded PDF, see the badge and the officer's bell fire, then try the admin purge), and a look at the handful of full-suite failures seen near the end of an unrelated run — not caused by this piece, but not yet identified either.
+
+---
+
 ## 2026-09-23 — Piece 31: real document uploads
 
 **Asked for:** the next piece, which the plan named as real uploads. In plan mode, you changed the design partway through: instead of one folder outside the project, you wanted two — one inside the project that travels with `git clone` to the Wipro laptop, one outside it for anything uncertain — and you wanted the system to work out for itself whether a document is real or a test one, rather than asking. That collided with our own rule that a real document never goes to Gemini, so we settled it together: Gemini only ever confirms something a local check already found, never judges an unknown document first.

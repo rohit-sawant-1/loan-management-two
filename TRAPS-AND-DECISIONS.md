@@ -219,6 +219,21 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-122 · A handful of full-suite tests failed near the end of an unrelated
+run, not yet identified.** While building Piece 32 (2026-09-23), a full
+`pytest` run was started to check nothing broke, then killed partway through
+because it was taking too long (RAG and agent tests call real APIs). The
+partial output showed roughly six failures in the last 15% of the run —
+after everything this piece touched, which was confirmed separately with a
+targeted run of `test_uploads.py`, `test_notifications.py`,
+`test_admin_role.py`, `test_settings.py` and `tests/phase5/test_agents.py`,
+133 of 133 passing. So these failures exist somewhere else in the suite and
+were not caused by Piece 32, but their exact names and cause are still
+unknown. **Next session: run the full suite to completion (redirect output
+straight to a file rather than through `tail`, so progress can be read while
+it runs) and find out what they are** before assuming the rest of the app is
+clean.
+
 **T-121 · Anything sticky now has to know the top bar's height.** Piece 29 put a
 sticky bar at the top, so `thead th` sticks at `top: var(--topbar-h)` instead of
 `top: 0`, and the modal overlay sits at z-index 100 above the bar's 50. Any new
@@ -1138,6 +1153,13 @@ text, so it's built in Piece 34." That backstop is essentially what this
 piece now does at upload time instead. Piece 32/34's written plan should
 be revisited once this is built, so the two don't describe the same check
 twice.
+
+**Revisited, 2026-09-23, when Piece 32 was built.** Confirmed: the bullet
+was dropped from Piece 32 rather than deferred to Piece 34, and
+`BUILD-PLAN.md` says so at the bullet itself. Nothing else in the old
+Piece 32 plan needed to change — the badge, checklist counts, staff
+notification and admin purge all built exactly as written, using
+`StoredFile.nature` exactly as Piece 31 defined it.
 
 **Built 2026-09-23, tag `v2.14.0`.** Everything above is exactly what
 shipped, with two additions found while building:

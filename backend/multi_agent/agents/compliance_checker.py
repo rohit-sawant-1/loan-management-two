@@ -96,6 +96,8 @@ def compliance_checker(state: LoanProcessingState) -> LoanProcessingState:
             notes.append("Applicant's age does not meet this loan type's eligibility window")
         if not kyc_verified:
             notes.append("KYC (identity) documents not yet verified")
+        if any(d.get("nature") == "test" for d in documents):
+            notes.append("Includes TEST documents — not genuine")
 
         compliance_data = {
             "documents_complete": documents_complete,

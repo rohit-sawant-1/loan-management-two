@@ -1930,6 +1930,15 @@ Almost-blank images and pages are refused. `photograph` and `signature` are adde
 
 **Goal:** a document declared **TEST** is unmistakable everywhere, **staff are notified immediately** (notification trigger 2), the checklist counts it but says so, and the admin can clear demo clutter. **TEST ≠ genuine** is kept in the data, not just the screen.
 
+**Status: built 2026-09-23, tag `v2.15.0`, 133 targeted tests passing (all
+of `tests/ours/test_uploads.py`, `test_notifications.py`,
+`test_admin_role.py`, `test_settings.py`, and `tests/phase5/test_agents.py`).**
+The badge wording suggested below was used as written. One thing found while
+building: the "SPECIMEN backstop" bullet just below turned out to already be
+built — Piece 31's `classify_nature` does that exact check at upload time,
+for every document, not just ones declared REAL — so it was dropped rather
+than duplicated in Piece 34. See `TRAPS-AND-DECISIONS.md`.
+
 **Needs first:** 30, 31. **Open decisions:** the badge wording. Suggested: **"TEST DOCUMENT — for demonstration only. Not a genuine customer document."**
 
 ### Changes
@@ -1939,7 +1948,7 @@ Almost-blank images and pages are refused. `photograph` and `signature` are adde
 - **Phase 5 honesty:** the compliance checker (`multi_agent/agents/compliance_checker.py`) adds a note, **"Includes TEST documents — not genuine"**, when any document on the application is TEST. It's a note only; the verdict logic is unchanged. Check the Phase 5 tests still pass.
 - **Notification:** `document_service.add_uploaded_document` calls `notification_service.notify_staff_test_document(...)` when `nature == test`, in the same commit. REAL and UNDECLARED uploads notify nobody (settled).
 - **Admin clean-up:** `POST /api/v1/admin/test-documents/purge` (`require_admin`, body `{"confirm": "DELETE TEST DOCUMENTS"}`). It deletes every TEST `stored_files` row, its encrypted file and its `documents` row, logs `test_documents_purged` with the count (activity only), and adds a button with a confirmation pop-up on the Admin page.
-- **The SPECIMEN backstop** (declared REAL but the text says SPECIMEN) needs the document's text, so it's built in **Piece 34**.
+- ~~**The SPECIMEN backstop** (declared REAL but the text says SPECIMEN) needs the document's text, so it's built in **Piece 34**.~~ **Dropped.** Piece 31's `classify_nature` already runs this exact check at upload time, for every document — there is nothing left for Piece 34 to add here.
 
 ### Tests
 - A TEST upload → a notification row for each active officer and manager, and none for the customer or admin.
