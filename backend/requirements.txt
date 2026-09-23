@@ -103,3 +103,20 @@ starlette==0.37.2               # keep pinned here too: nothing above may raise 
 # Phase 5 — the four-agent underwriting review
 # ---------------------------------------------------------------------------
 langgraph==1.2.11
+
+# ---------------------------------------------------------------------------
+# Document intelligence — Piece 31 (real uploads)
+#
+# Pillow, filetype and cryptography were already in the venv, pulled in
+# transitively (Pillow by streamlit, cryptography by python-jose). Pinned
+# here directly now that this project relies on them itself, so a fresh
+# clone gets the exact versions this was built and tested against rather
+# than whatever another package happens to ask for.
+# ---------------------------------------------------------------------------
+pillow==10.4.0
+filetype==1.2.0
+cryptography==50.0.1
+pypdf==5.1.0            # opens a PDF to check for danger markers and passwords
+pypdfium2==4.30.0        # Chrome's PDF engine: draws pages as pictures for the
+                         # rebuild, and reads a PDF's original text layer for
+                         # the SPECIMEN-watermark check before that happens

@@ -32,6 +32,22 @@ class Settings(BaseSettings):
     # ---- Database ----
     database_url: str = "sqlite:///./loan_app.db"
 
+    # ---- File storage (Piece 31) ----
+    # Two folders, not one. `upload_dir_safe` is relative, inside `backend/`,
+    # and tracked by git — only a document the server is confident is
+    # TEST/demo material ever goes here. `upload_dir_sensitive` must resolve
+    # to somewhere outside the project entirely; everything else lands
+    # there. `storage.py` refuses to start uploads if either is missing, or
+    # if the sensitive one turns out to be inside the project after all —
+    # see TRAPS-AND-DECISIONS.md, "Piece 31 — two upload folders".
+    upload_dir_safe: str = "uploads"
+    upload_dir_sensitive: str = ""
+    # A Fernet key. Unlike secret_key, this one is meant to be the SAME
+    # value on every machine that clones this project, because the
+    # safe-folder files travel by git and must stay readable wherever they
+    # land. .env.example pre-fills a real value for that reason.
+    upload_encryption_key: str = ""
+
     # ---- Security ----
     secret_key: str = "change-me"          # .env overrides this with a real one
     access_token_expire_hours: int = 24

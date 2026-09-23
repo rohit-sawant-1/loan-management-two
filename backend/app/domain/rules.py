@@ -41,6 +41,11 @@ DOCUMENT_TYPES: tuple[str, ...] = (
     "property_docs",
     "employment_letter",
     "vehicle_quotation",
+    # Piece 31: new, optional, and deliberately NOT in REQUIRED_DOCUMENTS
+    # below, so no loan type suddenly needs one more document than before —
+    # nothing about what a customer must submit changes.
+    "photograph",
+    "signature",
 )
 
 EMPLOYMENT_STATUSES: tuple[str, ...] = ("salaried", "self_employed", "unemployed")
@@ -360,3 +365,135 @@ NOTIFICATION_TYPES: dict[str, str] = {
 }
 
 # The app's own notifications only: no email, no SMS, no push (settled).
+
+
+# ---------------------------------------------------------------------------
+# Real document uploads (Piece 31)
+# ---------------------------------------------------------------------------
+# Everything a document has to pass before it is stored, and what it is
+# rebuilt into. Numbers are researched defaults (IBPS, NSDL PAN, UPSC, SSC,
+# DigiLocker), collected once here so file_service.py never has a number
+# typed twice.
+
+# The universal cap while reading, before anything else runs.
+MAX_UPLOAD_BYTES: int = 5 * 1024 * 1024   # 5 MB
+
+# Where a stored file can end up. "safe" is tracked by git; "sensitive"
+# never is. See TRAPS-AND-DECISIONS.md, "Piece 31 — two upload folders".
+STORAGE_ZONES: tuple[str, ...] = ("safe", "sensitive")
+
+# How a stored file is classified. Set by the server, never by the person
+# uploading — see the same note above for why.
+STORED_FILE_NATURES: tuple[str, ...] = ("test", "real", "undeclared")
+
+# The two content types the rebuild step can ever produce. A PDF stays a
+# PDF; every image, whatever it arrived as, becomes a JPEG.
+REBUILT_CONTENT_TYPES: frozenset[str] = frozenset({"application/pdf", "image/jpeg"})
+
+# What Pillow decodes before it refuses on grounds of a "decompression
+# bomb" — an image that claims to be far larger than any real scan or photo.
+MAX_IMAGE_PIXELS: int = 50_000_000   # 50 megapixels
+
+# A rebuilt page or photo whose pixels barely vary at all is almost
+# certainly a blank scan, not a real one. Measured as the standard
+# deviation of greyscale pixel values (0-255); a genuine document is never
+# this flat. A plain heuristic, not a proof — worth revisiting if it ever
+# refuses a real thin document.
+BLANK_PAGE_STD_DEV_THRESHOLD: float = 3.0
+
+# The PDF markers the trainer's own security guidance and common CDR
+# practice both flag: anything that can run code, reach outside the file,
+# or carry a payload of its own. Any match refuses the file outright.
+PDF_DANGER_MARKERS: tuple[bytes, ...] = (
+    b"/JavaScript", b"/JS", b"/OpenAction", b"/AA", b"/Launch",
+    b"/EmbeddedFile", b"/RichMedia", b"/XFA", b"/SubmitForm", b"/GoToR",
+)
+
+# Words that mark a document as demonstration material, checked against a
+# PDF's own, original text layer — read before the rebuild step redraws
+# every page as a picture and destroys that layer. Case-insensitive; kept
+# lower-case here so the check is a plain "in" test.
+SPECIMEN_WATERMARK_PHRASES: tuple[str, ...] = (
+    "specimen", "sample", "test document", "demo", "dummy",
+    "for demonstration only", "not for real use",
+)
+
+# 30 uploads an hour, 100 MB total, per customer. Generous for a real
+# applicant, tight enough to stop a script from filling the disk.
+UPLOAD_RATE_LIMIT_PER_HOUR: int = 30
+UPLOAD_RATE_LIMIT_BYTES_PER_CUSTOMER: int = 100 * 1024 * 1024
+
+# Per-document-type standards. The server rebuilds every upload to match
+# its type's row, and refuses it with a plain reason if it cannot.
+# `accepted` is what the client may send; `produces` is what the rebuild
+# step is allowed to turn it into (a PDF stays a PDF; an image becomes a
+# JPEG, whatever it arrived as). `exact_pixels` overrides the generic
+# long/short-side resize for the two fixed-format types.
+UPLOAD_STANDARDS: dict[str, dict] = {
+    "photograph": {
+        "accepted": frozenset({"image/jpeg", "image/png"}),
+        "produces": frozenset({"image/jpeg"}),
+        "exact_pixels": (200, 230),     # IBPS, centre-cropped; original must be at least this
+        "min_bytes": 20_000, "max_bytes": 50_000,
+        "min_pages": None, "max_pages": None,
+    },
+    "signature": {
+        "accepted": frozenset({"image/jpeg", "image/png"}),
+        "produces": frozenset({"image/jpeg"}),
+        "exact_pixels": (140, 60),      # IBPS
+        "min_bytes": 10_000, "max_bytes": 20_000,
+        "min_pages": None, "max_pages": None,
+    },
+    "id_proof": {
+        "accepted": frozenset({"application/pdf", "image/jpeg", "image/png"}),
+        "produces": frozenset({"application/pdf", "image/jpeg"}),
+        "image_long_side": 1600, "image_short_side": 800, "pdf_dpi": 150,
+        # An image and a PDF are held to different caps here: an image's
+        # whole file must sit in this range, while a PDF is judged per page
+        # instead (a ten-page id proof is unusual but not automatically too
+        # big for one whole-file number to cover fairly).
+        "min_bytes": 30_000, "max_bytes": 300_000,
+        "max_bytes_per_pdf_page": 300_000,
+        "min_pages": 1, "max_pages": 4,
+    },
+    "income_proof": {
+        "accepted": frozenset({"application/pdf", "image/jpeg", "image/png"}),
+        "produces": frozenset({"application/pdf", "image/jpeg"}),
+        "image_long_side": 1600, "image_short_side": 800, "pdf_dpi": 150,
+        "min_bytes": None, "max_bytes": 2_000_000,
+        "min_pages": 1, "max_pages": 20,
+    },
+    "bank_statement": {
+        "accepted": frozenset({"application/pdf"}),   # PDF only
+        "produces": frozenset({"application/pdf"}),
+        "image_long_side": None, "image_short_side": None, "pdf_dpi": 150,
+        "min_bytes": None, "max_bytes": 3_000_000,
+        "min_pages": 1, "max_pages": 30,
+    },
+    "property_docs": {
+        "accepted": frozenset({"application/pdf", "image/jpeg", "image/png"}),
+        "produces": frozenset({"application/pdf", "image/jpeg"}),
+        "image_long_side": 1600, "image_short_side": 800, "pdf_dpi": 150,
+        "min_bytes": None, "max_bytes": 3_000_000,
+        "min_pages": 1, "max_pages": 30,
+    },
+    "employment_letter": {
+        "accepted": frozenset({"application/pdf", "image/jpeg", "image/png"}),
+        "produces": frozenset({"application/pdf", "image/jpeg"}),
+        "image_long_side": 1600, "image_short_side": 800, "pdf_dpi": 150,
+        "min_bytes": None, "max_bytes": 1_000_000,
+        "min_pages": 1, "max_pages": 5,
+    },
+    "vehicle_quotation": {
+        "accepted": frozenset({"application/pdf", "image/jpeg", "image/png"}),
+        "produces": frozenset({"application/pdf", "image/jpeg"}),
+        "image_long_side": 1600, "image_short_side": 800, "pdf_dpi": 150,
+        "min_bytes": None, "max_bytes": 1_000_000,
+        "min_pages": 1, "max_pages": 5,
+    },
+}
+
+
+def upload_standard(doc_type: str) -> dict:
+    """The rebuild standard for this document type, or KeyError if it has none."""
+    return UPLOAD_STANDARDS[_v(doc_type)]

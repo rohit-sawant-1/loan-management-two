@@ -1757,10 +1757,42 @@ Section 2: staff are notified in the app about edit requests and TEST uploads; c
 
 **Goal:** with the admin switch **ON**, customers and staff upload **real files**. Every file passes a **safety gate**, is **rebuilt** (so nothing hidden survives), is checked against **per-document-type standards**, is marked **TEST / REAL / UNDECLARED** (fixed forever), and is stored **encrypted, outside the project folder**. Staff and admin can **view** files, and every view is logged. A **"Documents to check"** page lists unverified documents (finishing **B3**). With the switch **OFF** nothing changes. The trainer's name-only route is untouched.
 
-**Needs first:** 28. **Open decisions:**
-- **D10** (the switch goes OFF after real files exist): recommended, files stay viewable and new uploads use the name form.
-- **Does UNDECLARED need consent like REAL?** Recommended: **yes**, treat it as REAL.
-- **Final numbers in the standards table** below (researched defaults).
+**Needs first:** 28. **Open decisions:** D10 and the UNDECLARED-consent
+question below are settled by taking their recommendations (see the note
+just below). **Final numbers in the standards table** below (researched
+defaults) stand as written.
+
+**Status: built 2026-09-23, tag `v2.14.0`, 36 new tests, 402 passing.** The storage design below —
+one folder, outside the project, self-declared nature — is superseded.
+The actual design is: **two** folders, chosen **automatically** by the
+server, never self-declared. Full reasoning in `TRAPS-AND-DECISIONS.md`,
+Settled, "Piece 31 — two upload folders, chosen automatically, never
+self-declared." In short:
+- `backend/uploads/` (tracked by git) for documents the server is
+  confident are TEST/demo material; `C:\LAMS\uploads\` (outside the
+  project, never in git) for everything else — real, uncertain, and every
+  image (no OCR yet).
+- The uploader is never asked Real or Test. `nature` is set by the server:
+  a local check of a PDF's original text layer for SPECIMEN/SAMPLE/
+  TEST/DEMO/DUMMY wording, confirmed by Gemini only when that local check
+  already found a match (sent the matched text only, never the file) —
+  never Gemini as the first or only judge, consistent with T-108. Anything
+  short of both agreeing is `undeclared`, treated like `real`.
+- The env vars below (`UPLOAD_DIR`, one folder) become
+  `UPLOAD_DIR_SAFE` / `UPLOAD_DIR_SENSITIVE`, two folders. The "refuse to
+  start if inside the project" rule now applies only to the sensitive one.
+- D10 and "UNDECLARED needs consent like REAL" are both taken as written
+  below; consent is now one checkbox, unconditional, since nobody knows in
+  advance how a document will be classified.
+
+**Two more things found while building, beyond the redesign above:**
+- **`classify_nature` got its own outer safety net**, separate from
+  `_gemini_confirms_specimen`'s. An upload must never fail outright because
+  classification broke in a way that function's own handling didn't
+  anticipate — any such failure now still lands on `undeclared`.
+- **The rate limits (30/hour, 100 MB/customer) were written into `rules.py`
+  and then actually wired up** in `document_service._check_rate_limits`,
+  checked before the pipeline runs.
 
 ### Current state (answers Rohit's storage questions)
 - Today a "document" is a SQLite row in `documents` (`id`, `application_id`, `doc_type`, `file_name`, `uploaded_at`, `verified`) created from typed JSON. **No file is stored anywhere.**
@@ -2265,3 +2297,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 29b | The bar rebuilt: real glass, and dressed properly | 2026-09-23 | `v2.12.1` |
 | 29c | No more sideways jump when changing page; pages fade in and start at the top | 2026-09-23 | `v2.12.2` |
 | 30 | In-app notifications: their own tables, three triggers, and the bell | 2026-09-23 | `v2.13.0` |
+| 31 | Real document uploads: the safety and rebuild pipeline, automatic classification, two storage folders, Documents to check | 2026-09-23 | `v2.14.0` |

@@ -42,6 +42,13 @@ class DocumentResponse(BaseModel):
     file_name: str
     uploaded_at: UtcDateTime | None = None
     verified: bool
+    # Piece 31. All optional and all None for a name-only document — the
+    # trainer's original route still returns exactly the shape it always did.
+    file_id: int | None = None
+    size_bytes: int | None = None
+    original_size_bytes: int | None = None
+    content_type: str | None = None
+    nature: str | None = None
 
 
 class DocumentListResponse(BaseModel):
@@ -49,3 +56,12 @@ class DocumentListResponse(BaseModel):
     items: list[DocumentResponse]
     required: list[str]     # what this loan type needs
     missing: list[str]      # what has not been uploaded yet
+
+
+class UnverifiedDocumentsResponse(BaseModel):
+    """Piece 31: the "Documents to check" page — many applications at once, so
+    there is no single loan type's checklist to attach, only a page of items."""
+    items: list[DocumentResponse]
+    total_count: int
+    page: int
+    limit: int

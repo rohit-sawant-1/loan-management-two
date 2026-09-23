@@ -230,8 +230,9 @@ type 58px.
 Section 4 says documents must be PDF, JPG or PNG and under 5 MB, and Section 3
 says the customer "uploads" them. The app has only ever recorded a type and a
 file name — no file is stored anywhere. Found while writing Piece 28's manual
-change. Section 4 now says so plainly, and Piece 31 makes the original promise
-true. Same family as T-113 (the encryption the manual promises).
+change. **Closed 2026-09-23 by Piece 31**, which makes real uploads true and
+Section 4 now describes them as they actually work. Same family as T-113 (the
+encryption the manual promises), also closed by this piece.
 
 **T-119 · Gemini is much slower late at night.** Rohit's own measurement,
 2026-09-22/23: at 3pm a normal chat answer came back in 3 to 8 seconds and only
@@ -279,15 +280,19 @@ checks it.
 digits to be masked before any copy is stored. Store `XXXX XXXX 1234` only, and
 black out those digits on stored images, TEST documents included. Pieces 33–34.
 
-**T-113 · The manual promises encryption that doesn't exist.** Section 10 says
-"Financial data is encrypted at rest." Nothing is encrypted today. Piece 31
-encrypts uploaded files and corrects the manual's wording (a Rule 12 conflict
-until then).
+**T-113 · The manual promises encryption that doesn't exist.** Section 10 said
+"Financial data is encrypted at rest," which was never true. **Closed
+2026-09-23 by Piece 31**: uploaded documents are now genuinely Fernet-encrypted
+before they touch disk, in both storage folders, and Section 10's wording now
+says exactly that rather than the old, wrong, broader claim.
 
-**T-112 · The project lives inside OneDrive.** Everything in it, including
-`loan_app.db` today, is copied to Microsoft's cloud automatically. Rohit will
-move the folder. Uploaded files must go to `UPLOAD_DIR` from `.env`, outside
-the project, whatever happens (Piece 31).
+**T-112 · The project lived inside OneDrive.** Everything in it, including
+`loan_app.db`, was copied to Microsoft's cloud automatically. **Moved
+2026-09-23** to `C:\LAMS\loan-management-two`, outside OneDrive — this part
+is closed. What was still open, where uploaded files should live, is
+answered in the Settled entry "Piece 31 — two upload folders" above:
+`UPLOAD_DIR_SAFE` inside the project (tracked by git), `UPLOAD_DIR_SENSITIVE`
+outside it, chosen automatically per file rather than a single fixed rule.
 
 **T-111 · The chat's document tool description lists only 5 types.** The MCP
 `upload_document_metadata` docstring (`mcp_server/mcp_app.py:173`) leaves out
@@ -1048,12 +1053,109 @@ Planned over several rounds with Rohit. The full detail is in `BUILD-PLAN.md`.
   preferred. **REAL documents never go to Gemini** by default; TEST may (T-108).
 - **Storage:** SQLite for the details, and files in a folder outside the
   project, encrypted. **No MongoDB.** Production would be PostgreSQL plus object
-  storage.
+  storage. **Superseded 2026-09-23 — see the entry below.**
 - **Security is proportional:** must-haves are built, and production hardening
   is in `FUTURE-UPGRADES.md`.
 - **Extracted data never overwrites the profile**; only Piece 24's approval can.
 - **Piece 24 (profile changes):** the customer proposes values and staff
   approve; proof documents are required, so it's built after Pieces 31–34.
+
+### 2026-09-23 · Piece 31 — two upload folders, chosen automatically, never self-declared
+
+**What changed from the line above.** The project moved out of OneDrive
+(T-112) to `C:\LAMS\loan-management-two`, so "files must live outside the
+project" no longer protects against an accidental cloud sync — it was only
+ever protecting against that. Rohit then asked for something more specific:
+uploaded demo documents should travel with `git clone` to the Wipro laptop,
+same as the code. That needs them **inside** the tracked project, which is
+the opposite of the line above.
+
+**The answer is two folders, not one, and the choice between them is never
+made by the person uploading:**
+
+- `backend/uploads/` — inside the project, tracked by git. Only a document
+  the server is **confident** is TEST/demo material goes here.
+- `C:\LAMS\uploads\` — outside the project entirely, never touched by git.
+  Everything else: anything real, anything uncertain, and every image
+  (Piece 31 has no way to read inside an image yet — that's Piece 34's OCR).
+  This is the exact folder T-112 originally asked for; it still exists, now
+  scoped to only the documents that actually need it.
+
+**Nobody is asked "real or test" any more.** The self-declared choice and
+its consent checkbox are removed from the upload form. `nature`
+(test/real/undeclared) still exists and still drives Piece 32's badges,
+staff notification and compliance note — only *who sets it* changes, from a
+form choice to the server's own classification. There is nothing left in
+the request for a client to send that could steer the answer.
+
+**How the server decides — and why it stops short of asking Gemini
+directly.** A document's realness isn't known until classification is
+done, so letting Gemini judge an unknown document would mean showing it
+something not yet known to be safe to show — precisely what T-108 exists to
+prevent. The line held: local signals run first, always, with no AI at
+all — a PDF's *original* text layer (read before the CDR rebuild step
+flattens it away) is checked for SPECIMEN/SAMPLE/TEST/DEMO/DUMMY wording,
+a list kept in `rules.SPECIMEN_WATERMARK_PHRASES`. Images and scanned
+PDFs have no text layer to check yet, so they always fall to the sensitive
+folder in this piece. **Only when that local pass already finds a strong
+match** is Gemini asked to confirm — sent the matched text snippet, never
+the file — as a second opinion on something already flagged likely-fake,
+never as the first or only judge of an unknown document. Any Gemini
+failure, timeout or disagreement fails safe. The app's own rule, not
+Gemini's answer alone, makes the call: `nature = test` only when *both*
+the local match and Gemini's confirmation agree; anything else —
+including a Gemini call that simply failed — is `undeclared`, which is
+already the existing rule for "treat like real."
+
+**Consent** is now one checkbox, always required, since nobody knows in
+advance how a document will be classified: "I agree this document is
+stored by the bank and checked by staff."
+
+**Encryption still applies to both folders.** Even a confidently-test file
+is Fernet-encrypted before it touches disk, so the git-tracked folder
+never holds a readable byte even if the classifier is ever wrong. One
+shared key, `UPLOAD_ENCRYPTION_KEY`, is pre-filled with a real value in
+`.env.example` rather than left blank like the other secrets — the
+safe-zone files travel by `git clone` and need the same key everywhere to
+stay readable, and the sensitive-zone files never travel, so sharing costs
+them nothing either. This is a different model from `SECRET_KEY`, which
+must be unique per machine because it signs logins; it only works because
+nothing genuinely sensitive is ever expected to reach either folder in the
+first place — the key is defence-in-depth, not the thing standing between
+the repo and real PII. That job belongs to the "always use dummy data"
+working rule below.
+
+**The working rule this all rests on, stated plainly so it's never
+assumed:** this project never uploads a genuine identity document, in
+testing or in the demo. Every document used anywhere is dummy or specimen
+material. The classifier and the two folders are defence-in-depth on top
+of that rule, not a replacement for it — a misclassified dummy document is
+a minor annoyance; a genuine document reaching GitHub, misclassified or
+not, would not be.
+
+Piece 32's plan mentions a "SPECIMEN backstop... needs the document's
+text, so it's built in Piece 34." That backstop is essentially what this
+piece now does at upload time instead. Piece 32/34's written plan should
+be revisited once this is built, so the two don't describe the same check
+twice.
+
+**Built 2026-09-23, tag `v2.14.0`.** Everything above is exactly what
+shipped, with two additions found while building:
+- **A second, outer safety net in `classify_nature` itself.** Monkeypatching
+  `_gemini_confirms_specimen` directly in a test bypassed that function's
+  own try/except and produced a real 500 — proof that a failure the inner
+  handling didn't anticipate could still take an upload down. `classify_nature`
+  now also wraps its whole body: any unexpected break there still lands on
+  `undeclared`, never a crash.
+- **The rate limits (30 uploads/hour, 100 MB/customer) were written into
+  `rules.py` and then genuinely wired up** — found unenforced while closing
+  out the piece, added to `document_service._check_rate_limits`, checked
+  before the pipeline runs so a rate-limited request fails fast.
+
+**D10 (the switch OFF after real files exist) and "UNDECLARED needs consent
+like REAL" are both settled**, taken as recommended: existing files stay
+viewable and new uploads use the name form; consent is now one checkbox,
+unconditional, since nobody self-declares nature any more.
 
 ### 2026-09-22 · D-28 — Customers may edit an application after submitting it
 **Answer: yes, the trainer asked for this change himself.** This goes against

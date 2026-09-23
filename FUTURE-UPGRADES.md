@@ -149,3 +149,6 @@ Deliberately left out of Pieces 27–38, which build only what the demo needs. T
 | Flagging the same file uploaded by two different customers | The fingerprint is stored from Piece 31; the check itself is for later | Small |
 | Letting staff attach documents in chat on a customer's behalf | Piece 37 starts with customers only | Small |
 | Admin reading other people's chat history | Kept private for now | Small |
+| A real rate limiter (Redis, or a proper token bucket) instead of a plain count query before each upload | Fine at this scale; two uploads landing at exactly the same instant could both pass the check before either commits — a real bank's traffic would need something atomic | Medium |
+| Per-environment encryption keys instead of one shared `UPLOAD_ENCRYPTION_KEY` | Only sound because of the "always use dummy data" rule (Piece 31); a real bank needs a different key per environment, in a vault, never checked into `.env.example` | Medium |
+| Widen the local specimen check beyond a PDF's text layer to images and scanned PDFs, using Piece 34's OCR | Piece 31 has no OCR yet, so an image can never be classified `test` today — it always falls to the cautious folder | Rolls into Piece 34 |

@@ -16,6 +16,7 @@ from app.schemas.application import (
 )
 from app.schemas.document import (
     CreateDocumentSchema, DocumentUploadBody, DocumentResponse, DocumentListResponse,
+    UnverifiedDocumentsResponse,
 )
 from app.schemas.activity import ActivityLogResponse
 from app.schemas.edit_request import (
@@ -35,6 +36,7 @@ __all__ = [
     "ApplicationResponse", "ApplicationSummary", "ApplicationListResponse",
     "EligibilityCheckRequest", "EligibilityCheckResponse",
     "CreateDocumentSchema", "DocumentUploadBody", "DocumentResponse", "DocumentListResponse",
+    "UnverifiedDocumentsResponse",
     "ActivityLogResponse",
     "EditRequestCreate", "ApproveBody", "RefuseBody", "ApplicationEditBody",
     "EditRequestResponse", "EditRequestListResponse",

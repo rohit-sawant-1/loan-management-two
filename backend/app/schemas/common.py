@@ -106,6 +106,26 @@ def check_file_name(value: str) -> str:
     return value
 
 
+# A real upload's display name (Piece 31): letters, digits, space, and a
+# small set of punctuation a filename plausibly has. Unlike check_file_name
+# above, this never trusts the extension to say what the file really is —
+# file_service.detect_type reads that from the bytes instead — so this is
+# purely about what is safe to store and show on screen, not what kind of
+# file it claims to be.
+_DISPLAY_NAME_PATTERN = re.compile(r"^[A-Za-z0-9 ._\-()]{1,100}$")
+
+
+def clean_display_name(value: str) -> str:
+    value = value.strip()
+    if not value:
+        return "document"   # a browser can send an empty filename; never store nothing
+    if not _DISPLAY_NAME_PATTERN.match(value):
+        raise ValueError(
+            "file names may only contain letters, digits, spaces and . _ - ( ), up to 100 characters"
+        )
+    return value
+
+
 def check_date_of_birth(value: date | None) -> date | None:
     if value is None:
         return None

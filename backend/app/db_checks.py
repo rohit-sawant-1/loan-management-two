@@ -112,3 +112,34 @@ def install_app_setting_checks(connection) -> None:
             f"CREATE TRIGGER {name} BEFORE {event} ON app_settings "
             f"FOR EACH ROW BEGIN {body} END"
         ))
+
+
+# `stored_files` (Piece 31): two facts about a row, once set, never change —
+# `nature` (is this confidently demo material?) and `storage_zone` (which
+# folder it actually lives in). Both are decided once, by the server, at
+# upload time. Unlike the two trigger sets above, this only needs to watch
+# UPDATE: there is no "old value" to compare against on an INSERT.
+STORED_FILE_TRIGGER = "stored_files_immutable"
+
+
+def _stored_file_rules() -> str:
+    return """
+        SELECT CASE
+            WHEN NEW.nature <> OLD.nature
+                THEN RAISE(ABORT, 'nature cannot be changed once set')
+            WHEN NEW.storage_zone <> OLD.storage_zone
+                THEN RAISE(ABORT, 'storage_zone cannot be changed once set')
+        END;
+    """
+
+
+def install_stored_file_checks(connection) -> None:
+    """Drop and rebuild the `stored_files` immutability trigger."""
+    if connection.dialect.name != "sqlite":
+        return
+    body = _stored_file_rules()
+    connection.execute(text(f"DROP TRIGGER IF EXISTS {STORED_FILE_TRIGGER}"))
+    connection.execute(text(
+        f"CREATE TRIGGER {STORED_FILE_TRIGGER} BEFORE UPDATE ON stored_files "
+        f"FOR EACH ROW BEGIN {body} END"
+    ))

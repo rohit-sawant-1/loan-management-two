@@ -154,6 +154,7 @@ export default function Layout() {
     { to: "/assistant", text: "Assistant", icon: "shield", show: true },
     { to: "/dashboard", text: "Dashboard", icon: "dashboard", show: canViewStaffScreens },
     { to: "/edit-requests", text: "Edit requests", icon: "inbox", show: canViewStaffScreens },
+    { to: "/documents-to-check", text: "Documents to check", icon: "file", show: canViewStaffScreens },
     { to: "/activity", text: "Activity", icon: "activity", show: canViewAudit },
     { to: "/profile", text: "My profile", icon: "user", show: isApplicant },
   ].filter((l) => l.show);

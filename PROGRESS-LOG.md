@@ -4,6 +4,22 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-23 — Piece 31: real document uploads
+
+**Asked for:** the next piece, which the plan named as real uploads. In plan mode, you changed the design partway through: instead of one folder outside the project, you wanted two — one inside the project that travels with `git clone` to the Wipro laptop, one outside it for anything uncertain — and you wanted the system to work out for itself whether a document is real or a test one, rather than asking. That collided with our own rule that a real document never goes to Gemini, so we settled it together: Gemini only ever confirms something a local check already found, never judges an unknown document first.
+**Built:** the whole pipeline, in the order the plan laid out.
+- **Safety, then rebuild.** Every upload is read capped at 5 MB, its real type is read from its bytes (never trusted from the name), a PDF is scanned for anything that can run code or reach outside the file, then every file is redrawn from scratch — an image re-encoded, a PDF's pages redrawn as pictures at 150 DPI — so nothing hidden survives.
+- **Classification, before the rebuild destroys the evidence.** A PDF's own original text is checked for SPECIMEN/SAMPLE/TEST/DEMO wording. Only on a match does the matched text (never the file) go to Gemini to confirm. Both have to agree for a document to be called `test`; anything else is `undeclared`, treated with the same caution as `real`. Nobody is asked which it is — there's nothing left in the upload for anyone to lie in.
+- **Two folders.** `backend/uploads/`, tracked by git, only for documents the server is confident are demo material. `C:\LAMS\uploads\`, outside the project, for everything else. Both encrypted either way, so even a wrong classification never puts a readable byte in the repo.
+- **The screens:** the placeholder banner on a customer's document form became a real upload form — document type, one consent tick, a file picker — with the before-and-after size shown once it's done, and a View button that opens the real file. A new "Documents to check" page for staff, closing B3.
+
+36 new tests, **402 passing**. Manual re-ingested at 60 chunks, and its old, wrong "financial data is encrypted at rest" line (T-113) now says what's actually true.
+**Found:** two things only surfaced by testing for real. Mocking the Gemini confirmation at the wrong level — replacing the whole function instead of what it calls — hid that classification had no safety net of its own; a genuinely unexpected failure there would have 500'd the upload. It does now. And the rate limits from the plan (30 uploads an hour, 100 MB a customer) had been written into `rules.py` as numbers and never actually wired up — caught while closing out the piece, not left for later.
+**Realised:** encryption is doing more work than it looks like. Because every file is ciphertext before it ever touches disk, and the key never leaves `.env`, committing the "safe" folder to GitHub doesn't expose a document even when the classifier gets it wrong — the real backstop is the working rule that only dummy documents are ever uploaded at all, and the folders and the classifier are defence in depth on top of that, not instead of it.
+**Next:** Piece 32, the TEST-document workflow — the badge, the staff notification when a TEST document lands (the trigger is already built, just not called yet), and the admin's purge button.
+
+---
+
 ## 2026-09-23 — Piece 30: the bell, and the notifications behind it
 
 **Asked for:** you confirmed Pieces 27 and 28 work in the browser, said the glass bar looks good, and asked for the next piece. You also tried "change application 21 to under review" as the admin: **15 seconds, correct answer.**

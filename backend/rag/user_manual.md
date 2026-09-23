@@ -121,15 +121,24 @@ system are `id_proof`, `income_proof`, `bank_statement`, `property_docs`,
 
 - `vehicle_quotation` — a vehicle quotation or proforma invoice from the dealer
 
-**How documents are recorded today.** The system records each document's type
-and file name; the file itself is not stored yet. The system administrator can
-switch real file uploads on once that part of the system is finished, and the
-format and size rules below apply from that point.
+**How real uploads work.** When the system administrator has switched real
+uploads on, a document must be a genuine PDF, JPG or PNG file — the system
+checks the file's actual content, not just its name — and no larger than
+5 MB. Every uploaded document is automatically resized and re-saved before
+it is stored, which also strips anything hidden inside the file. A
+photograph and a signature may also be uploaded; neither is required for
+any loan type. When real uploads are switched off, a document is recorded
+by its type and file name only, exactly as in earlier versions of the
+system.
 
-Documents must be in PDF, JPG or PNG format and each file must be no larger
-than 5 MB. The same document type may be uploaded more than once; every copy is
-kept. Only documents that have **not yet been verified** may be replaced. Once a
-loan officer has verified a document, it is fixed as part of the record.
+The system decides for itself, from the document's own content, whether it
+looks like demonstration or specimen material rather than a genuine
+document — nobody is asked to say which it is. This only decides how
+carefully the file is kept; it never means the system has checked whether
+a document is a genuine, authentic one. The same document type may be
+uploaded more than once; every copy is kept. Only documents that have **not
+yet been verified** may be replaced. Once a loan officer has verified a
+document, it is fixed as part of the record.
 
 ---
 
@@ -305,7 +314,10 @@ hashed using bcrypt and are never stored in readable form. A session expires
 after 24 hours, after which the user signs in again.
 
 Customer data is held on the bank's servers and is fetched fresh with the user's
-own session each time it is displayed. Financial data is encrypted at rest.
+own session each time it is displayed. A real uploaded document is
+encrypted before it is stored, and only opened again for someone allowed to
+see it — the applicant it belongs to, bank staff, or the administrator.
+Other customer data is protected by the same server-side access checks.
 
 Access is checked on the server for every single request. An applicant can only
 ever retrieve their own applications, their own documents and their own profile.
@@ -403,8 +415,12 @@ the branch manager.
 
 ## Section 12 — Troubleshooting
 
-**My document upload was rejected.** Documents must be in PDF, JPG or PNG format
-and no larger than 5 MB each. Other formats are not accepted.
+**My document upload was rejected.** When real uploads are switched on, a
+document must genuinely be a PDF, JPG or PNG file, no larger than 5 MB,
+readable, and not password-protected. The system checks the file's actual
+content, so renaming a different kind of file does not work. A photograph
+or signature must also be a clear, recognisable image at a usable
+resolution.
 
 **My application has been in "submitted" for a day.** This is normal. Loan
 officers work Monday to Saturday, 9 AM to 6 PM, so an application submitted

@@ -1,5 +1,5 @@
 """
-The nine database tables.
+The ten database tables.
 
 Importing this package registers every table with `Base`, which is what
 `init_db()` relies on to create them all.
@@ -16,6 +16,7 @@ from app.models.app_setting import AppSetting
 from app.models.notification import (
     Notification, NotificationAudience, NotificationType,
 )
+from app.models.stored_file import StoredFile, StoredFileNature, StorageZone
 
 __all__ = [
     "User", "UserRole",
@@ -27,4 +28,5 @@ __all__ = [
     "EditRequest", "EditRequestStatus",
     "AppSetting",
     "Notification", "NotificationAudience", "NotificationType",
+    "StoredFile", "StoredFileNature", "StorageZone",
 ]

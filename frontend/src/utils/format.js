@@ -7,6 +7,16 @@ const inr = new Intl.NumberFormat("en-IN", {
   currency: "INR",
   maximumFractionDigits: 0,
 });
+// "2.4 MB" or "180 KB" — for a document's before/after upload size
+// (Piece 31). Bytes only ever shrink through the rebuild step, but the
+// helper works either way.
+export function fileSize(bytes) {
+  if (bytes === null || bytes === undefined) return "";
+  const kb = bytes / 1024;
+  if (kb < 1024) return `${Math.round(kb)} KB`;
+  return `${(kb / 1024).toFixed(1)} MB`;
+}
+
 export function rupees(amount) {
   if (amount === null || amount === undefined || amount === "") return "";
   return inr.format(Number(amount));

@@ -36,6 +36,11 @@ export const ACTIONS = {
   edit_request_closed:   { text: "Edit request closed",      icon: "info" },
   // Piece 28: the administrator changing a system setting.
   setting_changed:       { text: "Setting changed",          icon: "settings" },
+  // Piece 31: a real file's bytes being opened (staff and admin views only;
+  // the owner looking at their own document is not logged), and an upload
+  // the safety pipeline refused before anything was stored.
+  document_viewed:       { text: "Document viewed",          icon: "file" },
+  upload_blocked:        { text: "Upload blocked",           icon: "alert" },
 };
 
 export const describe = (action) => ACTIONS[action] || { text: label(action), icon: "info" };
@@ -45,6 +50,9 @@ export const DETAIL_LABELS = {
   from: "Changed from", to: "Changed to", remarks: "Remarks", reason: "Reason",
   loan_type: "Loan type", amount: "Amount", tenure_months: "Tenure",
   doc_type: "Document type", file_name: "File name", application_id: "Application",
+  // Piece 31. "reason" is already labelled above, and reads fine here too —
+  // an upload_blocked row's reason is why it was refused, same idea.
+  size_before: "Size before", size_after: "Size after", nature: "Classified as",
   eligible: "Passed eligibility", problem_count: "Rules not met", email: "Email",
   question: "Question asked", tool: "What was done", worked: "Went through",
   outcome: "Result", new_status: "Changed to", mode: "Answered by",

@@ -17,6 +17,7 @@ import Activity from "./pages/Activity";
 import MyProfile from "./pages/MyProfile";
 import Assistant from "./pages/Assistant";
 import EditRequests from "./pages/EditRequests";
+import DocumentsToCheck from "./pages/DocumentsToCheck";
 import Admin from "./pages/Admin";
 
 // Wraps pages that need a login. `roles` narrows it further.
@@ -72,6 +73,7 @@ export default function App() {
             <Route path="/applicants/new" element={<RequireAuth roles={STAFF}><NewApplicant /></RequireAuth>} />
             <Route path="/dashboard" element={<RequireAuth roles={STAFF_VIEW}><Dashboard /></RequireAuth>} />
             <Route path="/edit-requests" element={<RequireAuth roles={STAFF_VIEW}><EditRequests /></RequireAuth>} />
+            <Route path="/documents-to-check" element={<RequireAuth roles={STAFF_VIEW}><DocumentsToCheck /></RequireAuth>} />
             <Route path="/activity" element={<RequireAuth roles={AUDIT_VIEW}><Activity /></RequireAuth>} />
             <Route path="/admin" element={<RequireAuth roles={ADMIN}><Admin /></RequireAuth>} />
             <Route path="/profile" element={<RequireAuth roles={APPLICANT}><MyProfile /></RequireAuth>} />

@@ -25,7 +25,7 @@ from app.database import engine, init_db                     # noqa: E402
 from app.middleware.logging_middleware import logging_middleware  # noqa: E402
 from app.routers import (                                     # noqa: E402
     activity, admin, applicants, applications, auth, briefing, chat, dashboard, documents,
-    edit_requests, eligibility, notifications, settings as settings_router,
+    edit_requests, eligibility, files, notifications, settings as settings_router,
 )
 from app.utils.logging_config import configure_logging       # noqa: E402
 from app.utils.otel_config import instrument_sqlalchemy, setup_telemetry  # noqa: E402
@@ -78,6 +78,9 @@ app.include_router(applicants.router, prefix="/api/v1/applicants", tags=["applic
 app.include_router(eligibility.router, prefix="/api/v1/applications", tags=["applications"])
 app.include_router(applications.router, prefix="/api/v1/applications", tags=["applications"])
 app.include_router(documents.router, prefix="/api/v1/applications", tags=["documents"])
+# Piece 31: a stored file's actual bytes, and the staff queue of unverified ones.
+app.include_router(files.router, prefix="/api/v1/files", tags=["documents"])
+app.include_router(files.unverified_router, prefix="/api/v1/documents", tags=["documents"])
 # Piece 25: a customer asks to change their application, staff approve or refuse.
 app.include_router(edit_requests.router, prefix="/api/v1/applications", tags=["edit requests"])
 app.include_router(edit_requests.staff_router, prefix="/api/v1/edit-requests", tags=["edit requests"])

@@ -73,6 +73,15 @@ def _add_missing_columns() -> None:
         for name, sql_type in new_columns.items():
             if name not in existing:
                 conn.execute(text(f"ALTER TABLE loan_applications ADD COLUMN {name} {sql_type}"))
+
+        # Piece 31: a document created after a real file exists points at
+        # its stored_files row; a name-only document (the trainer's
+        # original route) simply has no file_id. Only meaningful once
+        # stored_files exists too, which create_all has already made by
+        # the time this runs.
+        existing_doc_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(documents)"))}
+        if "file_id" not in existing_doc_cols:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN file_id INTEGER"))
         conn.commit()
 
 
@@ -118,9 +127,13 @@ def _install_database_checks() -> None:
     covers that case. The triggers are rebuilt on every startup, so they always
     carry today's numbers from `rules.py`. See `app/db_checks.py`.
     """
-    from app.db_checks import install_app_setting_checks, install_loan_application_checks
+    from app.db_checks import (
+        install_app_setting_checks, install_loan_application_checks, install_stored_file_checks,
+    )
 
     with engine.begin() as conn:
         install_loan_application_checks(conn)
         # Piece 28: only a setting the app knows about may be stored.
         install_app_setting_checks(conn)
+        # Piece 31: nature and storage_zone can never be changed once set.
+        install_stored_file_checks(conn)
