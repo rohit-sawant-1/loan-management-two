@@ -27,6 +27,16 @@ export default function Modal({
   const panelRef = useRef(null);
   const openerRef = useRef(null);
 
+  // The latest onClose, kept in a ref. Pages pass a brand-new onClose function
+  // every time they re-render (every keystroke in a box inside the pop-up). If
+  // the effect below listed onClose as a dependency, each keystroke would tear
+  // the effect down, which sends focus back to the page, and set it up again,
+  // which focuses the panel. Either way, the text box would lose focus.
+  const onCloseRef = useRef(onClose);
+  useEffect(() => {
+    onCloseRef.current = onClose;
+  });
+
   useEffect(() => {
     if (!open) return;
 
@@ -44,7 +54,7 @@ export default function Modal({
     function handleKeyDown(e) {
       if (e.key === "Escape") {
         e.stopPropagation();
-        onClose?.();
+        onCloseRef.current?.();
         return;
       }
       if (e.key !== "Tab" || !panel) return;
@@ -71,7 +81,8 @@ export default function Modal({
       document.body.style.overflow = previousOverflow;
       openerRef.current?.focus?.();
     };
-  }, [open, onClose]);
+    // Only opening and closing should run this again, never a re-render.
+  }, [open]);
 
   if (!open) return null;
 

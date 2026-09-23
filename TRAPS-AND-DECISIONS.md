@@ -16,6 +16,33 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 ---
 
+### D-29 · A second upload of the same document type: replace the first, or keep both?
+
+**What's wrong:** Priya's application 2 now has two ID proofs, the old name-only
+one from the seed data and the new SPECIMEN PDF. Rohit's instinct is that a
+same-type upload should replace the old one. (The wrong count he also spotted is
+T-123, a plain bug.)
+
+**Why it matters:** several document types legitimately hold more than one file.
+An ID proof can be both Aadhaar and PAN, which is exactly how Piece 33's "kinds
+inside a type" is designed. Income proof is usually three months of payslips,
+and property documents are a deed, an NOC and a plan. Always replacing would
+throw away files that are meant to sit side by side. Deleting also conflicts
+with record-keeping: banks keep KYC and loan documents for years after the loan
+closes, so a replaced file is marked as superseded rather than destroyed.
+
+**My recommendation:** keep several files per type (no change to how uploads
+work today), fix the count (T-123), and add an explicit **Replace** button on a
+row later. A replaced file stays in history, marked superseded, and drops out of
+the checklist. This is purely additive, so Phase 1 UNIT-07 and Phase 4 MCP-06
+(the name-only route) are untouched. It fits best once Piece 33 exists, because
+then "same kind" (a second Aadhaar) can be told apart from "same type" (Aadhaar
+plus PAN).
+
+**Your answer:**
+
+---
+
 ### D-22 · The eligibility timestamp is removed from the stored text, not converted
 
 **What's wrong:** the Application Detail card showed the same event at two times
@@ -218,6 +245,23 @@ version.
 # Traps and differences
 
 No decision needed. These break something quietly if forgotten.
+
+**T-124 · A text box inside any pop-up lost focus after every keystroke.** Found
+by Rohit typing the purge phrase (2026-09-24). `Modal.jsx`'s effect listed
+`onClose` as a dependency, and pages pass a new `onClose` on every render, so
+each keystroke re-ran the effect and moved focus away. Fixed by keeping
+`onClose` in a ref and depending on `open` only. It affected every pop-up with a
+box to type in, not just the purge one. Watch for the same pattern in any new
+effect that takes a callback prop.
+
+**T-123 · The "X/Y submitted" line counts files, not document types.** Found by
+Rohit during the Piece 32 browser check (2026-09-24). `DocumentChecklist.jsx`
+prints `items.length / required.length`, so two ID proofs on a personal loan
+show "2/3 submitted" while income proof and bank statement are still missing,
+and three ID proofs would show "3/3". The ticks above it are right, because they
+use the server's `missing` list. The bug dates from Piece 14, not Piece 32. Fix:
+count `required.length - missing.length` instead. Only the front end changes, and
+no trainer test reads this line. Linked to D-29.
 
 **T-122 · A handful of full-suite tests failed near the end of an unrelated
 run, not yet identified.** While building Piece 32 (2026-09-23), a full
