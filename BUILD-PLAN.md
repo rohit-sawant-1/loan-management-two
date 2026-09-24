@@ -1283,7 +1283,7 @@ before it's added.
 
 # DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
 
-Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 36, plus 32d (Replace)** (see Done at the bottom); 37 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+Planned 2026-09-22 with Rohit, across several rounds. **Built: all of 27 to 38** (38 merged into 37), plus 32d (Replace); see Done at the bottom. Next: the batched browser checks. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
 
 ## Build order
 
@@ -1311,7 +1311,7 @@ Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 36, 
 4. Run `pytest tests/ours tests/phase1 -q`, plus the non-AI Phase 3 and 4 tests (`tests/phase3/test_context.py`, the offline tests in `tests/phase3/test_tools.py`, and `tests/phase4/test_mcp_server.py`). Then `npm run build` and `npm run lint` in `frontend/`.
 5. Update `user_manual.md` if any rule changed (Rule 12), and re-ingest.
 6. Log it, commit it, and tag it (middle digit: v2.10.0, v2.11.0, and so on).
-7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out), Piece 35 (Upload several → three demo-kit PDFs → Upload all → Confirm all; Rajan's bell shows 3, which is expected), and D-33 (upload any image as ID proof → "Something else" → it counts straight away, with no details form), and Piece 36 (chat as Priya → refresh → still there → New chat → the old one is in the list → reopen and carry on; Rajan can't see Priya's chats).
+7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out), Piece 35 (Upload several → three demo-kit PDFs → Upload all → Confirm all; Rajan's bell shows 3, which is expected), and D-33 (upload any image as ID proof → "Something else" → it counts straight away, with no details form), and Piece 36 (chat as Priya → refresh → still there → New chat → the old one is in the list → reopen and carry on; Rajan can't see Priya's chats), and Pieces 37 + 38 (Priya → Assistant → 📎 → application 2 → the demo-kit Aadhaar + PAN → Upload all → two filled-in cards in the chat → Confirm all → refresh → still there → New chat, reopen the old one → still there → replace the PAN on the application page → the chat card says "replaced or removed" → Anita's Activity page shows the attach row with file names only → the Documents card still works as before).
 
 ## Decisions that apply to every piece (settled 2026-09-22)
 
@@ -2401,6 +2401,24 @@ Chat as Priya → refresh → the conversation is still there → New chat → t
 
 # PIECE 37 — Documents in the chatbot
 
+## The assessed plan, 2026-09-24 (Pieces 37 and 38 together). This replaces the plans below.
+
+Full assessment (current code, the 12 points, the 5 integration questions): `~/.claude/plans/alright-now-plan-for-smooth-flame.md`.
+
+**Status: built 2026-09-24, tag `v2.21.0`. This completes the Document intelligence programme (27–38).** Built as assessed. `BatchUploadForm` moved to its own file (with `firstKind` shared through `utils/documentKinds.js`), and it now reports every uploaded document, while the Documents card does its own "with details" filtering, so that card behaves as before. 77 tests passed (2 new attachment tests, chat sessions, admin role with the new address, Phase 1). An API walk-through of the browser steps (upload the demo kit, attach, live cards, confirm, reopen, replace → gone, the audit row, another customer → 403) passed. The visual browser check is on the batched list. The goal is to **join** the existing document system (31–35) to saved chats (36), not to build a second one.
+
+- **Customers only:** 📎 in the Assistant, shown when real uploads are on. Pick one of your own applications, then upload up to 3 files through the **same** upload address and pipeline (the moved `BatchUploadForm`).
+- **An attachment is a saved user message** (`chat_messages.application_id` and `document_ids`). Its text is written by the server, and there's **no AI call and no AI reply**. The AI never receives a document's contents.
+- **Cards are live:** `ChatDocuments` re-reads the application's document list and filters it to the message's ids. Documents with details get `BatchReview` (Piece 38; Confirm all touches only those ids). "Something else" says it counts on upload. A missing id says "replaced or removed".
+- **Upload and attach are two steps:** a failed attach never rolls back uploads, and the panel offers Retry. **Retry-safe:** the browser makes an `attach_key` per attachment event and reuses it on retries. The server keeps it unique and returns the existing message for a repeated key. A later re-attach of the same documents is a new event.
+- **Authorization:** `require_role(applicant)` (staff and the admin get 403). The document system's own ownership rule (`_application_for`: 404 missing, 403 not yours). Every id on that application and current (else 422). A foreign chat → 404.
+- **Audit:** `chat_documents_attached` (application, ids, file names, chat), never contents. `document_added` and `upload_blocked` are unchanged.
+- **Tag:** `v2.21.0`.
+
+---
+
+## The original plan (2026-09-22), kept for reference
+
 **Goal:** in the Assistant, the user attaches files (📎) and says what they are, for example *"This is my Aadhaar and PAN, both fake for the demo."* They go through **the same pipeline** (31–35). The chat shows **document cards** built by React from real data, never as text the AI wrote.
 
 **Needs first:** 34, 35, 36. **Open decisions:**
@@ -2440,6 +2458,8 @@ Priya: 📎 SPECIMEN Aadhaar + PAN, typing "these are fake for the demo" → bot
 ---
 
 # PIECE 38 — Per-document missing-field form inside the chat
+
+**Merged into Piece 37 (2026-09-24).** `BatchReview` (Piece 35) already is this form, and Piece 37 shows it inside the chat. The plan below is kept for reference.
 
 **Goal:** when documents attached in chat have missing fields, the chat shows a **structured form grouped per document** (Aadhaar: DOB; PAN: PAN number) with **one Confirm & submit**, and reports the result per document. It survives a refresh.
 
@@ -2507,3 +2527,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 35b | D-31 to D-33: the SPECIMEN check is Gemini-only; the employment letter is for salaried home-loan applicants only; "Something else" documents count on upload, with any ID-proof PDF's Aadhaar blacked out | 2026-09-24 | `v2.19.2` |
 | 36 | Saved chat sessions: a side list of your own chats, reopen and carry on; a saved chat opens only for its owner (the audit log keeps bounded excerpts, see 36a); a YES only confirms in the chat it was proposed in | 2026-09-24 | `v2.20.0` |
 | 36a | Chatbot audit trail: the audit row also keeps the answer's first 500 characters next to the question's first 200; the manual separates "saved chats are private" from "the audit log keeps excerpts" | 2026-09-24 | `v2.20.1` |
+| 37 | Documents in the Assistant (38 merged in): 📎 for customers, the same upload pipeline, a saved attachment message with live cards and Confirm all, retry-safe, audited by file name only | 2026-09-24 | `v2.21.0` |

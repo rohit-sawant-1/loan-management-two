@@ -56,6 +56,14 @@ class ChatMessage(Base):
     tools_used = Column(Text, nullable=True)             # JSON list
     duration_ms = Column(Float, nullable=True)
     ai_notice = Column(String(300), nullable=True)
+    # Piece 37: a message that records documents attached from the Assistant.
+    # Only which application and which documents: the cards are drawn from the
+    # live document list every time, never from a copy kept here.
+    application_id = Column(Integer, ForeignKey("loan_applications.id"), nullable=True)
+    document_ids = Column(Text, nullable=True)           # JSON list of document ids
+    # Made by the browser for one attachment event and reused on its retries,
+    # so a retry returns the same message instead of adding a second one.
+    attach_key = Column(String(40), nullable=True, unique=True)
     created_at = Column(DateTime(timezone=True), server_default=func.now())
 
     session = relationship("ChatSession", back_populates="messages")

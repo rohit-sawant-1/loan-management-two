@@ -24,7 +24,9 @@ function problemSummary(err) {
   return errorMessage(err);
 }
 
-export default function BatchReview({ docs, canEdit, onChanged, onDone }) {
+// `embedded` (Piece 37): inside a chat there's nothing to close, so the
+// Done/Finish-later button is hidden. Everything else is the same.
+export default function BatchReview({ docs, canEdit, onChanged, onDone, embedded = false }) {
   // One entry per document, keyed by its details id:
   // { doc, data, edits, fieldErrors, result }
   const [cards, setCards] = useState({});
@@ -114,7 +116,9 @@ export default function BatchReview({ docs, canEdit, onChanged, onDone }) {
             Confirm all
           </Button>
         )}
-        <Button type="button" onClick={onDone} disabled={busy}>{allDone ? "Done" : "Finish later"}</Button>
+        {!embedded && (
+          <Button type="button" onClick={onDone} disabled={busy}>{allDone ? "Done" : "Finish later"}</Button>
+        )}
       </div>
     </div>
   );

@@ -88,6 +88,33 @@ class ChatMessageOut(BaseModel):
     duration_ms: float | None = None
     ai_notice: str = ""
     created_at: UtcDateTime | None = None
+    # Piece 37: set only on a message that records attached documents.
+    application_id: int | None = None
+    document_ids: list[int] = []
+
+
+class ChatAttachRequest(BaseModel):
+    """
+    Piece 37: record documents, already uploaded through the normal upload
+    address, as an attachment in a chat. Nothing here is a document's contents.
+    """
+    session_id: str | None = Field(None, max_length=64)
+    application_id: int = Field(..., gt=0)
+    document_ids: list[int] = Field(..., min_length=1, max_length=3)
+    # One per attachment event, reused on its retries (retry-safe).
+    attach_key: str = Field(..., pattern=r"^[A-Za-z0-9-]{8,40}$")
+
+    @field_validator("document_ids")
+    @classmethod
+    def _distinct_ids(cls, ids):
+        if len(set(ids)) != len(ids) or any(i <= 0 for i in ids):
+            raise ValueError("Each document may be listed once, by its id")
+        return ids
+
+
+class ChatAttachResponse(BaseModel):
+    session_id: int
+    message: ChatMessageOut
 
 
 class ChatMessagesPage(BaseModel):

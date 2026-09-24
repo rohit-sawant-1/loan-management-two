@@ -87,6 +87,22 @@ def _add_missing_columns() -> None:
             conn.execute(text("ALTER TABLE documents ADD COLUMN replaced_by_id INTEGER"))
         if "replaced_at" not in existing_doc_cols:
             conn.execute(text("ALTER TABLE documents ADD COLUMN replaced_at DATETIME"))
+
+        # Piece 37: chat messages that record attached documents. The table is
+        # from Piece 36, so a database made then gets these columns here.
+        # SQLite can't add a UNIQUE column, so the attach key's uniqueness is
+        # a separate index (several NULLs are still allowed).
+        existing_chat_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(chat_messages)"))}
+        if existing_chat_cols:
+            if "application_id" not in existing_chat_cols:
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN application_id INTEGER"))
+            if "document_ids" not in existing_chat_cols:
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN document_ids TEXT"))
+            if "attach_key" not in existing_chat_cols:
+                conn.execute(text("ALTER TABLE chat_messages ADD COLUMN attach_key VARCHAR(40)"))
+            conn.execute(text(
+                "CREATE UNIQUE INDEX IF NOT EXISTS ix_chat_messages_attach_key ON chat_messages (attach_key)"
+            ))
         conn.commit()
 
 

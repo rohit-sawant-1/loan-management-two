@@ -219,6 +219,15 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-134 · A chat attachment keeps ids, never a copy of the documents.** Pieces 37
++ 38 (2026-09-24). The cards under an attachment message are read live from
+`GET /applications/{id}/documents` each time. So a document replaced or purged
+since shows as "no longer current (replaced or removed)": a customer's list
+holds current documents only, so the two can't be told apart. Anything that
+later wants to show an attachment's history must not start copying document
+details into `chat_messages`. Uploading and attaching are separate steps: a
+failed attach never rolls back an upload, and Retry reuses the same `attach_key`.
+
 **T-133 · A "reply YES" only works in the chat it was proposed in.** Found building
 Piece 36 (2026-09-24). Waiting confirmations are kept per person (`pending_actions`),
 not per chat, so without a guard a YES typed in any other chat, new or old, would

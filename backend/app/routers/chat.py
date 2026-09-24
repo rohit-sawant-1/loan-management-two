@@ -31,6 +31,7 @@ import time
 
 import structlog
 from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
+from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 import llm_provider
@@ -38,14 +39,17 @@ from app.database import get_db
 from app.domain import rules
 from app.utils.finance import format_rupees
 from app.utils.text import readable_list
-from app.dependencies import get_current_user
-from app.models.user import User
+from app.dependencies import get_current_user, require_role
+from app.models.document import Document
+from app.models.user import User, UserRole
 from app.schemas.chat import (
-    ChatMessagesPage, ChatRequest, ChatResponse, ChatSessionOut, ChatSessionUpdate, ChatSource,
-    ChatToolCall,
+    ChatAttachRequest, ChatAttachResponse, ChatMessagesPage, ChatRequest, ChatResponse,
+    ChatSessionOut, ChatSessionUpdate, ChatSource, ChatToolCall,
 )
-from app.services import activity_service, chat_session_service, pending_actions, review_request
-from app.services.errors import NotFound
+from app.services import (
+    activity_service, chat_session_service, document_service, pending_actions, review_request,
+)
+from app.services.errors import Forbidden, NotFound
 from app.services.loan_api_client import acting_as
 
 logger = structlog.get_logger()
@@ -623,3 +627,88 @@ def update_session(
         return chat_session_service.update(db, session_id, user, body.title, body.archived)
     except NotFound as e:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+
+# ---------------------------------------------------------------------------
+# Pieces 37 + 38: documents attached from the Assistant.
+#
+# The files themselves go up through the normal upload address, the same
+# pipeline as the Documents card. This only records, in the customer's own
+# chat, which of their documents they attached. No AI call is made, and no
+# document's contents are read here, stored here, or sent anywhere.
+# ---------------------------------------------------------------------------
+
+@router.post("/attachments", response_model=ChatAttachResponse)
+def attach_documents(
+    body: ChatAttachRequest,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_role(UserRole.applicant)),
+):
+    """
+    Customers only (staff and the admin attach from the application page).
+
+    Retry-safe: the browser makes one `attach_key` per attachment event and
+    sends the same key on every retry, so a retry after a lost answer gets the
+    message that was already saved rather than a second one. Attaching the
+    same documents again later is a new event with a new key.
+    """
+    existing = chat_session_service.find_attachment(db, body.attach_key)
+    if existing is not None:
+        if existing.session.user_id != user.id:
+            raise HTTPException(status_code=status.HTTP_409_CONFLICT,
+                                detail="That attachment key has already been used")
+        return {"session_id": existing.session_id, "message": chat_session_service.message_out(existing)}
+
+    # The document system's own ownership rule: 404 if the application
+    # doesn't exist, 403 if it isn't the customer's.
+    try:
+        application = document_service._application_for(db, body.application_id, user)
+    except NotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    except Forbidden as e:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=e.message)
+
+    # Every document must be on that application and still current.
+    documents = {d.id: d for d in db.query(Document).filter(Document.id.in_(body.document_ids))}
+    for doc_id in body.document_ids:
+        doc = documents.get(doc_id)
+        if doc is None or doc.application_id != application.id:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                detail=f"Document {doc_id} is not on application {application.id}")
+        if doc.replaced_by_id is not None:
+            raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+                                detail=f"Document {doc_id} has been replaced by a newer copy")
+
+    names = [documents[i].file_name for i in body.document_ids]
+    count = len(names)
+    content = (f"📎 Attached {count} document{'' if count == 1 else 's'} to application "
+               f"{application.id}: {', '.join(names)}")
+
+    try:
+        session = chat_session_service.open_or_start(db, user, body.session_id, content)
+    except NotFound as e:        # a foreign or unknown chat
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+    message = chat_session_service.add_attachment(
+        db, session, content, application.id, body.document_ids, body.attach_key,
+    )
+    # A chatbot interaction, so it's audited (Piece 36 model): which
+    # application, which documents and their file names. Never contents.
+    # Each upload already has its own `document_added` row.
+    activity_service.record(
+        db, action="chat_documents_attached",
+        actor_id=user.email, actor_role=user.role.value,
+        entity_type="application", entity_id=application.id,
+        details={"document_ids": body.document_ids, "file_names": names, "chat": session.id},
+        **activity_service.request_meta(request),
+    )
+    try:
+        db.commit()
+    except IntegrityError:
+        # Two retries of the same event arrived together: the other one won.
+        db.rollback()
+        existing = chat_session_service.find_attachment(db, body.attach_key)
+        return {"session_id": existing.session_id, "message": chat_session_service.message_out(existing)}
+    db.refresh(message)
+    return {"session_id": session.id, "message": chat_session_service.message_out(message)}

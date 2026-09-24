@@ -12,6 +12,7 @@ import { api, errorMessage, MAX_FILES_AT_ONCE, UPLOAD_TIMEOUT_MS } from "../api/
 import { useAuth } from "../auth/AuthContext";
 import { useSettings } from "../settings/useSettings";
 import BatchReview from "./BatchReview";
+import BatchUploadForm from "./BatchUploadForm";
 import DocumentReviewForm from "./DocumentReviewForm";
 import ErrorBanner from "./ErrorBanner";
 import TestBadge from "./TestBadge";
@@ -21,7 +22,7 @@ import Icon from "./ui/Icon";
 import Modal from "./ui/Modal";
 import { DOCUMENT_TYPES, checkFileName } from "../utils/validation";
 import { acceptAttrFor, checkUpload } from "../utils/uploadStandards";
-import { guessFromFileName, kindChoices, kindsForType } from "../utils/documentKinds";
+import { firstKind, kindChoices } from "../utils/documentKinds";
 import { fileSize, formatDate, label } from "../utils/format";
 
 // Fetches a stored file as the signed-in user and opens it in a new tab —
@@ -53,10 +54,6 @@ function KindPicker({ docType, kind, setKind }) {
       </select>
     </label>
   );
-}
-
-function firstKind(docType) {
-  return kindsForType(docType)[0]?.key || "";
 }
 
 // The name-only form: exactly what Phase 1 has always done. Used when the
@@ -271,156 +268,6 @@ function ReplaceModal({ applicationId, doc, realUploads, onClose, onDone }) {
   );
 }
 
-// Piece 35: several files at once, at most MAX_FILES_AT_ONCE. Each file is its
-// own row with a guessed type and kind the person can change, and each goes up
-// on its own request with the 2-minute upload limit. Two small "workers" take
-// files off one queue, so at most 2 upload at the same time; JavaScript runs
-// one thing at a time, so two workers can safely share the queue. One refusal
-// never stops the others: each row shows its own result.
-function BatchUploadForm({ applicationId, onChange, onUploaded, onClose }) {
-  const [rows, setRows] = useState([]);   // { id, file, docType, kind, status, message }
-  const [consent, setConsent] = useState(false);
-  const [note, setNote] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [finished, setFinished] = useState(false);
-
-  function pick(e) {
-    const files = Array.from(e.target.files || []);
-    setNote(files.length > MAX_FILES_AT_ONCE
-      ? `At most ${MAX_FILES_AT_ONCE} files at once, so only the first ${MAX_FILES_AT_ONCE} were kept.`
-      : "");
-    setFinished(false);
-    setRows(files.slice(0, MAX_FILES_AT_ONCE).map((file, i) => ({
-      id: i, file, ...guessFromFileName(file.name), status: "ready", message: "",
-    })));
-  }
-
-  function update(id, patch) {
-    setRows((prev) => prev.map((r) => (r.id === id ? { ...r, ...patch } : r)));
-  }
-
-  async function uploadAll() {
-    if (!consent) { setNote("You must agree before documents can be stored"); return; }
-    setNote("");
-
-    // The screen's own checks first, per file (type and size for its document type).
-    const queue = [];
-    for (const row of rows) {
-      const problem = checkUpload(row.docType, row.file);
-      if (problem) update(row.id, { status: "refused", message: problem });
-      else queue.push(row);
-    }
-
-    setBusy(true);
-    const uploaded = [];
-    async function worker() {
-      while (queue.length > 0) {
-        const row = queue.shift();
-        update(row.id, { status: "uploading", message: "" });
-        try {
-          const body = new FormData();
-          body.append("doc_type", row.docType);
-          body.append("consent", "true");
-          body.append("file", row.file);
-          if (row.kind) body.append("kind", row.kind);
-          const res = await api.post(`/applications/${applicationId}/documents/upload`, body,
-            { timeout: UPLOAD_TIMEOUT_MS });
-          update(row.id, { status: "done" });
-          uploaded.push(res.data);
-        } catch (err) {
-          update(row.id, { status: "refused", message: errorMessage(err) });
-        }
-      }
-    }
-    await Promise.all([worker(), worker()]);
-    setBusy(false);
-    setFinished(true);
-    onChange?.();
-    // Those with details go on to be checked together.
-    const withDetails = uploaded.filter((d) => d.extraction_id);
-    if (withDetails.length > 0) onUploaded(withDetails);
-  }
-
-  const STATUS = {
-    ready: ["", "Ready"], uploading: ["", "Uploading…"],
-    done: ["pill-ok", "Uploaded"], refused: ["pill-warn", "Refused"],
-  };
-
-  return (
-    <div>
-      <h3 style={{ margin: "0 0 0.5rem" }}>Upload several at once</h3>
-      <label>
-        Files (up to {MAX_FILES_AT_ONCE})
-        <input type="file" multiple disabled={busy} onChange={pick} accept=".pdf,.jpg,.jpeg,.png" />
-      </label>
-      {rows.length > 0 && (
-        <div className="table-wrap" style={{ marginTop: "0.5rem" }}>
-          <table>
-            <thead><tr><th>File</th><th>Document type</th><th>Which one?</th><th>Status</th><th /></tr></thead>
-            <tbody>
-              {rows.map((row) => {
-                const locked = busy || row.status !== "ready";
-                const choices = kindChoices(row.docType);
-                const [pill, text] = STATUS[row.status];
-                return (
-                  <tr key={row.id}>
-                    <td>{row.file.name}</td>
-                    <td>
-                      <select value={row.docType} disabled={locked}
-                        onChange={(e) => update(row.id, { docType: e.target.value, kind: firstKind(e.target.value) })}>
-                        {DOCUMENT_TYPES.map((t) => <option key={t} value={t}>{label(t)}</option>)}
-                      </select>
-                    </td>
-                    <td>
-                      {choices.length > 1 ? (
-                        <select value={row.kind} disabled={locked} onChange={(e) => update(row.id, { kind: e.target.value })}>
-                          {choices.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
-                        </select>
-                      ) : (
-                        <span className="muted">{choices[0]?.label || "—"}</span>
-                      )}
-                    </td>
-                    <td>
-                      <span className={`pill ${pill}`}>{text}</span>
-                      {row.message && <span className="field-error">{row.message}</span>}
-                    </td>
-                    <td>
-                      {!locked && (
-                        <Button size="sm" variant="ghost" icon="close"
-                          onClick={() => setRows((prev) => prev.filter((r) => r.id !== row.id))}>
-                          Remove
-                        </Button>
-                      )}
-                    </td>
-                  </tr>
-                );
-              })}
-            </tbody>
-          </table>
-        </div>
-      )}
-      <label className="check" style={{ margin: "0.5rem 0 0.35rem" }}>
-        <input type="checkbox" checked={consent} disabled={busy} onChange={(e) => setConsent(e.target.checked)} />
-        <span>I agree these documents are stored by the bank and checked by staff</span>
-      </label>
-      {note && <span className="field-error">{note}</span>}
-      <div className="row" style={{ gap: "0.5rem" }}>
-        {!finished && (
-          <Button type="button" variant="primary" icon="plus" loading={busy} onClick={uploadAll}
-            disabled={rows.length === 0}>
-            Upload all
-          </Button>
-        )}
-        <Button type="button" onClick={onClose} disabled={busy}>{finished ? "Close" : "Back to one at a time"}</Button>
-      </div>
-      <span className="hint">
-        PDF, JPG or PNG, up to 5 MB each. This is a demonstration system — never upload a
-        genuine identity document.
-      </span>
-    </div>
-  );
-}
-
 export default function DocumentChecklist({ applicationId, data, onChange }) {
   const { isStaff, isAdmin } = useAuth();
   // Piece 28: the admin's switch. OFF is exactly the form Phase 1 has
@@ -628,7 +475,11 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
           <BatchUploadForm
             applicationId={applicationId}
             onChange={onChange}
-            onUploaded={setBatchDocs}
+            // Only the ones with details go on to be checked together, as before.
+            onUploaded={(docs) => {
+              const withDetails = docs.filter((d) => d.extraction_id);
+              if (withDetails.length > 0) setBatchDocs(withDetails);
+            }}
             onClose={() => setBatchMode(false)}
           />
         ) : (

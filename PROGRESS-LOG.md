@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Pieces 37 + 38: documents in the Assistant
+
+**Asked for:** an assessment of how documents should join the saved chats, then building it with the smallest clean change.
+**Built:** customers get a 📎 in the Assistant. They pick one of their applications and upload up to 3 files through the same upload pipeline, and the chat records the attachment as their own message. The cards under it are read live every time, with details, Confirm all, "Something else" and "replaced or removed". Retry is safe, it's audited by file name only, and the AI never sees a document. v2.21.0, which completes the programme.
+**Found:** the several-files form was quietly dropping "Something else" uploads from what it reported. That was fine for the Documents card, but the chat needs them all. It now reports everything, and the card filters for itself.
+**Realised:** keeping only the ids in the chat, not a copy, is what makes an old chat honest about a document that's been replaced since.
+**Next:** the batched browser checks for Pieces 32d to 37, then the demo.
+
+---
+
 ## 2026-09-24 — Piece 36 correction: the chatbot's audit trail
 
 **Asked for:** an assessment of Piece 36 against your requirements, then a complete audit trail of the chatbot, described honestly.

@@ -191,6 +191,20 @@ each one, and click **Upload all**. Each file is checked on its own, so if one
 is refused the others still go through, and each shows its own result. The
 documents that have details then appear together, and **Confirm all**
 confirms them in one go, telling you which ones still need something.
+
+**Attaching documents in the Assistant.** A customer can also attach up to 3
+documents without leaving the Assistant: click the **📎** button next to Send,
+choose which of your applications they're for, pick the files and click
+**Upload all**. They go through exactly the same checks as uploading from the
+application page, and the Aadhaar blacking-out and "Something else" work the
+same way. The documents then appear as cards in the chat, where you can check
+their details and **Confirm all**. The cards stay in that chat when you reopen
+it later, and they always show each document as it is now, so a document you
+have since replaced shows as "no longer current (replaced or removed)". **The
+Assistant never reads your documents**: nothing from a document is ever sent
+to the AI. The 📎 button appears only for customers, and only when real
+uploads are switched on. If you don't have an application yet, start one
+first.
 Nothing you type in these details changes your profile. If a name or date of
 birth doesn't match your profile, the form shows a note, and staff will look
 at it.
@@ -495,7 +509,9 @@ you reopen one and carry on, even after you close the app.
   the bank's audit log keeps **short excerpts**, not the conversation: the
   first 200 characters of your question and the first 500 characters of the
   Assistant's answer, together with how it was answered, which tools it used,
-  whether the AI worked, and any action taken on an application. The branch
+  whether the AI worked, and any action taken on an application. When you
+  attach documents in the Assistant, the audit log records which application
+  and the documents' file names, never their contents. The branch
   manager and the system administrator can review this audit log. The full
   conversation exists only in your saved chat.
 

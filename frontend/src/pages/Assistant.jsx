@@ -23,13 +23,16 @@
 //     Rule 13 keeps that off the browser's disk.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useNavigate, useParams } from "react-router-dom";
+import { Link, useNavigate, useParams } from "react-router-dom";
 import { api, CHAT_TIMEOUT_MS, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
+import BatchUploadForm from "../components/BatchUploadForm";
+import ChatDocuments from "../components/ChatDocuments";
 import ErrorBanner from "../components/ErrorBanner";
 import Button from "../components/ui/Button";
 import Icon from "../components/ui/Icon";
-import { timeAgo } from "../utils/format";
+import { useSettings } from "../settings/useSettings";
+import { label, timeAgo } from "../utils/format";
 
 // What each brain is called on screen, so the routing is visible rather than magic.
 const MODES = {
@@ -157,7 +160,11 @@ function Evidence({ tools, sources }) {
 // Piece 36: a saved message from the server, in the shape this page draws.
 function fromServer(m) {
   return m.role === "user"
-    ? { id: m.id, who: "you", text: m.content }
+    ? {
+        id: m.id, who: "you", text: m.content,
+        // Piece 37: a message recording attached documents keeps only the ids.
+        applicationId: m.application_id, documentIds: m.document_ids || [],
+      }
     : {
         id: m.id, who: "assistant", text: m.content, mode: m.mode, sources: m.sources,
         tools: m.tools_used, ms: m.duration_ms, notice: m.ai_notice,
@@ -181,6 +188,17 @@ export default function Assistant() {
   const [waitingOnReview, setWaitingOnReview] = useState(false);
   const [waitedSeconds, setWaitedSeconds] = useState(0);
   const [error, setError] = useState("");
+  // Pieces 37 + 38: attaching documents from the chat. Customers only, and
+  // only when real uploads are switched on (the same switch as everywhere).
+  const { realUploads } = useSettings();
+  const canAttach = user?.role === "applicant" && realUploads;
+  const [attaching, setAttaching] = useState(false);
+  const [myApps, setMyApps] = useState(null);
+  const [attachApp, setAttachApp] = useState("");
+  // An upload that worked but whose chat record didn't: kept with its key so
+  // Retry sends exactly the same attachment event again (never a second one).
+  const [pendingAttach, setPendingAttach] = useState(null);
+  const [attachError, setAttachError] = useState("");
   const endRef = useRef(null);
 
   const loadSessions = useCallback(() => {
@@ -220,6 +238,58 @@ export default function Assistant() {
     } catch (err) {
       setError(errorMessage(err));
     }
+  }
+
+  async function openAttach() {
+    setAttaching(true);
+    setAttachError("");
+    try {
+      // A customer's list only ever holds their own applications (the API's rule).
+      const res = await api.get("/applications", { params: { limit: 50 } });
+      const apps = [...res.data.items].sort((a, b) => b.id - a.id);
+      setMyApps(apps);
+      setAttachApp(apps[0] ? String(apps[0].id) : "");
+    } catch (err) {
+      setAttachError(errorMessage(err));
+    }
+  }
+
+  // Record the uploaded documents in this chat. No AI is involved: the server
+  // writes the message itself, and the cards read the documents live.
+  async function recordAttachment(attach) {
+    setAttachError("");
+    try {
+      const res = await api.post("/chat/attachments", {
+        session_id: sessionId || null,
+        application_id: attach.applicationId,
+        document_ids: attach.documentIds,
+        attach_key: attach.key,
+      });
+      setPendingAttach(null);
+      setAttaching(false);
+      setMessages((m) => [...m, fromServer(res.data.message)]);
+      if (!sessionId) {
+        justStarted.current = String(res.data.session_id);
+        navigate(`/assistant/${res.data.session_id}`, { replace: true });
+      }
+      loadSessions();
+    } catch (err) {
+      // The documents are safely on the application either way; only the chat
+      // record is missing. Keep the same key so Retry can't add it twice.
+      setPendingAttach(attach);
+      setAttachError(
+        `Uploaded to application ${attach.applicationId}, but not added to this chat: ${errorMessage(err)}`,
+      );
+    }
+  }
+
+  function uploaded(docs) {
+    recordAttachment({
+      applicationId: Number(attachApp),
+      documentIds: docs.map((d) => d.id),
+      // One key per attachment event (Piece 37, retry-safe).
+      key: crypto.randomUUID(),
+    });
   }
 
   // Keep the newest message in view as the conversation grows.
@@ -350,7 +420,8 @@ export default function Assistant() {
           )}
 
           {messages.map((m, i) => (
-            <div key={m.id ?? `new-${i}`} className={`bubble bubble-${m.who}`}>
+            <div key={m.id ?? `new-${i}`}>
+            <div className={`bubble bubble-${m.who}`}>
               {/* Above the answer on purpose: it changes how the answer should
                   be read, so finding it underneath would be too late. */}
               {m.notice && (
@@ -370,6 +441,11 @@ export default function Assistant() {
                   </div>
                 </>
               )}
+            </div>
+            {/* Pieces 37 + 38: an attachment message shows its documents, live. */}
+            {m.documentIds?.length > 0 && m.applicationId && (
+              <ChatDocuments applicationId={m.applicationId} documentIds={m.documentIds} />
+            )}
             </div>
           ))}
 
@@ -393,10 +469,56 @@ export default function Assistant() {
           <div ref={endRef} />
         </div>
 
+        {attaching && (
+          <div className="chat-attach">
+            <ErrorBanner message={attachError} onClose={() => setAttachError("")} />
+            {pendingAttach && (
+              <Button type="button" size="sm" onClick={() => recordAttachment(pendingAttach)}>
+                Retry adding to this chat
+              </Button>
+            )}
+            {myApps === null ? (
+              <p className="muted">Loading your applications…</p>
+            ) : myApps.length === 0 ? (
+              <p className="muted">
+                You don't have an application yet. <Link to="/applications/new">Start an application</Link>{" "}
+                first, then attach its documents here.
+              </p>
+            ) : !pendingAttach && (
+              <>
+                <label>
+                  Which application are these for?
+                  <select value={attachApp} onChange={(e) => setAttachApp(e.target.value)}>
+                    {myApps.map((a) => (
+                      <option key={a.id} value={a.id}>
+                        Application {a.id} · {label(a.loan_type)} loan · {label(a.status)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+                <BatchUploadForm
+                  key={attachApp}
+                  applicationId={attachApp}
+                  onUploaded={uploaded}
+                  onClose={() => setAttaching(false)}
+                  heading="Attach documents"
+                  closeLabel="Cancel"
+                />
+              </>
+            )}
+          </div>
+        )}
+
         <form
           className="chat-input"
           onSubmit={(e) => { e.preventDefault(); send(); }}
         >
+          {canAttach && (
+            <Button type="button" variant="ghost" aria-label="Attach documents" title="Attach documents"
+              onClick={() => (attaching ? setAttaching(false) : openAttach())} disabled={busy}>
+              📎
+            </Button>
+          )}
           <input
             value={draft}
             onChange={(e) => setDraft(e.target.value)}

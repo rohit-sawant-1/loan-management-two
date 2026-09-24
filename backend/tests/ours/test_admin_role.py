@@ -219,6 +219,10 @@ def _act_addresses(world):
         ("patch", "/api/v1/extractions/1/fields", {"values": {"name": "Admin Tries"}}),
         ("post", "/api/v1/extractions/1/confirm", None),
         ("post", "/api/v1/extractions/1/discard", None),
+        # Pieces 37 + 38: attaching documents from the Assistant (customers only).
+        ("post", "/api/v1/chat/attachments",
+         {"application_id": world["app_id"], "document_ids": [world["doc_id"]],
+          "attach_key": "admin-tries-0001"}),
     ]
 
 

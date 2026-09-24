@@ -16,6 +16,11 @@ export function kindsForType(docType) {
   return DOCUMENT_KINDS.filter((k) => k.docType === docType);
 }
 
+// The first kind of a type, the dropdown's default ("" for a type with none).
+export function firstKind(docType) {
+  return kindsForType(docType)[0]?.key || "";
+}
+
 // D-33: a genuine document the app has no form for yet. Choosing it sends no
 // kind, so the document counts on upload and staff check it, as every
 // document did before Piece 33. The key is "" because "no kind" is what the

@@ -61,6 +61,29 @@ def save_turn(db: Session, session: ChatSession, question: str, response) -> Non
     db.commit()
 
 
+def find_attachment(db: Session, attach_key: str) -> ChatMessage | None:
+    """Piece 37: the message already saved for this attachment event, if any (a retry)."""
+    return db.query(ChatMessage).filter(ChatMessage.attach_key == attach_key).first()
+
+
+def add_attachment(db: Session, session: ChatSession, content: str, application_id: int,
+                   document_ids: list[int], attach_key: str) -> ChatMessage:
+    """
+    Piece 37: save a user message recording documents attached from the
+    Assistant, and move the chat to the top of the list. Doesn't commit, so
+    the caller can write the audit row in the same commit.
+    """
+    message = ChatMessage(
+        session_id=session.id, role="user", content=content,
+        application_id=application_id, document_ids=json.dumps(document_ids),
+        attach_key=attach_key,
+    )
+    db.add(message)
+    session.updated_at = datetime.now(timezone.utc)
+    db.flush()
+    return message
+
+
 def list_sessions(db: Session, user: User) -> list[ChatSession]:
     """The person's chats that aren't archived, the most recently used first."""
     return (
@@ -114,4 +137,6 @@ def message_out(message: ChatMessage) -> dict:
         "duration_ms": message.duration_ms,
         "ai_notice": message.ai_notice or "",
         "created_at": message.created_at,
+        "application_id": message.application_id,
+        "document_ids": json.loads(message.document_ids) if message.document_ids else [],
     }

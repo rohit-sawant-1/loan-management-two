@@ -780,6 +780,13 @@ th.sorted { color: var(--ink-900); }
   display: flex; gap: 0.6rem; align-items: center;
   padding: 0.85rem 1rem; border-top: 1px solid var(--line); background: #fbfcfe;
 }
+/* Pieces 37 + 38: the attach panel sits just above the input, and scrolls on
+   its own so a long upload list never pushes the input off the screen. */
+.chat-attach {
+  border-top: 1px solid var(--line); padding: 0.85rem 1.1rem;
+  max-height: 45vh; overflow-y: auto; background: var(--surface);
+}
+.chat-documents { margin: 0.35rem 0 1rem; }
 .chat-input input { margin-top: 0; }
 .chat-input .btn { margin-top: 0; flex: none; }
 
