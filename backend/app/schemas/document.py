@@ -53,6 +53,13 @@ class DocumentResponse(BaseModel):
     # has replaced it.
     replaced_by_id: int | None = None
     replaced_at: UtcDateTime | None = None
+    # Piece 33. `needs_details` is true for a real file whose details aren't
+    # confirmed yet; such a document doesn't count towards the checklist.
+    # Phase 5's compliance checker reads this to skip the same documents.
+    kind: str | None = None
+    extraction_id: int | None = None
+    needs_details: bool = False
+    detail_summary: str | None = None
 
 
 class DocumentReplaceBody(BaseModel):

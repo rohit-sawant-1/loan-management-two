@@ -15,6 +15,8 @@ from sqlalchemy.orm import Session, joinedload, selectinload
 from app.domain import rules
 from app.models.applicant import Applicant
 from app.models.application import ApplicationStatus, LoanApplication, LoanType
+from app.models.document import Document
+from app.models.extraction import DocumentExtraction
 from app.models.status_history import StatusHistory
 from app.models.user import User, UserRole
 from app.schemas.application import CreateApplicationSchema
@@ -144,7 +146,10 @@ def get_application(db: Session, application_id: int, *, viewer: User) -> LoanAp
         .options(
             joinedload(LoanApplication.applicant),
             selectinload(LoanApplication.status_history),
-            selectinload(LoanApplication.documents),
+            # Piece 33: each document's details too, for `needs_details`.
+            selectinload(LoanApplication.documents)
+            .selectinload(Document.extractions)
+            .selectinload(DocumentExtraction.fields),
         )
         .filter(LoanApplication.id == application_id)
         .first()

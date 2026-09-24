@@ -64,6 +64,9 @@ def upload_document(
     doc_type: DocumentType = Form(...),
     consent: bool = Form(...),
     file: UploadFile = File(...),
+    # Piece 33, optional: which document this is (Aadhaar, PAN…). Leaving it
+    # out behaves exactly as before.
+    kind: str | None = Form(None, max_length=30),
     db: Session = Depends(get_db),
     user: User = Depends(require_business_actor),
 ):
@@ -82,7 +85,7 @@ def upload_document(
             db, application_id, doc_type,
             consent=consent, raw_filename=file.filename or "",
             file_bytes=file.file,
-            user=user, meta=request_meta(request),
+            user=user, meta=request_meta(request), kind=kind,
         )
     except (NotFound, Forbidden, RuleViolation) as e:
         raise _http(e)
@@ -161,6 +164,7 @@ def replace_with_upload(
     request: Request,
     consent: bool = Form(...),
     file: UploadFile = File(...),
+    kind: str | None = Form(None, max_length=30),     # Piece 33, optional
     db: Session = Depends(get_db),
     user: User = Depends(require_business_actor),
 ):
@@ -174,7 +178,7 @@ def replace_with_upload(
         return document_service.replace_with_upload(
             db, application_id, document_id,
             consent=consent, raw_filename=file.filename or "", file_bytes=file.file,
-            user=user, meta=request_meta(request),
+            user=user, meta=request_meta(request), kind=kind,
         )
     except (NotFound, Forbidden, RuleViolation) as e:
         raise _http(e)

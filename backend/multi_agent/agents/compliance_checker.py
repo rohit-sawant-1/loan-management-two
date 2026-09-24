@@ -62,7 +62,10 @@ def compliance_checker(state: LoanProcessingState) -> LoanProcessingState:
 
         application = state.get("application_data") or {}
         applicant = state.get("applicant_data") or {}
-        documents = state.get("documents") or []
+        # Piece 33: a real file whose details aren't confirmed yet doesn't
+        # count, the same rule as the checklist. Name-only documents never
+        # need details, so the seeded applications are judged as before.
+        documents = [d for d in (state.get("documents") or []) if not d.get("needs_details")]
 
         loan_type = application.get("loan_type", "personal")
         amount = application.get("amount_requested", 0)

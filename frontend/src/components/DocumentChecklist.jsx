@@ -3,11 +3,15 @@
 // add one, except the administrator, who can only look (Piece 27).
 // Piece 32d: an unverified document can be replaced by a newer copy. Staff and
 // the admin also see the earlier copies that were replaced; a customer doesn't.
+// Piece 33: a real file of a type with kinds (ID proof, income proof, bank
+// statement) says which document it is, and its details are typed in. It only
+// ticks its box once they're confirmed.
 
 import { useState } from "react";
 import { api, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useSettings } from "../settings/useSettings";
+import DocumentReviewForm from "./DocumentReviewForm";
 import ErrorBanner from "./ErrorBanner";
 import TestBadge from "./TestBadge";
 import ViewOnly from "./ViewOnly";
@@ -16,6 +20,7 @@ import Icon from "./ui/Icon";
 import Modal from "./ui/Modal";
 import { DOCUMENT_TYPES, checkFileName } from "../utils/validation";
 import { acceptAttrFor, checkUpload } from "../utils/uploadStandards";
+import { kindsForType } from "../utils/documentKinds";
 import { fileSize, formatDate, label } from "../utils/format";
 
 // Fetches a stored file as the signed-in user and opens it in a new tab —
@@ -30,6 +35,26 @@ async function viewFile(fileId, setError) {
   } catch (err) {
     setError(errorMessage(err));
   }
+}
+
+// Piece 33: "Which one?" under a type that has more than one kind (ID proof:
+// Aadhaar or PAN). A type with exactly one kind picks it without asking, and a
+// type with none shows nothing.
+function KindPicker({ docType, kind, setKind }) {
+  const kinds = kindsForType(docType);
+  if (kinds.length < 2) return null;
+  return (
+    <label>
+      Which one?
+      <select value={kind} onChange={(e) => setKind(e.target.value)}>
+        {kinds.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
+      </select>
+    </label>
+  );
+}
+
+function firstKind(docType) {
+  return kindsForType(docType)[0]?.key || "";
 }
 
 // The name-only form: exactly what Phase 1 has always done. Used when the
@@ -85,8 +110,9 @@ function NameOnlyForm({ applicationId, onChange, setError }) {
 // real or a test one — the server decides that for itself, after the file
 // is read (see file_service.classify_nature on the backend). The only
 // question here is consent.
-function RealUploadForm({ applicationId, onChange, setError }) {
+function RealUploadForm({ applicationId, onChange, onUploaded, setError }) {
   const [docType, setDocType] = useState("id_proof");
+  const [kind, setKind] = useState(firstKind("id_proof"));
   const [file, setFile] = useState(null);
   const [consent, setConsent] = useState(false);
   const [fieldError, setFieldError] = useState("");
@@ -105,13 +131,16 @@ function RealUploadForm({ applicationId, onChange, setError }) {
       body.append("doc_type", docType);
       body.append("consent", "true");
       body.append("file", file);
+      if (kind) body.append("kind", kind);
       // No explicit Content-Type here: axios sets multipart/form-data with
       // the correct boundary itself when it sees a FormData body. Setting
       // it by hand would strip the boundary and break the upload.
-      await api.post(`/applications/${applicationId}/documents/upload`, body);
+      const res = await api.post(`/applications/${applicationId}/documents/upload`, body);
       setFile(null);
       setConsent(false);
       onChange?.();
+      // Straight on to its details, while the document is in front of them.
+      if (res.data.extraction_id) onUploaded?.(res.data);
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -124,12 +153,15 @@ function RealUploadForm({ applicationId, onChange, setError }) {
       <div className="toolbar" style={{ marginBottom: "0.35rem" }}>
         <label>
           Document type
-          <select value={docType} onChange={(e) => { setDocType(e.target.value); setFile(null); }}>
+          <select value={docType} onChange={(e) => {
+            setDocType(e.target.value); setKind(firstKind(e.target.value)); setFile(null);
+          }}>
             {DOCUMENT_TYPES.map((t) => (
               <option key={t} value={t}>{label(t)}</option>
             ))}
           </select>
         </label>
+        <KindPicker docType={docType} kind={kind} setKind={setKind} />
         <label className="grow">
           File
           <input
@@ -160,6 +192,7 @@ function ReplaceModal({ applicationId, doc, realUploads, onClose, onDone }) {
   const [file, setFile] = useState(null);
   const [fileName, setFileName] = useState("");
   const [consent, setConsent] = useState(false);
+  const [kind, setKind] = useState(firstKind(doc.doc_type));
   const [fieldError, setFieldError] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
@@ -177,11 +210,13 @@ function ReplaceModal({ applicationId, doc, realUploads, onClose, onDone }) {
         const body = new FormData();
         body.append("consent", "true");
         body.append("file", file);
-        await api.post(`${base}/upload`, body);
+        if (kind) body.append("kind", kind);
+        const res = await api.post(`${base}/upload`, body);
+        onDone(res.data);
       } else {
         await api.post(base, { file_name: fileName.trim() });
+        onDone(null);
       }
-      onDone();
     } catch (err) {
       setError(errorMessage(err));
     } finally {
@@ -208,6 +243,7 @@ function ReplaceModal({ applicationId, doc, realUploads, onClose, onDone }) {
       <p>The new copy takes this one's place and is checked again by staff.</p>
       {realUploads ? (
         <>
+          <KindPicker docType={doc.doc_type} kind={kind} setKind={setKind} />
           <label>
             New file
             <input
@@ -240,6 +276,7 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [replacing, setReplacing] = useState(null);   // the document being replaced, or null
+  const [reviewing, setReviewing] = useState(null);   // the document whose details are open, or null
 
   const {
     items = [], required = [], missing = [], test_count: testCount = 0, replaced = [],
@@ -304,7 +341,11 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
                 <tr key={d.id}>
                   <td>
                     {label(d.doc_type)}{" "}
-                    {d.nature === "test" && <TestBadge />}
+                    {d.nature === "test" && <TestBadge />}{" "}
+                    {d.needs_details && <span className="pill pill-warn">needs details</span>}
+                    {d.detail_summary && (
+                      <div className="muted mono" style={{ fontSize: "0.8rem" }}>{d.detail_summary}</div>
+                    )}
                   </td>
                   <td>{d.file_name}</td>
                   <td className="mono">
@@ -334,6 +375,16 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
                             : undefined}
                         >
                           {d.nature === "test" ? "Verify (test document)" : "Mark verified"}
+                        </Button>
+                      )}
+                      {d.needs_details && !isAdmin && (
+                        <Button size="sm" variant="primary" icon="file" onClick={() => setReviewing(d)}>
+                          Fill in details
+                        </Button>
+                      )}
+                      {d.extraction_id && (!d.needs_details || isAdmin) && (
+                        <Button size="sm" icon="file" onClick={() => setReviewing(d)}>
+                          View details
                         </Button>
                       )}
                       {!isAdmin && !d.verified && (
@@ -389,7 +440,22 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
           doc={replacing}
           realUploads={realUploads}
           onClose={() => setReplacing(null)}
-          onDone={() => { setReplacing(null); onChange?.(); }}
+          onDone={(newDoc) => {
+            setReplacing(null);
+            onChange?.();
+            // A replacement with a kind goes straight on to its details.
+            if (newDoc?.extraction_id) setReviewing(newDoc);
+          }}
+        />
+      )}
+
+      {reviewing && (
+        <DocumentReviewForm
+          applicationId={applicationId}
+          doc={reviewing}
+          canEdit={!isAdmin}
+          onClose={() => setReviewing(null)}
+          onChanged={onChange}
         />
       )}
 
@@ -398,7 +464,8 @@ export default function DocumentChecklist({ applicationId, data, onChange }) {
       {isAdmin ? (
         <ViewOnly>View only. The administrator can't add documents.</ViewOnly>
       ) : realUploads ? (
-        <RealUploadForm applicationId={applicationId} onChange={onChange} setError={setError} />
+        <RealUploadForm applicationId={applicationId} onChange={onChange} onUploaded={setReviewing}
+          setError={setError} />
       ) : (
         <NameOnlyForm applicationId={applicationId} onChange={onChange} setError={setError} />
       )}

@@ -386,6 +386,21 @@ STORAGE_ZONES: tuple[str, ...] = ("safe", "sensitive")
 # uploading — see the same note above for why.
 STORED_FILE_NATURES: tuple[str, ...] = ("test", "real", "undeclared")
 
+# Piece 33: the details typed in for a document. The kinds and their fields
+# live in app/domain/document_kinds.py; these are the states around them.
+EXTRACTION_STATUSES: tuple[str, ...] = ("needs_input", "confirmed", "discarded")
+# How far a document's details have been checked. "Consistency checked" means
+# the format checks passed (a valid Aadhaar checksum, say). It never means the
+# document is genuine: identification is not authenticity (settled 2026-09-22).
+VERIFICATION_LEVELS: tuple[str, ...] = (
+    "not_verified", "consistency_checked", "cryptographically_verified", "staff_verified",
+)
+EXTRACTED_FIELD_STATES: tuple[str, ...] = (
+    "extracted", "uncertain", "missing", "user_entered", "user_corrected",
+)
+# Where a value came from. Only "user" exists until Piece 34 reads documents.
+EXTRACTED_FIELD_SOURCES: tuple[str, ...] = ("qr", "mrz", "text_layer", "ocr", "gemini", "user")
+
 # The two content types the rebuild step can ever produce. A PDF stays a
 # PDF; every image, whatever it arrived as, becomes a JPEG.
 REBUILT_CONTENT_TYPES: frozenset[str] = frozenset({"application/pdf", "image/jpeg"})

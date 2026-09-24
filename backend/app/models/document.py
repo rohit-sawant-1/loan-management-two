@@ -15,6 +15,7 @@ from sqlalchemy.orm import relationship
 from sqlalchemy.sql import func
 
 from app.database import Base
+from app.domain import document_kinds
 
 
 class DocumentType(str, enum.Enum):
@@ -58,6 +59,12 @@ class Document(Base):
 
     application = relationship("LoanApplication", back_populates="documents")
     stored_file = relationship("StoredFile")
+    # Piece 33: the details typed in for this document. Usually one; a
+    # discarded attempt (the wrong kind picked, say) stays alongside the new one.
+    extractions = relationship(
+        "DocumentExtraction", back_populates="document",
+        cascade="all, delete-orphan", order_by="DocumentExtraction.id",
+    )
 
     # --- Read-only conveniences for DocumentResponse -----------------------
     # A name-only document (no file_id) has no stored_file, so every one of
@@ -79,3 +86,53 @@ class Document(Base):
     @property
     def nature(self) -> str | None:
         return self.stored_file.nature.value if self.stored_file else None
+
+    # --- Piece 33: the document's details -----------------------------------
+
+    @property
+    def current_extraction(self):
+        """The latest attempt at this document's details that wasn't thrown away."""
+        live = [e for e in self.extractions if e.status != "discarded"]
+        return live[-1] if live else None
+
+    @property
+    def kind(self) -> str | None:
+        extraction = self.current_extraction
+        return extraction.declared_kind if extraction else None
+
+    @property
+    def extraction_id(self) -> int | None:
+        extraction = self.current_extraction
+        return extraction.id if extraction else None
+
+    @property
+    def details_confirmed(self) -> bool:
+        extraction = self.current_extraction
+        return extraction is not None and extraction.status == "confirmed"
+
+    @property
+    def needs_details(self) -> bool:
+        """
+        True for a real file of a type that has kinds (ID proof, income proof,
+        bank statement) whose details aren't confirmed yet. Such a document
+        doesn't count towards the checklist until they are. A name-only
+        document never needs details: there is no file to read them from, so
+        it counts exactly as it always has (the seed data, the trainer's tests).
+        """
+        doc_type = getattr(self.doc_type, "value", self.doc_type)
+        return (
+            self.file_id is not None
+            and doc_type in document_kinds.TYPES_WITH_KINDS
+            and not self.details_confirmed
+        )
+
+    @property
+    def detail_summary(self) -> str | None:
+        """For a confirmed document: its kind and one telling detail, e.g. "Aadhaar card · XXXX XXXX 1234"."""
+        if not self.details_confirmed:
+            return None
+        extraction = self.current_extraction
+        kind = document_kinds.get_kind(extraction.declared_kind)
+        key = document_kinds.SUMMARY_FIELD.get(extraction.declared_kind)
+        value = next((f.value for f in extraction.fields if f.field_key == key), None)
+        return f"{kind.label} · {value}" if value else kind.label

@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Piece 33: what a document actually is, and its details
+
+**Asked for:** the next piece, planned first. You picked the demo set of 4 kinds, counting only once confirmed, an optional address on Aadhaar, and the kind picked in the upload form. Partway through, you asked to cut testing to speed things up.
+**Built:** when a customer uploads an ID proof, they now say whether it's an Aadhaar card or a PAN card. For a salary slip or bank statement the kind is picked for them. A form opens straight away with that document's own fields. The server checks each field (a real Aadhaar checksum, a PAN's shape, dates, amounts), and the document only ticks its box once the details are confirmed. Only the last 4 Aadhaar digits are ever kept, and the database itself refuses a full number. Name-only documents, meaning the seed data and the trainer's tests, count exactly as before. The manual explains it all (65 chunks). v2.17.0.
+**Found:** the admin test had never been given Piece 32d's Replace address, so it's been added now along with Piece 33's five.
+**Realised:** testing is now "the core only": the trainer's tests plus one or two that guard something legal or demo-critical. Your browser check covers the rest.
+**Next:** a browser check. Priya uploads the SPECIMEN Aadhaar as "Aadhaar card", fills in the form, and confirms.
+
+---
+
 ## 2026-09-24 — Piece 32d: the Replace button
 
 **Asked for:** you spotted that "every copy is kept" isn't something real banks tell customers, and asked for a real Replace button instead of rewording the manual.

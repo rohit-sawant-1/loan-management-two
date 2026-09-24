@@ -52,6 +52,9 @@ export function errorMessage(error) {
     return error?.message || "Something went wrong.";
   }
   if (typeof detail === "string") return detail;
+  // Piece 33: several fields wrong at once. The form shows each field's own
+  // message beside its box; this is the one-line summary above them.
+  if (typeof detail?.message === "string") return detail.message;
   if (Array.isArray(detail)) {
     return detail
       .map((e) => {

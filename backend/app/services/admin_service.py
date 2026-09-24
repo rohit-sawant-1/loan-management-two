@@ -52,8 +52,10 @@ def purge_test_documents(db: Session, *, user, meta: dict | None = None) -> int:
                 older.replaced_by_id = purged.replaced_by_id
                 if purged.replaced_by_id is None:
                     older.replaced_at = None
+            # Deleted through the ORM rather than in bulk, so its typed-in
+            # details (Piece 33) go with it instead of being left behind.
+            db.delete(purged)
         db.flush()
-        db.query(Document).filter(Document.file_id == stored.id).delete()
         storage.delete(stored.storage_zone.value, stored.stored_name)
         db.delete(stored)
 

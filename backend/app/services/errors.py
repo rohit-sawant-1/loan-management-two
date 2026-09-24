@@ -30,5 +30,16 @@ class RuleViolation(ServiceError):
     """A business rule said no. Maps to 400 or 422 depending on the endpoint."""
 
 
+class FieldProblems(RuleViolation):
+    """
+    Piece 33: several fields were wrong at once. `fields` maps each field's
+    key to its own message, so the screen can show each one beside its box.
+    """
+
+    def __init__(self, message: str, fields: dict[str, str]):
+        super().__init__(message)
+        self.fields = fields
+
+
 class Forbidden(ServiceError):
     """The user is real but not allowed to do this. Maps to 403."""

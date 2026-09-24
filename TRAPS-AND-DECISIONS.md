@@ -219,6 +219,13 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-125 · A document's details decide whether it counts, so check `needs_details` anywhere documents are counted.**
+From Piece 33 on, a real file of a type with kinds doesn't count until its details
+are confirmed. The rule lives in `document_service.counts_towards_checklist`,
+which the checklist and the briefing use. Phase 5's compliance checker reads the
+`needs_details` flag over the API. Anything new that counts documents must use
+one of the two, or it will disagree with the checklist.
+
 **T-124 · A text box inside any pop-up lost focus after every keystroke.** Found
 by Rohit typing the purge phrase (2026-09-24). `Modal.jsx`'s effect listed
 `onClose` as a dependency, and pages pass a new `onClose` on every render, so
@@ -1061,6 +1068,20 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 ---
 
 # Settled
+
+### 2026-09-24 · Testing trimmed for speed, from Piece 33 on
+**Rohit asked:** can we skip testing to speed up building? **Applied as:** no
+long test lists per piece. Each piece keeps only (1) the trainer's tests and the
+existing test files it touches, run as a targeted set rather than the whole
+suite, and (2) one or two new tests for anything legal or demo-critical, plus
+any new action added to `test_admin_role.py` (T-117). Everything else is left
+to the browser check. Say the word to drop even the core.
+
+### 2026-09-24 · Piece 33 — four answers
+- **Kinds:** a demo set of 4 first (Aadhaar, PAN, salary slip, bank statement). The other 7 come later.
+- **Counting:** a real file of a type with kinds counts only once its details are confirmed. Name-only documents count as before, which keeps the seed data and the trainer's tests safe.
+- **Address on Aadhaar:** optional, never copied to the profile.
+- **Where the kind is picked:** in the upload form, with a "Which one?" dropdown.
 
 ### 2026-09-24 · D-30 — The manual's promise of Replace is now true: Replace was built (Piece 32d)
 **Rohit's answer:** don't reword the manual to "every copy is kept", because real

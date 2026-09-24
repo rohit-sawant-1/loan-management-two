@@ -127,16 +127,22 @@ def gather_facts(db: Session) -> dict:
                    if a.status in (ApplicationStatus.submitted, ApplicationStatus.under_review)]
     missing_docs: list[dict] = []
     if waiting_ids:
-        doc_rows = (
-            db.query(Document.application_id, Document.doc_type)
-            # A replaced copy (Piece 32d) no longer counts; its replacement does.
-            .filter(Document.application_id.in_(waiting_ids), Document.replaced_by_id.is_(None))
+        # The same counting rule as the checklist: a replaced copy (Piece 32d)
+        # or a file whose details aren't confirmed yet (Piece 33) doesn't count.
+        from app.services.document_service import WITH_DETAILS, counts_towards_checklist
+
+        docs = (
+            db.query(Document)
+            .options(WITH_DETAILS)
+            .filter(Document.application_id.in_(waiting_ids))
             .all()
         )
         uploaded: dict[int, set[str]] = {}
-        for application_id, doc_type in doc_rows:
-            uploaded.setdefault(application_id, set()).add(
-                doc_type.value if hasattr(doc_type, "value") else str(doc_type)
+        for doc in docs:
+            if not counts_towards_checklist(doc):
+                continue
+            uploaded.setdefault(doc.application_id, set()).add(
+                doc.doc_type.value if hasattr(doc.doc_type, "value") else str(doc.doc_type)
             )
         for app in open_apps:
             if app.id not in waiting_ids:

@@ -6,11 +6,12 @@ from datetime import datetime, timedelta, timezone
 
 import structlog
 from sqlalchemy import func
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, selectinload
 
 from app.domain import rules
 from app.models.application import LoanApplication
 from app.models.document import Document, DocumentType
+from app.models.extraction import DocumentExtraction
 from app.models.stored_file import StoredFile
 from app.models.user import User, UserRole
 from app.schemas.common import clean_display_name
@@ -71,6 +72,21 @@ def add_document(
     return document
 
 
+def counts_towards_checklist(document: Document) -> bool:
+    """
+    Whether a document ticks its type's box. A replaced copy never does
+    (Piece 32d). A real file whose details aren't confirmed doesn't yet
+    (Piece 33). Everything else does, exactly as it always has, including
+    every name-only document.
+    """
+    return document.replaced_by_id is None and not document.needs_details
+
+
+# Loading a document's details alongside it, so the list doesn't run one
+# extra query per document (the N+1 problem).
+WITH_DETAILS = selectinload(Document.extractions).selectinload(DocumentExtraction.fields)
+
+
 def list_documents(
     db: Session, application_id: int, *, viewer: User
 ) -> tuple[list[Document], list[str], list[str]]:
@@ -82,12 +98,14 @@ def list_documents(
     application = _application_for(db, application_id, viewer)
     documents = (
         db.query(Document)
+        .options(WITH_DETAILS)
         .filter(Document.application_id == application.id, Document.replaced_by_id.is_(None))
         .order_by(Document.uploaded_at, Document.id)
         .all()
     )
     required = sorted(rules.required_documents(application.loan_type))
-    missing = rules.missing_documents(application.loan_type, [d.doc_type for d in documents])
+    counted = [d.doc_type for d in documents if counts_towards_checklist(d)]
+    missing = rules.missing_documents(application.loan_type, counted)
     return documents, required, missing
 
 
@@ -154,13 +172,14 @@ def replace_document(
 def replace_with_upload(
     db: Session, application_id: int, document_id: int,
     *, consent: bool, raw_filename: str, file_bytes, user: User, meta: dict | None = None,
+    kind: str | None = None,
 ) -> Document:
     """Piece 32d, with a real file: the whole upload pipeline, then the old copy is marked replaced."""
     old = _replaceable(db, application_id, document_id, user)
     return add_uploaded_document(
         db, application_id, old.doc_type,
         consent=consent, raw_filename=raw_filename, file_bytes=file_bytes,
-        user=user, meta=meta, replaces=old,
+        user=user, meta=meta, replaces=old, kind=kind,
     )
 
 
@@ -199,6 +218,7 @@ def add_uploaded_document(
     user: User,
     meta: dict | None = None,
     replaces: Document | None = None,
+    kind: str | None = None,
 ) -> Document:
     """
     A real file, run through `file_service`'s whole safety and
@@ -213,8 +233,16 @@ def add_uploaded_document(
 
     `replaces` (Piece 32d) is the older document this one takes the place
     of, marked in the same commit as everything else.
+
+    `kind` (Piece 33) is which document this is (Aadhaar, PAN…). When given,
+    its empty details form is created in the same commit too. It is checked
+    before the pipeline runs, so a wrong kind costs nothing.
     """
+    from app.services import extraction_service   # imported here to avoid a circular import
+
     application = _application_for(db, application_id, user)
+    if kind is not None:
+        extraction_service.check_kind_fits(kind, doc_type.value)
     if not consent:
         raise RuleViolation("You must agree before a document can be stored")
     _check_rate_limits(db, application, user)
@@ -290,6 +318,8 @@ def add_uploaded_document(
 
     if replaces is not None:
         _mark_replaced(db, replaces, document, user=user, meta=meta)
+    if kind is not None:
+        extraction_service.create_extraction(db, document, kind, user=user)
 
     db.commit()
     db.refresh(document)

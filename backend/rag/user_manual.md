@@ -144,6 +144,21 @@ the old one's place in the checklist, and is checked again by staff. Once a
 loan officer has verified a document, it is fixed as part of the record and
 can no longer be replaced.
 
+When you upload an identity proof, income proof or bank statement as a file,
+you also say which document it is: an **Aadhaar card** or a **PAN card** for
+identity proof, a **salary slip** for income proof, or a **bank statement**.
+A short form then asks for the details printed on it, such as the name, date
+of birth and Aadhaar number on an Aadhaar card. Fill it in and click
+**Confirm details**. The document only counts towards your checklist once its
+details are confirmed; until then it shows as "needs details". The details
+are checked for their format, for example that an Aadhaar number is valid and
+a PAN looks like a real PAN. This does not prove a document is genuine. Staff
+still check it. **Only the last 4 digits of your Aadhaar number are kept**,
+as UIDAI rules require, and the same goes for your bank account number.
+Nothing you type in these details changes your profile. If a name or date of
+birth doesn't match your profile, the form shows a note, and staff will look
+at it.
+
 A document the system recognises as demonstration or specimen material is
 marked TEST and shown with a TEST badge wherever it appears, and the
 document checklist says how many of the uploaded documents are TEST. Loan

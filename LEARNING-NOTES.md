@@ -116,3 +116,26 @@ When a customer sends a newer copy of a document, a bank doesn't throw the old o
 **Not every "same type" is a replacement, either.** An ID proof can be an Aadhaar *and* a PAN. Income proof is usually three months of payslips. That's why our app keeps several files per type side by side (D-29) and never replaces anything automatically.
 
 *Came up in the Piece 32 browser check, 2026-09-24.*
+
+---
+
+## How an Aadhaar number checks itself, and what a PAN's letters mean
+
+**Aadhaar's last digit is a check digit.** The first 11 digits are the number
+itself. The 12th is worked out from them with the **Verhoeff** method, which
+catches any single wrong digit and almost any two digits swapped. So an app can
+tell straight away that a number has a typing mistake in it, without asking UIDAI.
+A valid Aadhaar number also never starts with 0 or 1. Passing the check means
+the number is *well-formed*, not that it belongs to anyone.
+
+**Only the last 4 digits may be kept.** UIDAI requires anyone storing an Aadhaar
+number to mask the first 8 digits, so it's kept as `XXXX XXXX 1234`. That's also
+why printed e-Aadhaar letters offer a "masked Aadhaar" version.
+
+**A PAN is 10 characters: 5 letters, 4 digits, 1 letter** (like ABCPE1234F). The
+**4th letter** says who holds it: **P** is an individual person, C a company,
+H a Hindu Undivided Family, F a firm, T a trust. The 5th letter is the first
+letter of the holder's surname (or name), and the last letter is a check letter.
+So a personal loan applicant's PAN should always have P as its 4th letter.
+
+*Came up building Piece 33, 2026-09-24.*

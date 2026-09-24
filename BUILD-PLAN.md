@@ -1283,7 +1283,7 @@ before it's added.
 
 # DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
 
-Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 32, plus 32d (Replace)** (see Done at the bottom); 33 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 33, plus 32d (Replace)** (see Done at the bottom); 34 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
 
 ## Build order
 
@@ -2029,9 +2029,23 @@ The FAQ "Can I replace a document I have already uploaded?" and the paragraph in
 
 # PIECE 33 — Document kinds, their fields, and manual entry
 
+**Status: built 2026-09-24, tag `v2.17.0`.** Built to the decisions just below. Testing was trimmed at Rohit's request (speed over coverage): two core tests (the Aadhaar number is never stored in full, and only confirmed details count while name-only documents still do), plus the new addresses in the admin test. 112 existing tests (Phase 1, uploads, replace, notifications, Phase 3 context, Phase 4 MCP) still pass. Differences from the plan below: the extraction hangs off `document_id`; there are no DB triggers, because both tables are new, so plain CHECK constraints do the job, including one that refuses an unmasked Aadhaar or account number; the admin can open the details read-only. Browser check still to do.
+
 **Goal:** after uploading, the user says **which document it is** (Aadhaar, PAN, payslip…), and a **form with that document's fields** appears, grouped per document. The user types the values. Required fields stay required. Each value records **where it came from**. **No AI and no OCR in this piece.** Piece 34 adds automatic filling into the same structure.
 
-**Needs first:** 31. **Open decisions:**
+**Needs first:** 31.
+
+**Decisions, answered by Rohit 2026-09-24 (these override anything below that disagrees):**
+1. **Demo set of 4 kinds first:** Aadhaar and PAN (inside `id_proof`), salary slip (`income_proof`), bank statement (`bank_statement`). The other 7 in the table come later, as registry entries only. A type with no kinds counts exactly as today.
+2. **Counts only once confirmed**, but only for a **real file of a type that has kinds**. Name-only documents (every seeded document, every trainer test) count exactly as before. A confirmed TEST document counts. One helper, `counts_towards_checklist`, is used by the checklist, the briefing and Documents to check. `DocumentResponse.needs_details` lets Phase 4 and 5 skip the same documents.
+3. **Address on Aadhaar: optional.** At most 300 characters, never copied to the profile.
+4. **The kind is picked in the upload form** ("Which one?" under ID proof). A type with one kind picks it automatically. The upload and replace/upload routes take an optional `kind` and create the extraction in the same commit. The details form opens straight after.
+5. The extraction hangs off the **document** (`document_id`), not the file, since the document row exists from the moment of upload. A replacement copy (Piece 32d) gets its own, empty extraction.
+6. The bank account number is masked to its last 4 digits, the same way as Aadhaar.
+
+The full implementation plan is in `~/.claude/plans/alright-now-plan-for-smooth-flame.md`.
+
+**Original open decisions (now answered above):**
 - Confirm the field lists below.
 - **Address** is a new field that doesn't exist anywhere in the app today. Confirm it's wanted.
 - **Replace (from D-29, 2026-09-24).** Settled: several files per type stay side by side, and nothing replaces anything automatically. Ask Rohit whether this piece adds a **Replace** action on a document row. The old file would be kept in history as superseded and dropped from the checklist, never deleted. This is the first piece where "a second Aadhaar" can be told apart from "an Aadhaar plus a PAN", so the question belongs here.
@@ -2379,3 +2393,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 32b | Found in the browser check: green banners pushed the tick and the message to opposite edges | 2026-09-24 | `v2.15.2` |
 | 32c | Found in the browser check: "X/Y submitted" counted files, not document types (T-123) | 2026-09-24 | `v2.15.3` |
 | 32d | Replacing a document: Replace on any unverified row, the old copy kept but counting nowhere, replaced copies shown to staff only (D-30) | 2026-09-24 | `v2.16.0` |
+| 33 | Document kinds and their details: Aadhaar, PAN, salary slip, bank statement; typed in, checked, confirmed; only confirmed real files count | 2026-09-24 | `v2.17.0` |

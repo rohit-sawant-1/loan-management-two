@@ -209,6 +209,16 @@ def _act_addresses(world):
         ("post", f"/api/v1/applications/{world['app_id']}/edit-requests",
          {"fields": ["tenure_months"], "reason": GOOD_REASON}),
         ("patch", f"/api/v1/applications/{world['app_id']}", {"amount_requested": 150000.0}),
+        # Piece 32d: replacing a document.
+        ("post", f"/api/v1/applications/{world['app_id']}/documents/{world['doc_id']}/replace",
+         {"file_name": "newer.pdf"}),
+        # Piece 33: a document's details. The guard answers before the id is
+        # even looked up, so extraction 1 needn't exist.
+        ("post", f"/api/v1/applications/{world['app_id']}/documents/{world['doc_id']}/extraction",
+         {"kind": "aadhaar"}),
+        ("patch", "/api/v1/extractions/1/fields", {"values": {"name": "Admin Tries"}}),
+        ("post", "/api/v1/extractions/1/confirm", None),
+        ("post", "/api/v1/extractions/1/discard", None),
     ]
 
 
