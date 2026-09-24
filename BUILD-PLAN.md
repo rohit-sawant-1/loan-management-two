@@ -1283,7 +1283,7 @@ before it's added.
 
 # DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
 
-Planned 2026-09-22 with Rohit, across several rounds. **Nothing here is built yet.** Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 32** (see Done at the bottom); 33 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
 
 ## Build order
 
@@ -1939,6 +1939,12 @@ built — Piece 31's `classify_nature` does that exact check at upload time,
 for every document, not just ones declared REAL — so it was dropped rather
 than duplicated in Piece 34. See `TRAPS-AND-DECISIONS.md`.
 
+**Browser check: passed 2026-09-24.** Every point in the browser check below
+worked. It turned up three small bugs, each fixed and tagged on its own, listed
+in Done as 32a to 32c. They were fixed straight away without being planned here
+first, which was a Rule 9 miss (noted rather than hidden). Same-type uploads were
+settled as D-29: keep both.
+
 **Needs first:** 30, 31. **Open decisions:** the badge wording. Suggested: **"TEST DOCUMENT — for demonstration only. Not a genuine customer document."**
 
 ### Changes
@@ -2312,3 +2318,7 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 29c | No more sideways jump when changing page; pages fade in and start at the top | 2026-09-23 | `v2.12.2` |
 | 30 | In-app notifications: their own tables, three triggers, and the bell | 2026-09-23 | `v2.13.0` |
 | 31 | Real document uploads: the safety and rebuild pipeline, automatic classification, two storage folders, Documents to check | 2026-09-23 | `v2.14.0` |
+| 32 | TEST documents: badges, the staff notification, the checklist note, the compliance note, the admin purge. Browser check passed 2026-09-24 | 2026-09-23 | `v2.15.0` |
+| 32a | Found in the browser check: typing in any pop-up lost focus after every key (T-124) | 2026-09-24 | `v2.15.1` |
+| 32b | Found in the browser check: green banners pushed the tick and the message to opposite edges | 2026-09-24 | `v2.15.2` |
+| 32c | Found in the browser check: "X/Y submitted" counted files, not document types (T-123) | 2026-09-24 | `v2.15.3` |

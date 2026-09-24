@@ -10,7 +10,7 @@ Newest entries at the top. Short on purpose.
 **Built:** no new feature. Priya uploaded a dummy SPECIMEN Aadhaar, got the amber TEST badge and "including 1 TEST document", Rajan's and Anita's bells showed 1, and the admin purge removed it (file, rows and all, with an activity log entry), leaving her old ID proof alone. Two fixes along the way: typing in any pop-up lost focus after each key (T-124, v2.15.1), and the green success banners pushed the tick and the text to opposite edges (v2.15.2).
 **Found:** the "2/3 submitted" line counts files, not document types, so three ID proofs would read "3/3" (T-123, from Piece 14). Also, whether a same-type upload should replace the old one is now D-29.
 **Realised:** you questioned the count straight away, because it didn't match what you had actually uploaded. That's exactly what a browser check is for: no test looks at that line.
-**Next:** fix T-123, then decide D-29.
+**Next:** fix T-123, then decide D-29. *(Both done the same day: T-123 in v2.15.3, and D-29 settled as "keep both". Then D-30 was found, where the manual promises a Replace the app doesn't have.)*
 
 ---
 

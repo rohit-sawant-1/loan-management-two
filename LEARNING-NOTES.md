@@ -102,3 +102,17 @@ Most Indian banks cap this somewhere between 40% and 50%. Some tier it by income
 **Where the bank gets the "existing EMIs" figure.** Not by asking, or at least not only by asking. They pull the CIBIL credit report, which lists every live loan account in the borrower's name along with what each one costs per month, and they cross-check it against six months of bank statements where those EMIs show up as debits. A borrower who forgets to mention a loan does not get away with it. Our POC simply takes the applicant's declared number, which is the honest simplification to make when you have no bureau feed.
 
 **A worked example from our own seed data.** Sanjay earns ₹9,00,000 a year, so ₹75,000 a month. Half of that is ₹37,500 — that is his ceiling. He already pays ₹15,000 a month on other loans, so the room actually left for a new EMI is ₹22,500. He has applied for a ₹40,00,000 home loan over 180 months, which at 12% works out to an EMI of ₹48,007. That is more than double his remaining room, and his FOIR comes to (15,000 + 48,007) / 75,000 = **84%**. No bank lends into that. This is exactly why his application scores 70 and comes back as REQUEST_MORE_INFO rather than an approval.
+
+---
+
+## Why banks replace documents instead of deleting them
+
+When a customer sends a newer copy of a document, a bank doesn't throw the old one away. It marks the old copy as **superseded** (replaced by a newer one) and keeps it. There are two reasons.
+
+**The law says so.** Indian banks must keep KYC records, meaning the documents that prove who a customer is, for **at least five years after the relationship with the customer ends**. That comes from the Prevention of Money Laundering Act and the RBI's KYC Master Direction. So a loan document stays on file long after the loan is repaid.
+
+**The audit trail needs it.** If a loan goes bad, someone will ask what the bank saw when it said yes. If the old payslip was deleted, nobody can answer that.
+
+**Not every "same type" is a replacement, either.** An ID proof can be an Aadhaar *and* a PAN. Income proof is usually three months of payslips. That's why our app keeps several files per type side by side (D-29) and never replaces anything automatically.
+
+*Came up in the Piece 32 browser check, 2026-09-24.*

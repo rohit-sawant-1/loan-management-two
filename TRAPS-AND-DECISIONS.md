@@ -16,6 +16,28 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 ---
 
+### D-30 · The manual promises customers they can replace a document, and the app can't
+
+**What's wrong:** `backend/rag/user_manual.md` says twice (in the documents
+section, and in the FAQ "Can I replace a document I have already uploaded?")
+that a document may be replaced until a loan officer verifies it. No Replace
+function exists anywhere in the app. A customer can only add another file.
+Found 2026-09-24 while checking Rule 12 after D-29.
+
+**Why it matters:** the chatbot reads the manual. If a customer, or someone
+watching the demo, asks "can I replace my payslip?", the chatbot will say yes,
+and the app will have no button for it. This is exactly the contradiction
+Rule 12 exists to stop.
+
+**My recommendation:** change the manual now to say what's true ("upload the
+newer copy; every copy is kept, and staff check the latest one"), and re-ingest.
+If Piece 33 then adds a Replace button, the manual changes back with it. This
+is a words-only change, so no trainer test is affected.
+
+**Your answer:**
+
+---
+
 ### D-22 · The eligibility timestamp is removed from the stored text, not converted
 
 **What's wrong:** the Application Detail card showed the same event at two times
