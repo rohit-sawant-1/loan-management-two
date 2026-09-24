@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Piece 36: the Assistant keeps your chats
+
+**Asked for:** plan Piece 36, then build it. You also spotted that the Done table seemed to stop at 32d.
+**Built:** chats are saved on the server, with a list on the left of the Assistant page. You can reopen one and carry on, even after a refresh, because the chat's number is in the address. Only the owner can see a chat, not staff and not the admin. The AI still answers each question on its own. v2.20.0.
+**Found:** the Done table's rows were all there, but row 35 had ended up last. It's reordered. My first guard (a new chat drops a waiting YES) broke four tests and missed switching to an old chat, so a YES now only works in the chat it was proposed in (T-133).
+**Realised:** saving a chat is cheap; sending the history to the AI is what would be slow. That's why it's history for people, not memory for the AI.
+**Next:** Piece 37, documents in the chatbot.
+
+---
+
 ## 2026-09-24 — D-31 to D-33, decided and built
 
 **Asked for:** decide the three open questions by reasoning, then build them.

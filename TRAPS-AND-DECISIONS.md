@@ -219,6 +219,15 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-133 · A "reply YES" only works in the chat it was proposed in.** Found building
+Piece 36 (2026-09-24). Waiting confirmations are kept per person (`pending_actions`),
+not per chat, so without a guard a YES typed in any other chat, new or old, would
+confirm a change proposed elsewhere. The chat route now tags a waiting confirmation
+with its chat and drops it if a message arrives from a different one. **So any client
+must send `session_id` to carry on a conversation**; a message without one starts a
+new chat, where a YES confirms nothing. The React page does this, and so do the two
+test helpers.
+
 **T-132 · Files in `backend/uploads/` travel with git, but their database rows
 don't.** The database is never committed (Rule 11), so on another machine a
 committed file there has nothing pointing at it and the app can't show it.

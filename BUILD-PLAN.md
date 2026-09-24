@@ -1283,7 +1283,7 @@ before it's added.
 
 # DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
 
-Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 35, plus 32d (Replace)** (see Done at the bottom); 36 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 36, plus 32d (Replace)** (see Done at the bottom); 37 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
 
 ## Build order
 
@@ -1311,7 +1311,7 @@ Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 35, 
 4. Run `pytest tests/ours tests/phase1 -q`, plus the non-AI Phase 3 and 4 tests (`tests/phase3/test_context.py`, the offline tests in `tests/phase3/test_tools.py`, and `tests/phase4/test_mcp_server.py`). Then `npm run build` and `npm run lint` in `frontend/`.
 5. Update `user_manual.md` if any rule changed (Rule 12), and re-ingest.
 6. Log it, commit it, and tag it (middle digit: v2.10.0, v2.11.0, and so on).
-7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out), Piece 35 (Upload several → three demo-kit PDFs → Upload all → Confirm all; Rajan's bell shows 3, which is expected), and D-33 (upload any image as ID proof → "Something else" → it counts straight away, with no details form).
+7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out), Piece 35 (Upload several → three demo-kit PDFs → Upload all → Confirm all; Rajan's bell shows 3, which is expected), and D-33 (upload any image as ID proof → "Something else" → it counts straight away, with no details form), and Piece 36 (chat as Priya → refresh → still there → New chat → the old one is in the list → reopen and carry on; Rajan can't see Priya's chats).
 
 ## Decisions that apply to every piece (settled 2026-09-22)
 
@@ -2337,6 +2337,24 @@ Rohit: "use logical thinking to find the best options for each yourself and go a
 
 # PIECE 36 — Saved chat sessions
 
+## The reviewed plan, 2026-09-24. This replaces the plan below it.
+
+Full version: `~/.claude/plans/alright-now-plan-for-smooth-flame.md`.
+
+**Status: built 2026-09-24, tag `v2.20.0`.** One change from the plan: "a new chat clears the waiting YES" broke four of our own chat tests, and it also missed a case (switching to an *old* chat and typing YES). It was replaced by a precise rule: a waiting confirmation remembers the chat it was proposed in, and a YES only works in that chat (T-133). The two test helpers now carry on in the latest chat, as the page does. 49 chat tests and Phase 1 pass. Browser check batched.
+
+**Decisions (by reasoning):** (1) chats are private to their owner, even from staff and the admin (others get 404); (2) the AI still sees only the current question, as today, because earlier turns would slow answers (B2) and change behaviour, so this is history for people, not memory for the AI; (3) trimmed: no "create session" address (the first message creates one), the latest 50 chats with no paging, and no context-turns setting.
+
+**Checked while planning:** nobody sends `session_id` to `POST /chat` today (Phase 4's IDs belong to the separate Streamlit MCP chat), so enforcing it breaks nothing. A pending "reply YES" is kept per user, so starting a new chat clears it: a YES in one chat can never confirm an action proposed in another.
+
+**Build:** `app/models/chat.py` (`ChatSession`, `ChatMessage`); `app/services/chat_session_service.py`; `chat()`'s body moves unchanged into `_answer()`, and `chat()` opens or starts the session and saves the turn; `GET /chat/sessions`, `GET /chat/sessions/{id}/messages`, `PATCH /chat/sessions/{id}`; `ChatResponse.session_id`. Front end: `/assistant/:sessionId?`, a left panel with New chat and the list, Load earlier. Manual and re-ingest. Tag `v2.20.0`.
+
+**Tests:** `tests/ours/test_chat_sessions.py` (saved in order and reopened; others get 404, and a foreign session is refused), the existing stubbed chat tests, and Phase 1. About 2 minutes, announced first.
+
+---
+
+## The original plan (2026-09-22), kept for reference
+
 **Goal:** the Assistant keeps conversations. A side list shows past chats; open one and carry on. Kept on the **server** (Rule 13), light and fast.
 
 **Needs first:** none (it can be built any time). **Open decisions:**
@@ -2484,6 +2502,7 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 34 | Reading documents, lean: a PDF's own text fills the form; Aadhaar digits blacked out on the stored copy; an Aadhaar that can't be blacked out is refused unless TEST; SPECIMEN demo kit | 2026-09-24 | `v2.18.0` |
 | 34a | PDFs and images marked binary in git, so a Windows checkout can't break the demo PDFs (T-127) | 2026-09-24 | `v2.18.1` |
 | 34b | Uploads and Replace wait up to 2 minutes, not 15 seconds (T-128) | 2026-09-24 | `v2.18.2` |
+| 35 | Several documents at once: up to 3, one request each, 2 at a time; inline cards with Confirm all; one lock around PDFium so parallel uploads can't crash the server | 2026-09-24 | `v2.19.0` |
 | 35a | Audit fixes: the manual states the upload rules the code enforces (PAN, PDF-only statements, page and hourly limits); three findings opened as D-31 to D-33 | 2026-09-24 | `v2.19.1` |
 | 35b | D-31 to D-33: the SPECIMEN check is Gemini-only; the employment letter is for salaried home-loan applicants only; "Something else" documents count on upload, with any ID-proof PDF's Aadhaar blacked out | 2026-09-24 | `v2.19.2` |
-| 35 | Several documents at once: up to 3, one request each, 2 at a time; inline cards with Confirm all; one lock around PDFium so parallel uploads can't crash the server | 2026-09-24 | `v2.19.0` |
+| 36 | Saved chat sessions: a side list of your own chats, reopen and carry on, private even from staff and the admin; a YES only confirms in the chat it was proposed in | 2026-09-24 | `v2.20.0` |

@@ -66,7 +66,8 @@ export default function App() {
           <Route path="/signup" element={<PublicOnly><ApplicantSignup /></PublicOnly>} />
 
           <Route element={<RequireAuth><Layout /></RequireAuth>}>
-            <Route path="/assistant" element={<Assistant />} />
+            {/* Piece 36: the number is the open conversation, so a refresh reopens it. */}
+            <Route path="/assistant/:sessionId?" element={<Assistant />} />
             <Route path="/applications" element={<ApplicationList />} />
             <Route path="/applications/new" element={<RequireAuth roles={BUSINESS}><NewApplication /></RequireAuth>} />
             <Route path="/applications/:id" element={<ApplicationDetail />} />

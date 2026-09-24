@@ -22,12 +22,14 @@
 //     in localStorage, because customer questions are customer data and
 //     Rule 13 keeps that off the browser's disk.
 
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { api, CHAT_TIMEOUT_MS, errorMessage } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import ErrorBanner from "../components/ErrorBanner";
 import Button from "../components/ui/Button";
 import Icon from "../components/ui/Icon";
+import { timeAgo } from "../utils/format";
 
 // What each brain is called on screen, so the routing is visible rather than magic.
 const MODES = {
@@ -152,8 +154,27 @@ function Evidence({ tools, sources }) {
   );
 }
 
+// Piece 36: a saved message from the server, in the shape this page draws.
+function fromServer(m) {
+  return m.role === "user"
+    ? { id: m.id, who: "you", text: m.content }
+    : {
+        id: m.id, who: "assistant", text: m.content, mode: m.mode, sources: m.sources,
+        tools: m.tools_used, ms: m.duration_ms, notice: m.ai_notice,
+      };
+}
+
 export default function Assistant() {
   const { user } = useAuth();
+  // Piece 36: the open conversation lives in the address (/assistant/12), so a
+  // refresh reopens it. No number means a new, unsaved conversation.
+  const { sessionId } = useParams();
+  const navigate = useNavigate();
+  const [sessions, setSessions] = useState([]);
+  const [hasMore, setHasMore] = useState(false);
+  // Set just before moving to a brand-new conversation's address, so the page
+  // doesn't reload from the server the two messages it's already showing.
+  const justStarted = useRef(null);
   const [messages, setMessages] = useState([]);
   const [draft, setDraft] = useState("");
   const [busy, setBusy] = useState(false);
@@ -161,6 +182,45 @@ export default function Assistant() {
   const [waitedSeconds, setWaitedSeconds] = useState(0);
   const [error, setError] = useState("");
   const endRef = useRef(null);
+
+  const loadSessions = useCallback(() => {
+    api.get("/chat/sessions")
+      .then((res) => setSessions(res.data))
+      .catch((err) => setError(errorMessage(err)));
+  }, []);
+
+  useEffect(() => { loadSessions(); }, [loadSessions]);
+
+  // Opening a conversation: its last 30 messages from the server.
+  useEffect(() => {
+    if (!sessionId) { setMessages([]); setHasMore(false); return; }
+    if (justStarted.current === sessionId) { justStarted.current = null; return; }
+    api.get(`/chat/sessions/${sessionId}/messages`)
+      .then((res) => { setMessages(res.data.items.map(fromServer)); setHasMore(res.data.has_more); })
+      .catch((err) => { setError(errorMessage(err)); navigate("/assistant", { replace: true }); });
+  }, [sessionId, navigate]);
+
+  async function loadEarlier() {
+    try {
+      const res = await api.get(`/chat/sessions/${sessionId}/messages`, {
+        params: { before_id: messages[0]?.id },
+      });
+      setMessages((m) => [...res.data.items.map(fromServer), ...m]);
+      setHasMore(res.data.has_more);
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
+
+  async function archive(id) {
+    try {
+      await api.patch(`/chat/sessions/${id}`, { archived: true });
+      if (String(id) === sessionId) navigate("/assistant");
+      loadSessions();
+    } catch (err) {
+      setError(errorMessage(err));
+    }
+  }
 
   // Keep the newest message in view as the conversation grows.
   useEffect(() => {
@@ -193,7 +253,7 @@ export default function Assistant() {
       // The assistant gets its own, longer patience. A four-agent review takes
       // around twenty seconds, which the app-wide fifteen second limit used to
       // cut off just before the answer arrived.
-      const res = await api.post("/chat", { message: question },
+      const res = await api.post("/chat", { message: question, session_id: sessionId || null },
                                  { timeout: CHAT_TIMEOUT_MS });
       setMessages((m) => [...m, {
         who: "assistant",
@@ -204,6 +264,13 @@ export default function Assistant() {
         ms: res.data.duration_ms,
         notice: res.data.ai_notice,
       }]);
+      // Piece 36: the first answer of a new conversation gives it a number.
+      // Put that in the address so a refresh reopens it, and show it in the list.
+      if (!sessionId && res.data.session_id) {
+        justStarted.current = String(res.data.session_id);
+        navigate(`/assistant/${res.data.session_id}`, { replace: true });
+      }
+      loadSessions();
     } catch (err) {
       setError(errorMessage(err));
       // Put the question back so nothing the person typed is lost.
@@ -225,17 +292,39 @@ export default function Assistant() {
             own applications. Every answer shows you how it was worked out.
           </p>
         </div>
-        {messages.length > 0 && (
-          <Button variant="ghost" icon="close" onClick={() => setMessages([])}>
-            Clear
+        {(messages.length > 0 || sessionId) && (
+          <Button variant="ghost" icon="plus" onClick={() => navigate("/assistant")}>
+            New chat
           </Button>
         )}
       </div>
 
       <ErrorBanner message={error} onClose={() => setError("")} />
 
+      <div className="assistant-layout">
+      {/* Piece 36: your saved conversations. Only ever your own. */}
+      <aside className="chat-sessions">
+        <Button type="button" size="sm" icon="plus" onClick={() => navigate("/assistant")}>New chat</Button>
+        {sessions.length === 0 && <p className="muted" style={{ fontSize: "0.85rem" }}>No saved chats yet.</p>}
+        {sessions.map((s) => (
+          <div key={s.id} className={`chat-session ${String(s.id) === sessionId ? "active" : ""}`}>
+            <button type="button" className="chat-session-open" onClick={() => navigate(`/assistant/${s.id}`)}>
+              <span className="chat-session-title">{s.title}</span>
+              <span className="muted">{timeAgo(s.updated_at)}</span>
+            </button>
+            <button type="button" className="chat-session-archive" aria-label="Archive this chat"
+              title="Archive this chat" onClick={() => archive(s.id)}>×</button>
+          </div>
+        ))}
+      </aside>
+
       <div className="chat">
         <div className="chat-log">
+          {hasMore && (
+            <div style={{ textAlign: "center", marginBottom: "0.75rem" }}>
+              <Button type="button" size="sm" variant="ghost" onClick={loadEarlier}>Load earlier</Button>
+            </div>
+          )}
           {messages.length === 0 && (
             <div className="chat-welcome">
               <div className="empty-icon"><Icon name="shield" size={24} /></div>
@@ -261,7 +350,7 @@ export default function Assistant() {
           )}
 
           {messages.map((m, i) => (
-            <div key={i} className={`bubble bubble-${m.who}`}>
+            <div key={m.id ?? `new-${i}`} className={`bubble bubble-${m.who}`}>
               {/* Above the answer on purpose: it changes how the answer should
                   be read, so finding it underneath would be too late. */}
               {m.notice && (
@@ -319,6 +408,7 @@ export default function Assistant() {
             Send
           </Button>
         </form>
+      </div>
       </div>
     </>
   );

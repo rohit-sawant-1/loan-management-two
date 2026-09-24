@@ -1,5 +1,5 @@
 """
-The twelve database tables.
+The fourteen database tables.
 
 Importing this package registers every table with `Base`, which is what
 `init_db()` relies on to create them all.
@@ -18,6 +18,7 @@ from app.models.notification import (
 )
 from app.models.stored_file import StoredFile, StoredFileNature, StorageZone
 from app.models.extraction import DocumentExtraction, ExtractedField
+from app.models.chat import ChatMessage, ChatSession
 
 __all__ = [
     "User", "UserRole",
@@ -31,4 +32,5 @@ __all__ = [
     "Notification", "NotificationAudience", "NotificationType",
     "StoredFile", "StoredFileNature", "StorageZone",
     "DocumentExtraction", "ExtractedField",
+    "ChatSession", "ChatMessage",
 ]

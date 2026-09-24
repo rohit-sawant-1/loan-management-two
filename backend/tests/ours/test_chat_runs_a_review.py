@@ -23,7 +23,11 @@ from app.services.loan_api_client import service_token
 
 
 def _ask(client, token, message):
-    return client.post("/api/v1/chat", json={"message": message},
+    # Piece 36: carry on in the person's latest chat, as the Assistant page
+    # does. A "reply YES" only works in the chat the change was proposed in.
+    latest = client.get("/api/v1/chat/sessions", headers={"Authorization": f"Bearer {token}"}).json()
+    session_id = str(latest[0]["id"]) if latest else None
+    return client.post("/api/v1/chat", json={"message": message, "session_id": session_id},
                        headers={"Authorization": f"Bearer {token}"})
 
 

@@ -7,7 +7,9 @@ answered, and `sources` lets it show the manual extracts the answer came from â€
 which is what turns "trust the AI" into "check the AI".
 """
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, field_validator
+
+from app.schemas.common import UtcDateTime, clean_free_text
 
 
 class ChatRequest(BaseModel):
@@ -15,8 +17,8 @@ class ChatRequest(BaseModel):
                          description="What the person typed")
     session_id: str | None = Field(
         None, max_length=64,
-        description="Groups messages into one conversation. Phase 4 uses it for "
-                    "session memory; Phase 2 accepts and ignores it.",
+        description="Which saved conversation this message belongs to (Piece 36). "
+                    "Left out, a new conversation is started. Someone else's is refused.",
     )
 
 
@@ -56,3 +58,49 @@ class ChatResponse(BaseModel):
     # screen shows nothing at all unless something actually went wrong.
     ai_status: str = "ai_ok"
     ai_notice: str = ""
+
+    # Piece 36: the saved conversation this answer went into. The screen
+    # sends it back with the next message to carry on in the same chat.
+    session_id: int | None = None
+
+
+# ---------------------------------------------------------------------------
+# Piece 36: saved conversations
+# ---------------------------------------------------------------------------
+
+class ChatSessionOut(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    title: str
+    created_at: UtcDateTime | None = None
+    updated_at: UtcDateTime | None = None
+    archived: bool = False
+
+
+class ChatMessageOut(BaseModel):
+    id: int
+    role: str
+    content: str
+    mode: str | None = None
+    sources: list[ChatSource] = []
+    tools_used: list[ChatToolCall] = []
+    duration_ms: float | None = None
+    ai_notice: str = ""
+    created_at: UtcDateTime | None = None
+
+
+class ChatMessagesPage(BaseModel):
+    items: list[ChatMessageOut]
+    has_more: bool      # are there older messages to "Load earlier"?
+
+
+class ChatSessionUpdate(BaseModel):
+    """Rename or archive a chat. Both optional; only what's sent changes."""
+    title: str | None = Field(None, max_length=60)
+    archived: bool | None = None
+
+    @field_validator("title")
+    @classmethod
+    def _clean_title(cls, value):
+        return None if value is None else clean_free_text(value, 1, 60, "Title")

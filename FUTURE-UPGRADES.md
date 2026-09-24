@@ -174,3 +174,11 @@ Rohit chose the lean Piece 34: read only a PDF's own text. These were in the ori
 | **A time limit on the Gemini SPECIMEN check**, so an upload can never run past the browser's 2-minute limit on a bad quota day | T-128 | Rare; the browser limit covers every measured case | Small |
 | **PDF work in separate processes** instead of one lock, so many uploads can really run at once (what pypdfium2's docs recommend at scale) | T-129 | The lock is plenty for a demo; processes add complexity | Medium |
 | **The details form checks fields itself** before sending (Aadhaar length, PAN shape) for quicker messages | T-131, Rule 6 | The server already checks and explains each field | Small |
+
+## Around Piece 36 — saved chats
+
+| Idea | Where it came from | Why it waits | Size |
+|---|---|---|---|
+| **Let the AI read the last few turns of a chat** (a `CHAT_CONTEXT_TURNS` setting), so "and for a home loan?" works without repeating the question | Piece 36 plan, decision 2 | Answers already take up to a minute (B2); more context makes them slower and changes how the chatbot behaves | Small–medium |
+| **Rename a chat from the list** (the address already exists: `PATCH /chat/sessions/{id}` with a title) | Piece 36 | Nice to have; titles come from the first question | Small |
+| **Show archived chats and bring one back** | Piece 36 | Archive is one-way on screen today | Small |

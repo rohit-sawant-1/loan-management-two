@@ -30,7 +30,7 @@ from __future__ import annotations
 import time
 
 import structlog
-from fastapi import APIRouter, Depends, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, Request, status
 from sqlalchemy.orm import Session
 
 import llm_provider
@@ -40,8 +40,12 @@ from app.utils.finance import format_rupees
 from app.utils.text import readable_list
 from app.dependencies import get_current_user
 from app.models.user import User
-from app.schemas.chat import ChatRequest, ChatResponse, ChatSource, ChatToolCall
-from app.services import activity_service, pending_actions, review_request
+from app.schemas.chat import (
+    ChatMessagesPage, ChatRequest, ChatResponse, ChatSessionOut, ChatSessionUpdate, ChatSource,
+    ChatToolCall,
+)
+from app.services import activity_service, chat_session_service, pending_actions, review_request
+from app.services.errors import NotFound
 from app.services.loan_api_client import acting_as
 
 logger = structlog.get_logger()
@@ -238,7 +242,42 @@ def chat(
     user: User = Depends(get_current_user),
 ):
     """
-    Ask the assistant something.
+    Ask the assistant something, inside a saved conversation (Piece 36).
+
+    No `session_id` starts a new conversation; someone else's is refused as
+    "not found". The answer itself is worked out exactly as before, by
+    `_answer` below, and only then are the question and the answer saved.
+    An empty message is answered but not saved: there's nothing to keep.
+    """
+    if not body.message.strip():
+        return _answer(body, request, db, user)
+    try:
+        session = chat_session_service.open_or_start(db, user, body.session_id, body.message)
+    except NotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+
+    # A "reply YES to go ahead" belongs to the chat it was proposed in. Waiting
+    # confirmations are kept per person, not per chat (pending_actions), so a
+    # YES typed in any other chat, new or old, must not confirm it.
+    waiting = pending_actions.peek(user.email)
+    if waiting is not None and waiting.get("session_id") not in (None, session.id):
+        pending_actions.clear(user.email)
+
+    response = _answer(body, request, db, user)
+
+    # If this answer just proposed a change, remember which chat it was in.
+    waiting = pending_actions.peek(user.email)
+    if waiting is not None and "session_id" not in waiting:
+        waiting["session_id"] = session.id
+    chat_session_service.save_turn(db, session, body.message.strip(), response)
+    response.session_id = session.id
+    return response
+
+
+def _answer(body: ChatRequest, request: Request, db: Session, user: User) -> ChatResponse:
+    """
+    Ask the assistant something. (Before Piece 36 this was the route itself;
+    it moved here unchanged, so every way of answering is saved in one place.)
 
     Anyone signed in may ask. What comes back is limited by who is asking: the
     agent's tools call the Phase 1 API inside `acting_as()`, so they run as the
@@ -537,3 +576,42 @@ def chat(
         ai_status=ai_status,
         ai_notice=notice,
     )
+
+
+# ---------------------------------------------------------------------------
+# Piece 36: saved conversations. Each address only ever shows the caller's
+# own chats; anyone else's is "not found", whoever is asking.
+# ---------------------------------------------------------------------------
+
+@router.get("/sessions", response_model=list[ChatSessionOut])
+def list_sessions(db: Session = Depends(get_db), user: User = Depends(get_current_user)):
+    return chat_session_service.list_sessions(db, user)
+
+
+@router.get("/sessions/{session_id}/messages", response_model=ChatMessagesPage)
+def session_messages(
+    session_id: int,
+    limit: int = Query(30, ge=1, le=100),
+    before_id: int | None = Query(None, ge=1),
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    try:
+        rows, has_more = chat_session_service.messages(db, session_id, user, limit, before_id)
+    except NotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)
+    return {"items": [chat_session_service.message_out(m) for m in rows], "has_more": has_more}
+
+
+@router.patch("/sessions/{session_id}", response_model=ChatSessionOut)
+def update_session(
+    session_id: int,
+    body: ChatSessionUpdate,
+    db: Session = Depends(get_db),
+    user: User = Depends(get_current_user),
+):
+    """Rename or archive one of your own chats."""
+    try:
+        return chat_session_service.update(db, session_id, user, body.title, body.archived)
+    except NotFound as e:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=e.message)

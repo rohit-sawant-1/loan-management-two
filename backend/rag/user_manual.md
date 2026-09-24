@@ -480,6 +480,15 @@ change the details of an application, use **Request an edit** on the
 application's page instead: that request goes straight to the loan officers and
 the branch manager.
 
+**Does the Assistant keep my conversations?**
+Yes. Your chats are saved, and the list on the left of the Assistant page lets
+you reopen one and carry on, even after you close the app. **Only you can see
+your chats**: not the loan officers, not the branch manager, and not the system
+administrator. Click **New chat** to start a fresh one, or the × next to a chat
+to archive it. The Assistant answers each question on its own; it doesn't read
+back through the earlier messages in a chat, so include the details it needs
+(an application number, for example) in each question.
+
 ---
 
 ## Section 12 — Troubleshooting
