@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Audit: the CLAUDE.md rules I missed
+
+**Asked for:** check that everything is committed, and which CLAUDE.md rules were missed this session. Then "yes, fix them", with no tests.
+**Built:** no code. The manual now states the upload rules the code enforces (a person's PAN, PDF-only bank statements, page and hourly limits). Three findings are in Needs your call (D-31 to D-33), four ideas are in future upgrades, and the Done table is complete. v2.19.1.
+**Found:** everything was committed. But the "read these four before building" step was skipped for 32d to 35. Done now: Piece 34 is close to Md Alam's claimed feature (T-130), and the 4-kinds choice means a passport, driving licence, Form 16 or ITR can't count as a real upload (D-33).
+**Realised:** checking the manual against the rules file, which is Rule 12's second half, finds things a test never would.
+**Next:** D-33 first, then D-32 and D-31, one at a time.
+
+---
+
 ## 2026-09-24 — Piece 35: up to 3 documents at once, after a review that caught two mistakes
 
 **Asked for:** limit how many files go up at once (the chatbot too), because no single timeout can cover many files. Also fix the 15-second limit on uploads and Replace, then plan the next piece, and then review that plan in plan mode.

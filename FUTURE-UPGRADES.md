@@ -165,3 +165,12 @@ Rohit chose the lean Piece 34: read only a PDF's own text. These were in the ori
 | **UIDAI Secure QR check** (decode with zxing-cpp, verify UIDAI's signature) → "cryptographically verified" | Needs UIDAI's certificate and a QR library; a specimen can't have a real QR anyway | Medium |
 | **The other 7 document kinds** (passport with MRZ check digits, driving licence, Form 16, ITR, property document, employment letter, vehicle quotation) | The demo set of 4 covers every loan's base documents | Medium |
 | **Keeping the original text for "start again"** after a discard (today the text is gone after the rebuild, so a restart is typed by hand) | It would mean storing the text, which holds the full Aadhaar number, so it needs masking-before-storing first | Small |
+
+## Around Piece 35 — several documents at once (from the 2026-09-24 audit)
+
+| Idea | Where it came from | Why it waits | Size |
+|---|---|---|---|
+| **One bell notice per batch** instead of one per TEST file (3 TEST files mean 3 notices for each staff member today) | Piece 35 review | Needs the server to know which uploads went together, which it deliberately doesn't | Small–medium |
+| **A time limit on the Gemini SPECIMEN check**, so an upload can never run past the browser's 2-minute limit on a bad quota day | T-128 | Rare; the browser limit covers every measured case | Small |
+| **PDF work in separate processes** instead of one lock, so many uploads can really run at once (what pypdfium2's docs recommend at scale) | T-129 | The lock is plenty for a demo; processes add complexity | Medium |
+| **The details form checks fields itself** before sending (Aadhaar length, PAN shape) for quicker messages | T-131, Rule 6 | The server already checks and explains each field | Small |

@@ -2455,5 +2455,7 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 32d | Replacing a document: Replace on any unverified row, the old copy kept but counting nowhere, replaced copies shown to staff only (D-30) | 2026-09-24 | `v2.16.0` |
 | 33 | Document kinds and their details: Aadhaar, PAN, salary slip, bank statement; typed in, checked, confirmed; only confirmed real files count | 2026-09-24 | `v2.17.0` |
 | 34 | Reading documents, lean: a PDF's own text fills the form; Aadhaar digits blacked out on the stored copy; an Aadhaar that can't be blacked out is refused unless TEST; SPECIMEN demo kit | 2026-09-24 | `v2.18.0` |
-| 34a | Uploads and Replace wait up to 2 minutes, not 15 seconds (T-128) | 2026-09-24 | `v2.18.2` |
+| 34a | PDFs and images marked binary in git, so a Windows checkout can't break the demo PDFs (T-127) | 2026-09-24 | `v2.18.1` |
+| 34b | Uploads and Replace wait up to 2 minutes, not 15 seconds (T-128) | 2026-09-24 | `v2.18.2` |
+| 35a | Audit fixes: the manual states the upload rules the code enforces (PAN, PDF-only statements, page and hourly limits); three findings opened as D-31 to D-33 | 2026-09-24 | `v2.19.1` |
 | 35 | Several documents at once: up to 3, one request each, 2 at a time; inline cards with Confirm all; one lock around PDFium so parallel uploads can't crash the server | 2026-09-24 | `v2.19.0` |

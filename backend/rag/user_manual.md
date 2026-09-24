@@ -124,10 +124,15 @@ system are `id_proof`, `income_proof`, `bank_statement`, `property_docs`,
 **How real uploads work.** When the system administrator has switched real
 uploads on, a document must be a genuine PDF, JPG or PNG file — the system
 checks the file's actual content, not just its name — and no larger than
-5 MB. Every uploaded document is automatically resized and re-saved before
+5 MB. A **bank statement must be a PDF**. Each document type also has a page
+limit: at most **4 pages** for an identity proof, **5** for an employment
+letter or a vehicle quotation, **20** for income proof, and **30** for a bank
+statement or property documents. Each account can upload at most **30
+documents an hour**, and a customer's documents can take up **100 MB** in
+total. Every uploaded document is automatically resized and re-saved before
 it is stored, which also strips anything hidden inside the file. A
-photograph and a signature may also be uploaded; neither is required for
-any loan type. When real uploads are switched off, a document is recorded
+photograph and a signature (JPG or PNG) may also be uploaded; neither is
+required for any loan type. When real uploads are switched off, a document is recorded
 by its type and file name only, exactly as in earlier versions of the
 system.
 
@@ -151,8 +156,12 @@ A short form then asks for the details printed on it, such as the name, date
 of birth and Aadhaar number on an Aadhaar card. Fill it in and click
 **Confirm details**. The document only counts towards your checklist once its
 details are confirmed; until then it shows as "needs details". The details
-are checked for their format, for example that an Aadhaar number is valid and
-a PAN looks like a real PAN. This does not prove a document is genuine. Staff
+are checked for their format. An Aadhaar number must pass its check digit
+and never starts with 0 or 1. A PAN must be **a person's PAN, with P as its
+4th letter**: a company's, a firm's or a trust's PAN is refused. The date of
+birth on the document must make the holder between 18 and 100, no date can
+be in the future, net pay can't be more than gross pay, and a statement
+can't end before it starts. This does not prove a document is genuine. Staff
 still check it. **Only the last 4 digits of your Aadhaar number are kept**,
 as UIDAI rules require, and the same goes for your bank account number.
 
@@ -472,7 +481,10 @@ document must genuinely be a PDF, JPG or PNG file, no larger than 5 MB,
 readable, and not password-protected. The system checks the file's actual
 content, so renaming a different kind of file does not work. A photograph
 or signature must also be a clear, recognisable image at a usable
-resolution.
+resolution. A bank statement must be a PDF, and each document type has a
+page limit (see Section 4). An Aadhaar that is a photo or a scan is refused,
+because its number can't be blacked out: upload your masked Aadhaar from
+myAadhaar instead. After 30 uploads in one hour, wait a while and try again.
 
 **My application has been in "submitted" for a day.** This is normal. Loan
 officers work Monday to Saturday, 9 AM to 6 PM, so an application submitted
