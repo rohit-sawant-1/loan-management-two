@@ -219,6 +219,12 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-127 · Git would have rewritten line endings inside the demo PDFs.** The demo
+kit's PDFs are plain text inside, so git treated them as text, and with
+`core.autocrlf` on, a Windows checkout (the Wipro laptop) would have rewritten
+their line endings and broken the byte offsets a PDF depends on.
+`.gitattributes` now marks PDFs, images and the deck as binary. Fixed in v2.18.1.
+
 **T-126 · Anything that needs a PDF's text must run before the rebuild.** The
 rebuild (stage 6 in `file_service`) redraws every page as a picture, so a stored
 file has no text at all. Classification (Piece 31) and reading details (Piece 34)

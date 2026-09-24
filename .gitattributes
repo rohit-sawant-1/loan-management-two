@@ -1,0 +1,8 @@
+# Files git must never change line endings in. A PDF can be plain text inside,
+# so git would otherwise treat it as text and, with core.autocrlf on Windows,
+# rewrite its line endings on checkout, which shifts every byte and breaks it.
+*.pdf binary
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.pptx binary
