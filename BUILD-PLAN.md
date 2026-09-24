@@ -1311,7 +1311,7 @@ Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 35, 
 4. Run `pytest tests/ours tests/phase1 -q`, plus the non-AI Phase 3 and 4 tests (`tests/phase3/test_context.py`, the offline tests in `tests/phase3/test_tools.py`, and `tests/phase4/test_mcp_server.py`). Then `npm run build` and `npm run lint` in `frontend/`.
 5. Update `user_manual.md` if any rule changed (Rule 12), and re-ingest.
 6. Log it, commit it, and tag it (middle digit: v2.10.0, v2.11.0, and so on).
-7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out), Piece 35 (Upload several → three demo-kit PDFs → Upload all → Confirm all; Rajan's bell shows 3, which is expected).
+7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out), Piece 35 (Upload several → three demo-kit PDFs → Upload all → Confirm all; Rajan's bell shows 3, which is expected), and D-33 (upload any image as ID proof → "Something else" → it counts straight away, with no details form).
 
 ## Decisions that apply to every piece (settled 2026-09-22)
 
