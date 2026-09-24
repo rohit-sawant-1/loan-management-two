@@ -147,7 +147,8 @@ def gather_facts(db: Session) -> dict:
         for app in open_apps:
             if app.id not in waiting_ids:
                 continue
-            missing = rules.missing_documents(app.loan_type.value, uploaded.get(app.id, set()))
+            status = app.applicant.employment_status if app.applicant else None     # D-32
+            missing = rules.missing_documents(app.loan_type.value, uploaded.get(app.id, set()), status)
             if missing:
                 missing_docs.append({
                     "id": app.id,

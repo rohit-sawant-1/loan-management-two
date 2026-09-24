@@ -16,74 +16,6 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 ---
 
-### D-33 · Some genuine documents can never count when uploaded as files
-
-**What's wrong:** Piece 33 counts a real file of ID proof, income proof or
-bank statement only once its details are confirmed, and there are only 4
-kinds (Aadhaar, PAN, salary slip, bank statement). So a **passport or driving
-licence** uploaded as ID proof, or a **Form 16 or ITR** uploaded as income
-proof, has no honest kind to pick and can never tick its box. The manual still
-lists them as accepted, and for a **self-employed** customer an ITR is the
-*only* income proof there is (manual, FAQ). Found in the Rule 12 check,
-2026-09-24.
-
-**Why it matters:** a self-employed customer (Rahul Verma in the seed data)
-can't complete their checklist with real uploads, and the chatbot will tell
-them documents are fine that the app can't count.
-
-**My recommendation:** add one small **"Other document"** kind to ID proof
-and to income proof, with just "What document is it" and "Its number or
-reference", which staff then check. That's small and keeps one flow for
-everything. The proper kinds (passport, driving licence, Form 16, ITR) stay in
-`FUTURE-UPGRADES.md` with the other kinds.
-
-**Your answer:**
-
----
-
-### D-32 · Home loans: the code wants an employment letter from everyone, the manual only from salaried applicants
-
-**What's wrong:** `rules.REQUIRED_DOCUMENTS["home"]` always includes
-`employment_letter`. The manual (Section 4), copied from the trainer's own
-spec, says "for salaried applicants". Found in the Rule 12 check, 2026-09-24.
-It isn't new: it dates from Phase 1.
-
-**Why it matters:** a self-employed home-loan applicant sees "still needed"
-for a letter the chatbot says they don't need. The same rule feeds the Morning
-Briefing and Phase 5's compliance checker.
-
-**My recommendation:** make the code follow the manual, since the manual is
-the trainer's spec: require the letter for a home loan only when the applicant
-is salaried. `missing_documents` then needs the applicant's employment status,
-so every caller has to pass it: the checklist, the briefing, and Phase 5's
-compliance checker. Check the trainer's tests for any home-loan document count
-before building.
-
-**Your answer:**
-
----
-
-### D-31 · The Gemini SPECIMEN check can fall back to the local Ollama model
-
-**What's wrong:** `file_service._gemini_confirms_specimen` calls `get_llm()`,
-whose fallback ladder ends at local Ollama whenever Ollama is running. The
-settled Document intelligence decision says "No Ollama or local LLM — Gemini
-is the only LLM." Found in the audit, 2026-09-24.
-
-**Why it matters:** only the matched text is ever sent, and Ollama is local,
-so privacy isn't the issue. The issue is that a small local model answering a
-wrong "YES" would classify a possibly real document as TEST and put it in the
-git-tracked folder (still encrypted). It also breaks a settled rule quietly.
-
-**My recommendation:** for this one call, use the Gemini keys only (key 1 →
-2 → 3), never Ollama. If every key fails, the answer is "no" (undeclared),
-which is already the cautious default. That's a small option on `get_llm` in
-`llm_provider.py`, the one file allowed to choose providers.
-
-**Your answer:**
-
----
-
 ### D-22 · The eligibility timestamp is removed from the stored text, not converted
 
 **What's wrong:** the Application Detail card showed the same event at two times
@@ -343,8 +275,9 @@ PDF may turn a typed `'` into a curly `’`, so any label rule that has an
 apostrophe must accept both.
 
 **T-125 · A document's details decide whether it counts, so check `needs_details` anywhere documents are counted.**
-From Piece 33 on, a real file of a type with kinds doesn't count until its details
-are confirmed. The rule lives in `document_service.counts_towards_checklist`,
+From Piece 33 on, a document whose kind was declared doesn't count until its
+details are confirmed. Since D-33, a document with no declared kind ("Something
+else", or name-only) counts as it always did. The rule lives in `document_service.counts_towards_checklist`,
 which the checklist and the briefing use. Phase 5's compliance checker reads the
 `needs_details` flag over the API. Anything new that counts documents must use
 one of the two, or it will disagree with the checklist.
@@ -1191,6 +1124,28 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 ---
 
 # Settled
+
+### 2026-09-24 · D-31, D-32, D-33 — decided by reasoning, at Rohit's request
+Rohit: "use logical thinking to find the best options for each yourself and go
+ahead." Built together as `v2.19.2`. The full reasoning is in `BUILD-PLAN.md`
+("D-31 to D-33").
+- **D-31: the SPECIMEN check uses Gemini keys only, never local Ollama**
+  (`llm_provider.get_gemini_llm`). This keeps the settled Gemini-only rule for
+  documents. If every key fails, the answer is "no", the cautious default.
+- **D-32: the employment letter is for salaried home-loan applicants only**,
+  as the manual (the trainer's spec) always said. An unknown status keeps it
+  required, so the trainer's AGENT-06 and E2E-06 behave as before. The seed's
+  home loans are salaried, so no demo figure moved.
+- **D-33: a document with no form counts on upload, and staff check it.** This
+  is a fourth option, not a, b or c. The "Which one?" dropdown gains
+  "Something else" for ID proof and income proof, which sends no kind. Piece
+  33's "counts once confirmed" now applies only to a document whose kind was
+  declared. Option a (an "Other" form) would add typing that checks nothing,
+  and option b (four proper forms) stays in future upgrades. **Privacy guard,
+  needed because of the new choice:** in any ID-proof PDF, a number that passes
+  the Aadhaar check is blacked out whatever kind was picked, so "Something
+  else" can't store an Aadhaar PDF unmasked. A photo still can't be checked
+  (the OCR item in future upgrades).
 
 ### 2026-09-24 · At most 3 files at once, everywhere
 **Rohit:** limit how many files can be uploaded at once, including to the

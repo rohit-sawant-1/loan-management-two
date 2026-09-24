@@ -88,11 +88,6 @@ SUMMARY_FIELD: dict[str, str] = {
     "bank_statement": "period_to",
 }
 
-# The document types that have at least one kind. A real file of one of
-# these types only counts towards the checklist once its details are
-# confirmed (Piece 33, decision 2). Every other type counts as it always has.
-TYPES_WITH_KINDS: frozenset[str] = frozenset(k.doc_type for k in KINDS.values())
-
 # Field names that hold a person's name, compared with the profile's name
 # (a warning only, never a block).
 NAME_FIELDS: frozenset[str] = frozenset({"name", "employee_name", "account_holder"})

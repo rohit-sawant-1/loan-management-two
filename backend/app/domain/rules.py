@@ -235,19 +235,32 @@ REQUIRED_DOCUMENTS: dict[str, frozenset[str]] = {
 }
 
 
-def required_documents(loan_type) -> frozenset[str]:
-    """The document types this loan type must have."""
-    return REQUIRED_DOCUMENTS[_v(loan_type)]
+def required_documents(loan_type, employment_status=None) -> frozenset[str]:
+    """
+    The document types this loan type must have.
+
+    D-32: the manual (from the trainer's spec) asks for an employment letter
+    on a home loan "for salaried applicants" only, since a self-employed
+    person has no employer to write one. So it's dropped when the applicant's
+    status is known and isn't salaried. An unknown status (None) keeps it,
+    which is exactly how this worked before, so every caller that doesn't
+    know the status, including the trainer's own tests, is unchanged.
+    """
+    required = REQUIRED_DOCUMENTS[_v(loan_type)]
+    if employment_status is not None and _v(employment_status) != "salaried":
+        required = required - {"employment_letter"}
+    return required
 
 
-def missing_documents(loan_type: str, uploaded_types) -> list[str]:
+def missing_documents(loan_type: str, uploaded_types, employment_status=None) -> list[str]:
     """
     Which required documents have not been uploaded yet.
     `uploaded_types` is any collection of document type strings.
     Returned sorted so the order is stable in tests and on screen.
+    `employment_status`: see `required_documents` (D-32).
     """
     uploaded = {_v(t) for t in uploaded_types}
-    return sorted(required_documents(_v(loan_type)) - uploaded)
+    return sorted(required_documents(_v(loan_type), employment_status) - uploaded)
 
 
 # ---------------------------------------------------------------------------

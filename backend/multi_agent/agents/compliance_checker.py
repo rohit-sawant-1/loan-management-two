@@ -72,7 +72,9 @@ def compliance_checker(state: LoanProcessingState) -> LoanProcessingState:
         tenure_months = application.get("tenure_months", 0)
 
         uploaded_types = {doc.get("doc_type") for doc in documents if doc.get("doc_type")}
-        missing = rules.missing_documents(loan_type, uploaded_types)
+        # D-32: an employment letter only for a salaried home-loan applicant.
+        # No status in the data (as in the trainer's tests) keeps it required.
+        missing = rules.missing_documents(loan_type, uploaded_types, applicant.get("employment_status"))
         documents_complete = not missing
 
         id_docs = [d for d in documents if d.get("doc_type") == "id_proof"]

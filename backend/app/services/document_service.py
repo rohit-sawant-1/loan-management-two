@@ -103,9 +103,12 @@ def list_documents(
         .order_by(Document.uploaded_at, Document.id)
         .all()
     )
-    required = sorted(rules.required_documents(application.loan_type))
+    # D-32: the applicant's employment status decides whether a home loan
+    # needs an employment letter (salaried only).
+    status = application.applicant.employment_status if application.applicant else None
+    required = sorted(rules.required_documents(application.loan_type, status))
     counted = [d.doc_type for d in documents if counts_towards_checklist(d)]
-    missing = rules.missing_documents(application.loan_type, counted)
+    missing = rules.missing_documents(application.loan_type, counted, status)
     return documents, required, missing
 
 

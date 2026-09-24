@@ -297,17 +297,25 @@ def identify(text: str) -> tuple[str | None, float | None]:
 # Locating Aadhaar numbers, for blacking out
 # ---------------------------------------------------------------------------
 
-def aadhaar_redactions(pages: list[PageText]) -> dict[int, list[tuple]]:
+def aadhaar_redactions(pages: list[PageText], checksum_only: bool = False) -> dict[int, list[tuple]]:
     """
     Every Aadhaar-shaped number on every page, and the boxes of its first 8
-    digits. All of them, not just the one that passed the checksum: a card
-    can show the number twice, and a wrong-checksum number is still someone's
-    number as far as blacking out goes.
+    digits. For a declared Aadhaar, all of them, not just the one that passed
+    the checksum: a card can show the number twice, and a wrong-checksum
+    number is still someone's number as far as blacking out goes.
+
+    `checksum_only` (D-33) is for any other ID proof, where the person may
+    have picked "Something else": only numbers that pass the Aadhaar check
+    are blacked out, so a random 12-digit number on some other document
+    isn't.
     """
     found: dict[int, list[tuple]] = {}
     for index, page in enumerate(pages):
         for match in AADHAAR_PATTERN.finditer(page.text):
             digit_positions = [i for i in range(match.start(), match.end()) if page.text[i].isdigit()]
+            digits = "".join(page.text[i] for i in digit_positions)
+            if checksum_only and not validators.verhoeff_valid(digits):
+                continue
             found.setdefault(index, []).extend(page.boxes[i] for i in digit_positions[:8])
     return found
 

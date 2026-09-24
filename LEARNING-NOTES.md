@@ -139,3 +139,18 @@ letter of the holder's surname (or name), and the last letter is a check letter.
 So a personal loan applicant's PAN should always have P as its 4th letter.
 
 *Came up building Piece 33, 2026-09-24.*
+
+---
+
+## What a self-employed borrower shows instead of payslips
+
+A salaried person proves income with **salary slips** and **Form 16** (the
+certificate an employer issues for the tax it deducted), and proves their job
+with an **employment letter**. A self-employed person has none of these: there's
+no employer to issue them. So lenders ask instead for **income tax returns
+(ITR), usually for the last 2 years**, often with the ITR-V acknowledgement,
+bank statements, and proof the business exists (such as a GST registration).
+That's why our manual asks for an employment letter "for salaried applicants"
+only (D-32), and why an ITR has to be acceptable as income proof (D-33).
+
+*Came up deciding D-32 and D-33, 2026-09-24.*

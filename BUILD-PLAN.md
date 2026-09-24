@@ -2308,6 +2308,33 @@ Priya selects the SPECIMEN Aadhaar, PAN and payslip together, marks all three Te
 
 ---
 
+# D-31 to D-33 — three audit decisions, built together (2026-09-24)
+
+Rohit: "use logical thinking to find the best options for each yourself and go ahead." So these were decided by reasoning, not by asking. Each is small, so they're built as one piece. **Tag:** `v2.19.2`.
+
+**Status: built 2026-09-24, `v2.19.2`.** Built as written. 35 tests ran (extractions, the D-32 rule, the trainer's AGENT-06, and Phase 1): all passed in 26 seconds. `TYPES_WITH_KINDS` was removed from `document_kinds.py`, since D-33 left it unused with a comment describing the old rule.
+
+**D-31: the SPECIMEN check uses Gemini keys only, never local Ollama.**
+- *Why:* the settled rule says Gemini only for documents. The check exists to stop false "TEST" labels, and a small local model is a weaker second opinion: a wrong YES would put a possibly real document in the git-tracked folder.
+- *Build:* `llm_provider.get_gemini_llm(temperature)` returns the key ladder (key 1 → 2 → 3) with no local rung, and raises if no key is configured. `file_service._gemini_confirms_specimen` uses it. Any failure is still "no" (undeclared), the cautious answer. It stays in `llm_provider.py`, the only file allowed to choose providers.
+
+**D-32: the employment letter is for salaried home-loan applicants only.**
+- *Why:* the manual comes from the trainer's own spec, and it's right: a self-employed person has no employer to write the letter.
+- *Build:* `rules.required_documents(loan_type, employment_status=None)` and `missing_documents(..., employment_status=None)` drop `employment_letter` from a home loan only when the status is **known** and isn't salaried. An unknown status keeps it required, so the trainer's AGENT-06 and E2E-06 (whose applicants have no status) behave exactly as before. The callers pass the applicant's status: the checklist (`document_service.list_documents`), the briefing, and Phase 5's compliance checker. The seed's two home loans (Priya, Sanjay) are salaried, so no demo figure changes.
+
+**D-33: a document with no form counts on upload, and staff check it.** This is none of a, b or c. It's a better fourth option.
+- *Why:* Piece 33's rule, "a real file counts once its details are confirmed", is right for the 4 documents that have a form. A passport, driving licence, voter ID, Form 16 or ITR has no form, so the same rule could never be met. It should fall back to how every document worked before Piece 33: counted on upload, checked by staff. An "Other document" form with made-up fields (option a) adds typing but checks nothing, and building four proper forms now (option b) is a bigger piece for documents the demo doesn't use (it stays in `FUTURE-UPGRADES.md`).
+- *Build:*
+  - `Document.needs_details` becomes "a kind was declared and its details aren't confirmed yet". A document with no declared kind never needs details.
+  - The "Which one?" dropdown gains **"Something else (passport, driving licence, voter ID)"** under ID proof and **"Something else (Form 16, ITR)"** under income proof. These send no kind. The file-name guesser learns passport, licence, voter, form16 and ITR.
+- *Privacy guard, needed because of the new choice:* "Something else" must not become a way to store an Aadhaar unmasked. So for **every ID proof PDF**, whatever kind was picked, any Aadhaar-shaped number in its text that passes the Verhoeff check has its first 8 digits blacked out on the stored copy. (A photo still can't be checked. That's the OCR item in `FUTURE-UPGRADES.md`, and the manual says an Aadhaar must be uploaded as an Aadhaar.)
+
+**Manual:** Section 4 says the employment letter is for salaried applicants only, explains "Something else", and says an Aadhaar number is blacked out on any ID proof PDF. Re-ingest once.
+
+**Tests, the smallest set (said to Rohit before running):** `tests/ours/test_extractions.py`, adapted so "Something else" counts on upload and an ID-proof PDF uploaded without a kind still has its Aadhaar blacked out. Also the trainer's AGENT-06 on its own (offline), and `tests/phase1`. About 2 minutes.
+
+---
+
 # PIECE 36 — Saved chat sessions
 
 **Goal:** the Assistant keeps conversations. A side list shows past chats; open one and carry on. Kept on the **server** (Rule 13), light and fast.
@@ -2458,4 +2485,5 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 34a | PDFs and images marked binary in git, so a Windows checkout can't break the demo PDFs (T-127) | 2026-09-24 | `v2.18.1` |
 | 34b | Uploads and Replace wait up to 2 minutes, not 15 seconds (T-128) | 2026-09-24 | `v2.18.2` |
 | 35a | Audit fixes: the manual states the upload rules the code enforces (PAN, PDF-only statements, page and hourly limits); three findings opened as D-31 to D-33 | 2026-09-24 | `v2.19.1` |
+| 35b | D-31 to D-33: the SPECIMEN check is Gemini-only; the employment letter is for salaried home-loan applicants only; "Something else" documents count on upload, with any ID-proof PDF's Aadhaar blacked out | 2026-09-24 | `v2.19.2` |
 | 35 | Several documents at once: up to 3, one request each, 2 at a time; inline cards with Confirm all; one lock around PDFium so parallel uploads can't crash the server | 2026-09-24 | `v2.19.0` |

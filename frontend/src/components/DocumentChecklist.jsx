@@ -21,7 +21,7 @@ import Icon from "./ui/Icon";
 import Modal from "./ui/Modal";
 import { DOCUMENT_TYPES, checkFileName } from "../utils/validation";
 import { acceptAttrFor, checkUpload } from "../utils/uploadStandards";
-import { guessFromFileName, kindsForType } from "../utils/documentKinds";
+import { guessFromFileName, kindChoices, kindsForType } from "../utils/documentKinds";
 import { fileSize, formatDate, label } from "../utils/format";
 
 // Fetches a stored file as the signed-in user and opens it in a new tab —
@@ -38,17 +38,18 @@ async function viewFile(fileId, setError) {
   }
 }
 
-// Piece 33: "Which one?" under a type that has more than one kind (ID proof:
-// Aadhaar or PAN). A type with exactly one kind picks it without asking, and a
-// type with none shows nothing.
+// Piece 33: "Which one?" under a type that has a choice to make: ID proof
+// (Aadhaar, PAN, or something else) and income proof (a salary slip, or
+// something else, D-33). A type with only one choice picks it without asking,
+// and a type with none shows nothing.
 function KindPicker({ docType, kind, setKind }) {
-  const kinds = kindsForType(docType);
-  if (kinds.length < 2) return null;
+  const choices = kindChoices(docType);
+  if (choices.length < 2) return null;
   return (
     <label>
       Which one?
       <select value={kind} onChange={(e) => setKind(e.target.value)}>
-        {kinds.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
+        {choices.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
       </select>
     </label>
   );
@@ -359,7 +360,7 @@ function BatchUploadForm({ applicationId, onChange, onUploaded, onClose }) {
             <tbody>
               {rows.map((row) => {
                 const locked = busy || row.status !== "ready";
-                const kinds = kindsForType(row.docType);
+                const choices = kindChoices(row.docType);
                 const [pill, text] = STATUS[row.status];
                 return (
                   <tr key={row.id}>
@@ -371,12 +372,12 @@ function BatchUploadForm({ applicationId, onChange, onUploaded, onClose }) {
                       </select>
                     </td>
                     <td>
-                      {kinds.length > 1 ? (
+                      {choices.length > 1 ? (
                         <select value={row.kind} disabled={locked} onChange={(e) => update(row.id, { kind: e.target.value })}>
-                          {kinds.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
+                          {choices.map((k) => <option key={k.key} value={k.key}>{k.label}</option>)}
                         </select>
                       ) : (
-                        <span className="muted">{kinds[0]?.label || "—"}</span>
+                        <span className="muted">{choices[0]?.label || "—"}</span>
                       )}
                     </td>
                     <td>

@@ -111,10 +111,10 @@ system are `id_proof`, `income_proof`, `bank_statement`, `property_docs`,
 - `income_proof` — income proof, being the last 3 months of salary slips
 - `bank_statement` — a bank statement covering the last 6 months
 
-**A home loan requires five documents.** The three above, plus:
+**A home loan requires five documents** (four for a self-employed applicant). The three above, plus:
 
 - `property_docs` — property documents: the sale deed, the NOC, and the building plan approval
-- `employment_letter` — an employment letter from the current employer, for salaried applicants
+- `employment_letter` — an employment letter from the current employer, for **salaried applicants only**. A self-employed applicant has no employer to write one, so the checklist doesn't ask them for it.
 
 **An auto loan requires four documents.** The three base documents
 (`id_proof`, `income_proof`, `bank_statement`), plus:
@@ -154,8 +154,15 @@ you also say which document it is: an **Aadhaar card** or a **PAN card** for
 identity proof, a **salary slip** for income proof, or a **bank statement**.
 A short form then asks for the details printed on it, such as the name, date
 of birth and Aadhaar number on an Aadhaar card. Fill it in and click
-**Confirm details**. The document only counts towards your checklist once its
-details are confirmed; until then it shows as "needs details". The details
+**Confirm details**. Such a document only counts towards your checklist once
+its details are confirmed; until then it shows as "needs details".
+
+If your identity proof or income proof is something the app has no form for
+yet, such as a **passport, driving licence or voter ID**, or a **Form 16 or
+ITR** (the usual income proof for a self-employed applicant), choose
+**Something else**. It counts as soon as it's uploaded, and staff check it.
+An Aadhaar must always be uploaded as an **Aadhaar card**, never as
+"Something else". The details
 are checked for their format. An Aadhaar number must pass its check digit
 and never starts with 0 or 1. A PAN must be **a person's PAN, with P as its
 4th letter**: a company's, a firm's or a trust's PAN is refused. The date of
@@ -172,7 +179,8 @@ you confirm. A value that was found but doesn't pass its check is marked
 "Please check" and must be corrected first. A photo or a scanned copy can't
 be read automatically, so its details are typed in by hand. When an Aadhaar
 is uploaded, **the first 8 digits of the number are blacked out on the copy
-the bank keeps**. If the number can't be found on the file to black it out
+the bank keeps**. The same happens to a valid Aadhaar number found in any
+identity proof PDF, whatever it was uploaded as. If the number can't be found on the file to black it out
 (a photo or a scan, for example), the upload is refused: download your
 **masked Aadhaar** from myAadhaar (UIDAI's website), which already hides
 those digits, and upload that instead.

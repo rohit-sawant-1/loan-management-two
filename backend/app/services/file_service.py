@@ -204,11 +204,12 @@ def _gemini_confirms_specimen(text: str, matched_phrase: str) -> bool:
     a local match, it never widens it.
     """
     try:
-        from llm_provider import get_llm
+        from llm_provider import get_gemini_llm
         from multi_agent.llm_text import text_of
 
         snippet = text.strip()[:500]
-        llm = get_llm(temperature=0)
+        # D-31: Gemini's keys only, never the local model (see get_gemini_llm).
+        llm = get_gemini_llm(temperature=0)
         prompt = (
             "The following text was extracted from a document that a customer "
             f"uploaded to a bank. It contains the word or phrase '{matched_phrase}'.\n\n"
@@ -516,9 +517,19 @@ def process_upload(doc_type: str, source, kind: str | None = None) -> tuple[Proc
     zone = storage_zone_for(nature)
 
     reading = read_details(kind, raw, content_type, nature) if kind else None
+    redact = reading.redactions if reading else {}
+
+    # D-33 privacy guard: an ID proof may now be uploaded as "Something else",
+    # which must not become a way to store an Aadhaar unmasked. So in any ID
+    # proof PDF not declared as an Aadhaar, a number that passes the Aadhaar
+    # check is blacked out too. (A photo can't be checked without OCR.)
+    if doc_type == "id_proof" and content_type == "application/pdf" and kind != "aadhaar":
+        redact = document_reader.aadhaar_redactions(
+            document_reader.pages_with_positions(raw), checksum_only=True
+        )
 
     if content_type == "application/pdf":
-        rebuilt, pages = rebuild_pdf(raw, doc_type, redact=reading.redactions if reading else None)
+        rebuilt, pages = rebuild_pdf(raw, doc_type, redact=redact)
         width = height = None
     else:
         rebuilt, width, height = rebuild_image(raw, doc_type)

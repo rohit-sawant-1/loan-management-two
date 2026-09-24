@@ -358,6 +358,28 @@ def get_llm(temperature: float = 0.1, fallback: bool = True, **kwargs):
     return primary.with_fallbacks(backups)
 
 
+def get_gemini_llm(temperature: float = 0.0, **kwargs):
+    """
+    Gemini on every configured key, in order (key 1 → key 2 → key 3), and
+    never a local model, whatever `.env` names as the provider.
+
+    For the few jobs a settled rule says only Gemini may do (D-31): today, the
+    document SPECIMEN check in `file_service`. The Document intelligence
+    decisions (2026-09-22) say "Gemini is the only LLM" for documents, and a
+    small local model is a weaker judge there: a wrong YES would label a
+    possibly real document TEST. If every key fails, the caller gets the
+    error, and the SPECIMEN check turns any error into its cautious "no".
+
+    Raises RuntimeError when no Gemini key is configured at all.
+    """
+    keys = gemini_keys()
+    if not keys:
+        raise RuntimeError("No Gemini key is configured")
+    primary = _build_gemini_llm(temperature, api_key=keys[0], **kwargs)
+    spares = [_build_gemini_llm(temperature, api_key=k, **kwargs) for k in keys[1:]]
+    return primary.with_fallbacks(spares) if spares else primary
+
+
 def get_embeddings():
     """
     The model that turns a piece of text into a list of numbers representing its

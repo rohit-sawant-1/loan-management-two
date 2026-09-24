@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — D-31 to D-33, decided and built
+
+**Asked for:** decide the three open questions by reasoning, then build them.
+**Built:** the SPECIMEN check now uses only Gemini's keys. The employment letter is asked only of salaried home-loan applicants, as the manual always said. And a passport, licence, voter ID, Form 16 or ITR can be uploaded as "Something else" and counts straight away. v2.19.2.
+**Found:** "Something else" would have been an easy way round the Aadhaar masking, so any ID-proof PDF now has a valid Aadhaar number blacked out, whatever it was uploaded as.
+**Realised:** D-33's best answer was none of the three offered. A document with no form falls back to how every document worked before Piece 33.
+**Next:** Piece 36, saved chat sessions.
+
+---
+
 ## 2026-09-24 — Audit: the CLAUDE.md rules I missed
 
 **Asked for:** check that everything is committed, and which CLAUDE.md rules were missed this session. Then "yes, fix them", with no tests.

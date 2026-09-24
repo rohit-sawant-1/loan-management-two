@@ -82,9 +82,15 @@ def test_an_aadhaar_pdf_is_read_masked_and_blacked_out(client, people, app_id):
     stored_values = [v for f in db.query(ExtractedField).all() for v in (f.value, f.machine_value) if v]
     assert not any(GOOD_AADHAAR in v.replace(" ", "") for v in stored_values)
 
-    # The stored copy is black where the first 8 digits were. The rebuilt PDF
-    # was drawn at 150 DPI, so it renders back at the same pixel size.
-    stored = db.query(StoredFile).filter(StoredFile.id == body["file_id"]).one()
+    db.close()
+    _assert_first_8_digits_blacked_out(raw, body["file_id"])
+
+
+def _assert_first_8_digits_blacked_out(raw, file_id):
+    """The stored copy is black where the first 8 digits were. The rebuilt PDF
+    was drawn at 150 DPI, so it renders back at the same pixel size."""
+    db = TestingSessionLocal()
+    stored = db.query(StoredFile).filter(StoredFile.id == file_id).one()
     rebuilt = storage.open_file(stored.storage_zone.value, stored.stored_name)
     db.close()
     page = pdfium.PdfDocument(rebuilt)[0].render(scale=1).to_pil().convert("L")
@@ -97,6 +103,32 @@ def test_an_aadhaar_pdf_is_read_masked_and_blacked_out(client, people, app_id):
         region = page.crop((int(left * scale), int((height - top) * scale),
                             int(right * scale) + 1, int((height - bottom) * scale) + 1))
         assert ImageStat.Stat(region).mean[0] < 40, "a digit's box isn't blacked out"
+
+
+def test_an_aadhaar_in_any_id_proof_pdf_is_blacked_out(client, people, app_id):
+    """D-33 privacy guard: uploaded as "Something else" (no kind), still blacked out."""
+    raw = _aadhaar_pdf()
+    response = client.post(
+        f"/api/v1/applications/{app_id}/documents/upload",
+        data={"doc_type": "id_proof", "consent": "true"},           # no kind
+        files={"file": ("id.pdf", raw, "application/pdf")},
+        headers=_headers(people["customer"]),
+    )
+    assert response.status_code == 201, response.text
+    _assert_first_8_digits_blacked_out(raw, response.json()["file_id"])
+
+
+def test_something_else_counts_on_upload(client, people, app_id):
+    """D-33: a document with no form (a passport, say) counts at once; staff check it."""
+    response = client.post(
+        f"/api/v1/applications/{app_id}/documents/upload",
+        data={"doc_type": "id_proof", "consent": "true"},           # "Something else"
+        files={"file": ("passport.jpg", _jpeg_bytes(), "image/jpeg")},
+        headers=_headers(people["customer"]),
+    )
+    assert response.status_code == 201, response.text
+    assert response.json()["needs_details"] is False
+    assert "id_proof" not in _missing(client, people["customer"], app_id)
 
 
 def test_an_aadhaar_that_cant_be_blacked_out_is_refused_unless_test(client, people, app_id, monkeypatch):

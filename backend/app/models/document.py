@@ -113,18 +113,18 @@ class Document(Base):
     @property
     def needs_details(self) -> bool:
         """
-        True for a real file of a type that has kinds (ID proof, income proof,
-        bank statement) whose details aren't confirmed yet. Such a document
-        doesn't count towards the checklist until they are. A name-only
-        document never needs details: there is no file to read them from, so
-        it counts exactly as it always has (the seed data, the trainer's tests).
+        True when the uploader said which kind this is (an Aadhaar, a salary
+        slip…) and its details aren't confirmed yet. Such a document doesn't
+        count towards the checklist until they are.
+
+        D-33: a document with no declared kind never needs details. That
+        covers a name-only document (the seed data, the trainer's tests), and
+        a real file the customer marked "Something else", such as a passport,
+        a driving licence, a Form 16 or an ITR. The app has no form for those
+        yet, so they count on upload and staff check them, exactly as every
+        document worked before Piece 33.
         """
-        doc_type = getattr(self.doc_type, "value", self.doc_type)
-        return (
-            self.file_id is not None
-            and doc_type in document_kinds.TYPES_WITH_KINDS
-            and not self.details_confirmed
-        )
+        return self.current_extraction is not None and not self.details_confirmed
 
     @property
     def detail_summary(self) -> str | None:
