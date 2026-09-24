@@ -182,3 +182,12 @@ Rohit chose the lean Piece 34: read only a PDF's own text. These were in the ori
 | **Let the AI read the last few turns of a chat** (a `CHAT_CONTEXT_TURNS` setting), so "and for a home loan?" works without repeating the question | Piece 36 plan, decision 2 | Answers already take up to a minute (B2); more context makes them slower and changes how the chatbot behaves | Small–medium |
 | **Rename a chat from the list** (the address already exists: `PATCH /chat/sessions/{id}` with a title) | Piece 36 | Nice to have; titles come from the first question | Small |
 | **Show archived chats and bring one back** | Piece 36 | Archive is one-way on screen today | Small |
+
+## Around disbursal — telling the manager (Rohit, 2026-09-25)
+
+Raised while capturing the disbursal-refused screenshot. Both would add notification triggers, and the trigger list is settled at three (2026-09-22), so each needs Rohit's go-ahead first.
+
+| Idea | Where it came from | Why it waits | Size |
+|---|---|---|---|
+| **"Ready to disburse" request:** an officer flags an approved application for the manager, who gets a notification and releases the money. This is the normal maker-checker step in a bank | Rohit, after #4 | ADH prep comes first; adds a trigger to the settled three | Small–medium |
+| **Alert the manager when an officer tries to disburse** and the server refuses, as a high-priority notification | Rohit, after #4 | Same; also overlaps with the activity log, which already records the refused attempt | Small |

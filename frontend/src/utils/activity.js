@@ -73,9 +73,10 @@ export const DETAIL_LABELS = {
 // function names in the stored data — fine for a developer, meaningless in an
 // audit trail that a branch manager is supposed to be able to read.
 export const TOOL_NAMES = {
-  update_application_status: "Changed an application's status",
-  submit_loan_application:   "Created a new application",
-  upload_document_metadata:  "Recorded a document",
+  // A chat's "steps taken" only ever proposes these (T-136).
+  update_application_status: "Proposed a status change",
+  submit_loan_application:   "Proposed a new application",
+  upload_document_metadata:  "Proposed recording a document",
   get_application_details:   "Looked up an application",
   list_applications:         "Searched the applications list",
   list_applications_by_filter: "Searched the applications list",
@@ -87,6 +88,14 @@ export const TOOL_NAMES = {
   risk_assessor:             "Assessed the risk",
   compliance_checker:        "Checked compliance",
   decision_maker:            "Made the decision",
+};
+
+// The change a person confirmed with YES, shown under "What was done".
+// Whether it went through sits beside it, so these don't claim it did.
+export const CONFIRMED_ACTION_NAMES = {
+  update_application_status: "Confirmed status change",
+  submit_loan_application:   "Confirmed new application",
+  upload_document_metadata:  "Confirmed document record",
 };
 
 /** The stored details are a small piece of JSON. Hand back an object, or null. */

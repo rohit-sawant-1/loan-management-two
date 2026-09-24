@@ -154,3 +154,19 @@ That's why our manual asks for an employment letter "for salaried applicants"
 only (D-32), and why an ITR has to be acceptable as income proof (D-33).
 
 *Came up deciding D-32 and D-33, 2026-09-24.*
+
+---
+
+## Do customers get to pick the loan tenure?
+
+**Yes, within limits the bank sets.** The customer asks for an amount and a tenure, and the bank decides what it will actually sanction.
+
+- Each loan type has a **minimum and maximum tenure**. Personal loans are short (a few years), home loans are long (up to about 30 years).
+- Inside that range the customer can usually pick **any number of months**. Bank EMI calculators work this way: slide the months, watch the EMI change.
+- **Age caps the tenure.** A home loan usually has to end by a certain age, so an older borrower gets a shorter maximum.
+- **Longer tenure means a smaller EMI but more interest in total.** That's why stretching the tenure is the usual fix when the EMI doesn't fit the income.
+- **The final say is the bank's.** It can sanction a smaller amount or a different tenure than asked for.
+
+Our app works the same way: the form accepts any tenure inside the range for the loan type (the "1 yr, 2 yr…" chips are only shortcuts), and when a rule fails it suggests a smaller amount or a longer tenure that would fit.
+
+*Source: general Indian retail-lending practice, as explained in the 2026-09-25 chat. Not checked against one specific bank's current terms.*

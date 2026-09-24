@@ -54,10 +54,11 @@ const TOOLS = {
   get_dashboard_summary: { text: "Read the dashboard figures", icon: "dashboard" },
   get_applicant_details: { text: "Looked up an applicant", icon: "user" },
 
-  // Phase 4's tools, which change a record rather than read one.
-  update_application_status: { text: "Changed an application's status", icon: "activity" },
-  submit_loan_application: { text: "Created a new application", icon: "file" },
-  upload_document_metadata: { text: "Recorded a document", icon: "file" },
+  // Phase 4's tools, which change a record rather than read one. In the chat
+  // they only propose the change (T-136); nothing runs until the person says YES.
+  update_application_status: { text: "Proposed a status change", icon: "activity" },
+  submit_loan_application: { text: "Proposed a new application", icon: "file" },
+  upload_document_metadata: { text: "Proposed recording a document", icon: "file" },
 
   // Phase 5's four agents. A review reports one of these per stage, so the
   // "how this was worked out" list becomes the pipeline itself, in order.
@@ -100,7 +101,7 @@ const STAFF_ROLES = ["loan_officer", "branch_manager"];
 // borderless grey text, and one directly above the other read as a paragraph
 // rather than as buttons — the exact mistake T-73 caught on the briefing card.
 // A shared row with a divider makes them legible as a pair of controls.
-function Evidence({ tools, sources }) {
+function Evidence({ tools, sources, mode }) {
   const [openTools, setOpenTools] = useState(false);
   const [openSources, setOpenSources] = useState(false);
 
@@ -136,7 +137,12 @@ function Evidence({ tools, sources }) {
           {tools.map((t, i) => (
             <li key={i}>
               <Icon name={TOOLS[t.tool]?.icon || "activity"} size={13} />
-              <span className="tools-name">{TOOLS[t.tool]?.text || t.tool}</span>
+              <span className="tools-name">
+                {/* After a YES the same tool name comes back, but now it was
+                    actually sent. Whether it went through is in the answer. */}
+                {mode === "action" ? "Sent the confirmed change to the loan system"
+                  : TOOLS[t.tool]?.text || t.tool}
+              </span>
               {t.tool_input && <span className="tools-input">{t.tool_input}</span>}
             </li>
           ))}
@@ -433,7 +439,7 @@ export default function Assistant() {
               <div className="bubble-text">{m.text}</div>
               {m.who === "assistant" && (
                 <>
-                  <Evidence tools={m.tools} sources={m.sources} />
+                  <Evidence tools={m.tools} sources={m.sources} mode={m.mode} />
                   <div className="bubble-meta">
                     <Icon name={MODES[m.mode]?.icon || "info"} size={12} />
                     <span>{MODES[m.mode]?.text || m.mode}</span>

@@ -2,7 +2,7 @@
 // than dumped as a line of JSON. Used by the Activity page and by the activity
 // panel on an application.
 
-import { DETAIL_LABELS, parseDetails, TOOL_NAMES } from "../utils/activity";
+import { CONFIRMED_ACTION_NAMES, DETAIL_LABELS, parseDetails, TOOL_NAMES } from "../utils/activity";
 import { FIELD_LABELS } from "../utils/editRequests";
 import { label, rupees, whole } from "../utils/format";
 
@@ -22,7 +22,7 @@ function DetailValue({ name, value }) {
   // The assistant's tools are stored under their function names, which mean
   // nothing to whoever is reading an audit trail. "Changed an application's
   // status" is the same fact in words a manager already uses.
-  if (name === "tool") return TOOL_NAMES[value] || label(value);
+  if (name === "tool") return CONFIRMED_ACTION_NAMES[value] || TOOL_NAMES[value] || label(value);
   if ((name === "tools" || name === "agents_run") && Array.isArray(value)) {
     return value.length
       ? value.map((t) => TOOL_NAMES[t] || label(t)).join(", ")

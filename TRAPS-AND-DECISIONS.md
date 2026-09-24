@@ -219,6 +219,24 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-136 · A proposed change is labelled "Changed an application's status".** Found
+capturing the ADH screenshots (2026-09-25). In the chat's "how this was worked
+out" list, the write tool's step reads as if the change happened, but the tool
+only *proposes* it and nothing runs until YES. It contradicts the demo's "nothing
+changes until he confirms". **Fixed 2026-09-25 (v2.21.1):** the chat now says
+"Proposed a status change" (and so on); the reply after YES says "Sent the
+confirmed change to the loan system"; the activity log says "Proposed …" under
+Steps taken and "Confirmed status change" under What was done, next to whether
+it went through. Any new write tool needs its wording in both maps.
+
+**T-135 · The seed backdates an application but not its status history.** Found
+capturing the ADH screenshots (2026-09-25). `seed.py` moves `submitted_at` and
+`updated_at` back by the "days ago" column, but the status-history rows keep the
+real seeding time. So application 7's page says "Submitted 24 Sept" while its
+Status history says "Submitted … 25 Sept", and "Last updated" is older than the
+latest history entry. Harmless to the briefing and the review. For screenshots,
+crop the Status history panel out; a proper fix would backdate the history rows too.
+
 **T-134 · A chat attachment keeps ids, never a copy of the documents.** Pieces 37
 + 38 (2026-09-24). The cards under an attachment message are read live from
 `GET /applications/{id}/documents` each time. So a document replaced or purged
