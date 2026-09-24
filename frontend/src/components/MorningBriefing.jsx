@@ -1,7 +1,12 @@
 // The Manager's Morning Briefing (D-13) — the headline feature.
 //
-// The manager opens the app and the AI has already read the whole pipeline:
-// what is stuck, what is risky, what needs a decision today.
+// The manager presses one button and the AI reads the whole pipeline: what is
+// stuck, what is risky, what needs a decision today.
+//
+// It runs only on that button, never by itself on opening the dashboard (T-138).
+// Each run is an AI call, and in development React starts a page twice, so an
+// automatic load sent two requests; the slower one could then replace a good
+// briefing with a timeout.
 //
 // Two deliberate choices here, both about trust:
 //
@@ -14,7 +19,7 @@
 //     and says so, and this panel says so too. A briefing that quietly
 //     degrades without telling anyone is worse than one that admits it.
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useRef, useState } from "react";
 import { Link } from "react-router-dom";
 import { api, CHAT_TIMEOUT_MS, errorMessage } from "../api/client";
 import { label, rupees, whole } from "../utils/format";
@@ -24,11 +29,16 @@ import Icon from "./ui/Icon";
 export default function MorningBriefing() {
   const [briefing, setBriefing] = useState(null);
   const [error, setError] = useState("");
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [showWorking, setShowWorking] = useState(false);
+  // One request at a time, even if the button is clicked twice quickly.
+  const inFlight = useRef(false);
 
-  const load = useCallback(async ({ isRefresh = false } = {}) => {
-    if (isRefresh) setLoading(true);
+  const load = useCallback(async () => {
+    if (inFlight.current) return;
+    inFlight.current = true;
+    setLoading(true);
+    setError("");
     try {
       // The briefing waits on the AI, like a chat answer, so it gets the
       // chat's limit instead of the app-wide 15 seconds (T-137).
@@ -38,17 +48,17 @@ export default function MorningBriefing() {
     } catch (err) {
       setError(errorMessage(err));
     } finally {
+      inFlight.current = false;
       setLoading(false);
     }
   }, []);
-
-  useEffect(() => { load(); }, [load]);
 
   if (error) {
     return (
       <div className="card briefing-card">
         <div className="card-head"><h2>Morning briefing</h2></div>
         <p className="muted">{error}</p>
+        <Button icon="refresh" onClick={load}>Try again</Button>
       </div>
     );
   }
@@ -74,15 +84,24 @@ export default function MorningBriefing() {
               {briefing.written_by_ai ? "Written by AI" : "AI unavailable — figures only"}
             </span>
           )}
-          <Button size="sm" variant="ghost" icon="refresh" loading={loading}
-                  onClick={() => load({ isRefresh: true })}>
-            Refresh
-          </Button>
+          {briefing && (
+            <Button size="sm" variant="ghost" icon="refresh" loading={loading} onClick={load}>
+              Refresh
+            </Button>
+          )}
         </div>
       </div>
 
       {loading && !briefing ? (
-        <p className="muted">Reading the pipeline…</p>
+        <p className="muted">Reading the pipeline… this can take up to a minute.</p>
+      ) : !briefing ? (
+        <>
+          <p className="muted">
+            The AI reads every open application and writes up what is overdue,
+            what is missing, and what to act on first.
+          </p>
+          <Button variant="primary" icon="clock" onClick={load}>Write today's briefing</Button>
+        </>
       ) : briefing ? (
         <>
           <div className="briefing-narrative">

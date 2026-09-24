@@ -219,6 +219,15 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-138 · Anything that loads on its own runs twice in development.** Found
+2026-09-25: `main.jsx` wraps the app in React's StrictMode, which starts every
+page twice while developing. The briefing loaded itself on opening the
+dashboard, so it sent two AI requests; the first showed the briefing, then the
+second timed out and replaced it with an error. **Fixed (v2.21.3):** at Rohit's
+request the briefing now runs only on a "Write today's briefing" button, one
+request at a time, with "Try again" on an error. Any other screen that calls the
+AI by itself on opening would hit the same double call.
+
 **T-137 · The Morning Briefing still used the app-wide 15-second limit.** Found
 capturing the ADH screenshots (2026-09-25, after midnight, Gemini slow): Anita's
 dashboard showed a timeout instead of the briefing. The briefing waits on the AI
