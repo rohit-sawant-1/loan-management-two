@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-25 — ADH deck: Slides 1–3 locked, and the showcase screenshots taken
+
+**Asked for:** the content of the first three slides (worked out with ChatGPT), then the five must-show screenshots, taken slowly one step at a time.
+**Built:** Slides 1–3 are locked (people → stack → the gate). The database was freshly re-seeded (the old one is `loan_app.pre-demo.db`) and `screenshots/` now holds 01 eligibility, 02a/02b Aadhaar read and masked, 03 application 7 and its review, 04a–c disbursal refused with application 3 unchanged, and 05a the briefing. Four fixes along the way: "Proposed" wording in the chat and audit log (v2.21.1), the briefing's 15-second limit (v2.21.2), the briefing now runs on a button (v2.22.0), and the admin switch's out-of-date sentence (v2.22.1).
+**Found:** React's development mode starts pages twice, so the auto-loading briefing sent two AI calls (T-138). Also the seed's history dates (T-135), a dash in the manager's bar (T-139), and a hyphen-named old specimen that isn't the demo kit.
+**Realised:** a before-and-after of application 3 proves the gate better than the refusal message on its own. And the full Aadhaar number can't be shown with a toggle, because it's never kept.
+**Next:** push to GitHub, then build the screenshot slides.
+
+---
+
 ## 2026-09-24 — Pieces 37 + 38: documents in the Assistant
 
 **Asked for:** an assessment of how documents should join the saved chats, then building it with the smallest clean change.
