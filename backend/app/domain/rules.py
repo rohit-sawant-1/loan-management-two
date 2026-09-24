@@ -346,7 +346,7 @@ SETTINGS: dict[str, dict] = {
         "label": "Real document uploads",
         # What each position means, in the words the admin screen shows.
         "off_text": "Documents are recorded by their file name, exactly as they are now.",
-        "on_text": "Customers upload real files. The upload screen is still being built, so names are recorded until it is finished.",
+        "on_text": "Customers upload the actual file. Each one is checked, rebuilt and stored encrypted, and staff can open it.",
     },
 }
 

@@ -219,11 +219,16 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-139 · The manager's top bar shows a stray "-" instead of "Activity".** Seen in
+Anita's dashboard screenshot (2026-09-25, 1920px window). She has the most links
+of any role, and the last one appears squashed to a dash. Not yet investigated;
+cosmetic. Crop the bar off manager screenshots until it's looked at.
+
 **T-138 · Anything that loads on its own runs twice in development.** Found
 2026-09-25: `main.jsx` wraps the app in React's StrictMode, which starts every
 page twice while developing. The briefing loaded itself on opening the
 dashboard, so it sent two AI requests; the first showed the briefing, then the
-second timed out and replaced it with an error. **Fixed (v2.21.3):** at Rohit's
+second timed out and replaced it with an error. **Fixed (v2.22.0):** at Rohit's
 request the briefing now runs only on a "Write today's briefing" button, one
 request at a time, with "Try again" on an error. Any other screen that calls the
 AI by itself on opening would hit the same double call.
