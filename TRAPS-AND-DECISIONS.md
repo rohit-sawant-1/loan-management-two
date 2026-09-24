@@ -1092,6 +1092,14 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 
 # Settled
 
+### 2026-09-24 · At most 3 files at once, everywhere
+**Rohit:** limit how many files can be uploaded at once, including to the
+chatbot, because many files need more time than any single timeout allows.
+**Answer:** 3, in the upload form (Piece 35) and the chatbot (Piece 37). Each
+file travels on its own request with the 2-minute upload limit (T-128), at most
+2 at a time, so no single request ever has to wait for all of them. The server
+enforces the 3 per batch too.
+
 ### 2026-09-24 · Piece 34 — lean, and the Aadhaar refusal
 - **Lean:** read only a PDF's own text. No OCR, no Gemini, no QR, no new
   libraries. The rest is in `FUTURE-UPGRADES.md` ("Around Piece 34").

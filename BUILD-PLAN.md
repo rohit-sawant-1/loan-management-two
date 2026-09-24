@@ -2256,6 +2256,32 @@ Uploading the same file as **Real** → staff see "declared real, looks like a t
 
 # PIECE 35 — Several documents at once
 
+## The updated plan, 2026-09-24. This replaces the plan below it.
+
+**What changed since 2026-09-22:** nobody picks "Real or Test" any more; the server decides (Piece 31). Each document now has a *kind* and a details form (33), which fills itself in from a PDF (34). Uploads have their own 2-minute limit (T-128). **Rohit's answer: at most 3 files at once, everywhere** (the upload form here, and the chatbot in Piece 37).
+
+**How it works, and why no timeout is ever too short:**
+- In the upload form, **"Add several"** lets the customer pick up to 3 files. Each file gets its own row: file name, **Document type** and **Which one?**, both guessed from the file name ("aadhaar", "pan", "payslip", "statement"…) and changeable, plus a remove button. There's one consent tick for all of them.
+- **Upload all** sends **one request per file, at most 2 at a time**. So every file has its own 2-minute limit, and a batch never needs one huge timeout. Each row shows its own state: waiting → uploading → done, or refused with the server's reason. **One refusal never stops the others.**
+- Every file in the batch carries the same `batch_id`, a random ID made by the browser. The server stores it on the document and its details (`document_extractions.batch_id` already exists; `documents.batch_id` is new) and **refuses a 4th file in the same batch**, so the limit holds even if someone skips the screen.
+- **After the uploads:** one card per document that has details, inline on the page rather than in pop-ups, each with its fields (already filled from PDFs, Piece 34). There's **one "Confirm all" button**, which saves and confirms each card in turn and reports per document: "Aadhaar confirmed · PAN needs 1 more field · Payslip refused: password-protected". A card that fails stays open with its errors, and the rest go through.
+- Document types without kinds (property documents and so on) just upload and appear in the list, as today.
+
+**Code:**
+- Backend: the `batch_id` form field (optional, UUID-shaped) on the upload route; a `documents.batch_id` column added by `_add_missing_columns`; the 3-per-batch check in `document_service.add_uploaded_document`; `rules.MAX_FILES_PER_BATCH = 3`. No new address: the browser already has each upload's answer.
+- Frontend: the table of fields is pulled out of `DocumentReviewForm` into a shared `DetailsTable`. The single pop-up and the new inline `BatchReview` (Piece 38 reuses it in the chat) both use it. The batch upload lives in `DocumentChecklist.jsx` next to the single form. A `guessFromFileName()` helper goes in `utils/documentKinds.js`.
+- Manual (Rule 12): "up to 3 documents at once".
+
+**Tests (core only):** a 4th file in one batch is refused, and a batch where one file is refused still stores the others. Then Phase 1 plus the upload files.
+
+**Browser check (batched):** Priya picks the demo-kit Aadhaar, PAN and payslip together. Three rows show guessed kinds, then Upload all gives three cards, already filled in, and Confirm all gives three results.
+
+**Tag:** `v2.19.0`.
+
+---
+
+## The original plan (2026-09-22), kept for reference
+
 **Goal:** upload **up to 5 documents in one go** (Aadhaar + PAN + bank statement + payslip). **Each is processed separately.** One failing doesn't block the others. Missing fields are shown **per document**, with one "Confirm & submit".
 
 **Needs first:** 34. **Open decisions:** none expected (5 files, 5 MB each).
@@ -2354,7 +2380,8 @@ It **may not** change a status, approve, verify, or touch another application.
   - It creates a batch (Piece 35) linked to the chat message (`chat_messages.extraction_batch_id`).
 - **TEST/REAL from the message:** keyword matching ("fake", "test", "demo", "specimen") **pre-ticks "Test"**, and the user confirms the choice on the attach panel. Never assumed silently.
 - **What the AI sees:** only a summary line such as *"2 documents attached: Aadhaar (TEST), PAN (TEST); 1 field missing."* **Document text is never put in the prompt**, so hidden instructions inside a document have nowhere to go (OWASP LLM01).
-- **Limits:** up to 5 files per message, 5 MB each; the same rate limits as Piece 31.
+- **Limits:** ~~up to 5 files per message~~ **at most 3 files per message (Rohit, 2026-09-24)**, 5 MB each; the same rate limits as Piece 31.
+- **No chat timeout can be too short (Rohit, 2026-09-24):** the files never ride on the chat request. Each is uploaded on its own request with the 2-minute upload limit (T-128), exactly as in Piece 35, and the chat message only carries the batch's summary line. So the chat's own 90-second limit only ever covers the AI's answer.
 
 ### Tests
 - Attach → a batch is created and linked to the message.
