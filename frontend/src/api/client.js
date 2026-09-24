@@ -35,6 +35,12 @@ export const CHAT_TIMEOUT_MS = 90000;
 // measurement with room to spare.
 export const UPLOAD_TIMEOUT_MS = 120000;
 
+// Piece 35 (Rohit, 2026-09-24): at most 3 files at once, in the upload form
+// and, in Piece 37, the chatbot. It's about how long people wait, so it's a
+// screen limit. The server's own guard is the one every upload has: 30 an
+// hour and 100 MB per customer.
+export const MAX_FILES_AT_ONCE = 3;
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;

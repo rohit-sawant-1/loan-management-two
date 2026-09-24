@@ -32,6 +32,7 @@ import pypdfium2 as pdfium
 import structlog
 
 from app.domain import document_kinds, validators
+from app.services.pdfium_lock import PDFIUM_LOCK
 
 logger = structlog.get_logger()
 
@@ -87,17 +88,21 @@ def pages_with_positions(raw: bytes) -> list[PageText]:
     """
     pages: list[PageText] = []
     try:
-        pdf = pdfium.PdfDocument(raw)
-        for page in pdf:
-            textpage = page.get_textpage()
-            chars, boxes = [], []
-            for i in range(textpage.count_chars()):
-                chars.append(textpage.get_text_range(index=i, count=1)[:1] or " ")
-                boxes.append(textpage.get_charbox(i))
-            pages.append(PageText(text="".join(chars), boxes=boxes))
-            textpage.close()
-            page.close()
-        pdf.close()
+        # PDFium isn't thread-safe: only one call at a time (see pdfium_lock.py).
+        with PDFIUM_LOCK:
+            pdf = pdfium.PdfDocument(raw)
+            try:
+                for page in pdf:
+                    textpage = page.get_textpage()
+                    chars, boxes = [], []
+                    for i in range(textpage.count_chars()):
+                        chars.append(textpage.get_text_range(index=i, count=1)[:1] or " ")
+                        boxes.append(textpage.get_charbox(i))
+                    pages.append(PageText(text="".join(chars), boxes=boxes))
+                    textpage.close()
+                    page.close()
+            finally:
+                pdf.close()
     except Exception as e:                                             # noqa: BLE001
         logger.warning("text_positions_failed", error=str(e))
         return []

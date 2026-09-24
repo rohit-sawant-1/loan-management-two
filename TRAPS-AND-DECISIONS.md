@@ -219,6 +219,15 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-129 · PDFium is not thread-safe, so every use takes `PDFIUM_LOCK`.** Found in
+the Piece 35 review (2026-09-24). pypdfium2's docs say PDFium must never be called
+from two threads at once, not even on different documents. Elsewhere this has
+corrupted memory and killed servers. The upload routes run in parallel threads,
+so two uploads at once (two people, or Piece 35's two-at-a-time) could crash the
+backend. `app/services/pdfium_lock.py` holds one lock. The three PDFium uses
+(`_pdf_text_layer`, `rebuild_pdf`, `pages_with_positions`) take it and close every
+PDFium object inside it. **Any new pypdfium2 code must do the same.**
+
 **T-128 · Uploads used the app-wide 15-second limit.** Found by Rohit
 (2026-09-24). A SPECIMEN upload waits for Gemini to confirm it, which can take far
 longer, so the screen could report a failure for a file the server then stored.
@@ -1097,8 +1106,12 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 chatbot, because many files need more time than any single timeout allows.
 **Answer:** 3, in the upload form (Piece 35) and the chatbot (Piece 37). Each
 file travels on its own request with the 2-minute upload limit (T-128), at most
-2 at a time, so no single request ever has to wait for all of them. The server
-enforces the 3 per batch too.
+2 at a time, so no single request ever has to wait for all of them.
+**Corrected in the Piece 35 review:** an earlier line here said the server
+enforces the 3 per batch. It couldn't have: the batch ID would come from the
+browser, so skipping the screen gets round it. **Rohit: the 3 is a screen limit
+only.** The server's guard is the one every upload already has: 30 an hour and
+100 MB per customer.
 
 ### 2026-09-24 · Piece 34 — lean, and the Aadhaar refusal
 - **Lean:** read only a PDF's own text. No OCR, no Gemini, no QR, no new

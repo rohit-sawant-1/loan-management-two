@@ -1283,7 +1283,7 @@ before it's added.
 
 # DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
 
-Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 34, plus 32d (Replace)** (see Done at the bottom); 35 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 35, plus 32d (Replace)** (see Done at the bottom); 36 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
 
 ## Build order
 
@@ -1311,7 +1311,7 @@ Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 34, 
 4. Run `pytest tests/ours tests/phase1 -q`, plus the non-AI Phase 3 and 4 tests (`tests/phase3/test_context.py`, the offline tests in `tests/phase3/test_tools.py`, and `tests/phase4/test_mcp_server.py`). Then `npm run build` and `npm run lint` in `frontend/`.
 5. Update `user_manual.md` if any rule changed (Rule 12), and re-ingest.
 6. Log it, commit it, and tag it (middle digit: v2.10.0, v2.11.0, and so on).
-7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out).
+7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out), Piece 35 (Upload several → three demo-kit PDFs → Upload all → Confirm all; Rajan's bell shows 3, which is expected).
 
 ## Decisions that apply to every piece (settled 2026-09-22)
 
@@ -2256,25 +2256,24 @@ Uploading the same file as **Real** → staff see "declared real, looks like a t
 
 # PIECE 35 — Several documents at once
 
-## The updated plan, 2026-09-24. This replaces the plan below it.
+## The reviewed plan, 2026-09-24. This replaces everything below it.
 
-**What changed since 2026-09-22:** nobody picks "Real or Test" any more; the server decides (Piece 31). Each document now has a *kind* and a details form (33), which fills itself in from a PDF (34). Uploads have their own 2-minute limit (T-128). **Rohit's answer: at most 3 files at once, everywhere** (the upload form here, and the chatbot in Piece 37).
+**Status: built 2026-09-24, tag `v2.19.0`.** Built as reviewed. The lock smoke check ran 40 uploads in 20 rounds of two at once, all stored and all read. 134 targeted tests pass, and the front end builds and lints clean. Browser check batched.
 
-**How it works, and why no timeout is ever too short:**
-- In the upload form, **"Add several"** lets the customer pick up to 3 files. Each file gets its own row: file name, **Document type** and **Which one?**, both guessed from the file name ("aadhaar", "pan", "payslip", "statement"…) and changeable, plus a remove button. There's one consent tick for all of them.
-- **Upload all** sends **one request per file, at most 2 at a time**. So every file has its own 2-minute limit, and a batch never needs one huge timeout. Each row shows its own state: waiting → uploading → done, or refused with the server's reason. **One refusal never stops the others.**
-- Every file in the batch carries the same `batch_id`, a random ID made by the browser. The server stores it on the document and its details (`document_extractions.batch_id` already exists; `documents.batch_id` is new) and **refuses a 4th file in the same batch**, so the limit holds even if someone skips the screen.
-- **After the uploads:** one card per document that has details, inline on the page rather than in pop-ups, each with its fields (already filled from PDFs, Piece 34). There's **one "Confirm all" button**, which saves and confirms each card in turn and reports per document: "Aadhaar confirmed · PAN needs 1 more field · Payslip refused: password-protected". A card that fails stays open with its errors, and the rest go through.
-- Document types without kinds (property documents and so on) just upload and appear in the list, as today.
+Rohit asked for a review of the plan before building. The review found two real problems (the first two below), and the rest are smaller. The full version is in `~/.claude/plans/alright-now-plan-for-smooth-flame.md`.
 
-**Code:**
-- Backend: the `batch_id` form field (optional, UUID-shaped) on the upload route; a `documents.batch_id` column added by `_add_missing_columns`; the 3-per-batch check in `document_service.add_uploaded_document`; `rules.MAX_FILES_PER_BATCH = 3`. No new address: the browser already has each upload's answer.
-- Frontend: the table of fields is pulled out of `DocumentReviewForm` into a shared `DetailsTable`. The single pop-up and the new inline `BatchReview` (Piece 38 reuses it in the chat) both use it. The batch upload lives in `DocumentChecklist.jsx` next to the single form. A `guessFromFileName()` helper goes in `utils/documentKinds.js`.
-- Manual (Rule 12): "up to 3 documents at once".
+**What the review changed:**
+1. **PDFium can crash the server when two uploads run at once.** pypdfium2's docs: PDFium is not thread-safe, not even on different documents, and elsewhere it has corrupted memory and killed server processes. Our upload routes run in parallel threads, so "2 at a time" would make this routine, and it could already happen with two people uploading at once. **Fix: one process-wide lock** (`app/services/pdfium_lock.py`) around every PDFium call. The slow Gemini step stays outside it.
+2. **The batch check was useless, and I'd claimed it wasn't.** A browser-made, optional `batch_id` stops nobody who skips the screen. **Dropped.** The server's real guard already exists: 30 uploads an hour and 100 MB per customer. **Rohit: the 3 is a screen limit only**, because it's about waiting time. This leaves Piece 35 front end only, apart from the lock.
+3. The details pop-up (33–34) isn't browser-checked yet, so sharing its table must leave it behaving exactly as now.
+4. File-name guessing matches whole words ("pan" must not match "company.pdf").
+5. Three TEST files mean three bell notices per staff member. That's accurate, so it's kept.
+6. Name-only mode gets no batch upload.
+7. The front end has no test runner, so the screen is checked by build, lint and the browser.
 
-**Tests (core only):** a 4th file in one batch is refused, and a batch where one file is refused still stores the others. Then Phase 1 plus the upload files.
+**Build:** the lock in `file_service._pdf_text_layer`, `file_service.rebuild_pdf` and `document_reader.pages_with_positions`. `guessFromFileName()` in `utils/documentKinds.js`. `MAX_FILES_AT_ONCE = 3`. In `DocumentChecklist.jsx`, "Upload several at once" opens `BatchUploadForm`, with rows (guessed type and kind, remove), one consent tick, and Upload all (two workers, one request per file, each with the 2-minute limit, per-row status, a refusal never stops the others). `DetailsTable.jsx` is moved out of `DocumentReviewForm.jsx`. `BatchReview.jsx` shows inline cards with one "Confirm all" that reports per document. Plus the manual line and re-ingest.
 
-**Browser check (batched):** Priya picks the demo-kit Aadhaar, PAN and payslip together. Three rows show guessed kinds, then Upload all gives three cards, already filled in, and Confirm all gives three results.
+**Verification:** a one-off smoke script (20 rounds of two PDF uploads in parallel threads), the Phase 1 and upload test files, build and lint. **Browser check (batched):** Priya → Upload several → the demo-kit Aadhaar, PAN and payslip → three guessed rows → Upload all → three filled cards → Confirm all → three results. Rajan's bell shows 3, which is expected.
 
 **Tag:** `v2.19.0`.
 
@@ -2380,7 +2379,7 @@ It **may not** change a status, approve, verify, or touch another application.
   - It creates a batch (Piece 35) linked to the chat message (`chat_messages.extraction_batch_id`).
 - **TEST/REAL from the message:** keyword matching ("fake", "test", "demo", "specimen") **pre-ticks "Test"**, and the user confirms the choice on the attach panel. Never assumed silently.
 - **What the AI sees:** only a summary line such as *"2 documents attached: Aadhaar (TEST), PAN (TEST); 1 field missing."* **Document text is never put in the prompt**, so hidden instructions inside a document have nowhere to go (OWASP LLM01).
-- **Limits:** ~~up to 5 files per message~~ **at most 3 files per message (Rohit, 2026-09-24)**, 5 MB each; the same rate limits as Piece 31.
+- **Limits:** ~~up to 5 files per message~~ **at most 3 files per message (Rohit, 2026-09-24)**, 5 MB each. The 3 is a **screen limit** (it's about waiting time); the server's guard is the same as for any upload, 30 an hour and 100 MB per customer (Piece 35 review).
 - **No chat timeout can be too short (Rohit, 2026-09-24):** the files never ride on the chat request. Each is uploaded on its own request with the 2-minute upload limit (T-128), exactly as in Piece 35, and the chat message only carries the batch's summary line. So the chat's own 90-second limit only ever covers the AI's answer.
 
 ### Tests
@@ -2456,3 +2455,5 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 32d | Replacing a document: Replace on any unverified row, the old copy kept but counting nowhere, replaced copies shown to staff only (D-30) | 2026-09-24 | `v2.16.0` |
 | 33 | Document kinds and their details: Aadhaar, PAN, salary slip, bank statement; typed in, checked, confirmed; only confirmed real files count | 2026-09-24 | `v2.17.0` |
 | 34 | Reading documents, lean: a PDF's own text fills the form; Aadhaar digits blacked out on the stored copy; an Aadhaar that can't be blacked out is refused unless TEST; SPECIMEN demo kit | 2026-09-24 | `v2.18.0` |
+| 34a | Uploads and Replace wait up to 2 minutes, not 15 seconds (T-128) | 2026-09-24 | `v2.18.2` |
+| 35 | Several documents at once: up to 3, one request each, 2 at a time; inline cards with Confirm all; one lock around PDFium so parallel uploads can't crash the server | 2026-09-24 | `v2.19.0` |

@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Piece 35: up to 3 documents at once, after a review that caught two mistakes
+
+**Asked for:** limit how many files go up at once (the chatbot too), because no single timeout can cover many files. Also fix the 15-second limit on uploads and Replace, then plan the next piece, and then review that plan in plan mode.
+**Built:** uploads and Replace now wait up to 2 minutes (v2.18.2). "Upload several at once" takes up to 3 files. Each file gets a row with a type and kind guessed from its name, goes up on its own request (two at a time), and shows its own result, so one refusal never stops the others. The documents with details then appear as cards with one "Confirm all" that reports per document. v2.19.0.
+**Found:** the review caught two real problems. PDFium, the PDF library, isn't thread-safe, and two uploads at once could have crashed the whole server. That was possible even before today, with two people uploading at once. There's now one lock around it, and a smoke run of 40 uploads in pairs went through cleanly. And my claim that the server would enforce the 3-file limit was wrong, because a browser-made batch ID stops nobody, so it was dropped.
+**Realised:** you chose to keep the 3 as a screen limit. It's about waiting time, and the server already has the real guard: 30 uploads an hour and 100 MB per customer.
+**Next:** Piece 36, saved chat sessions.
+
+---
+
 ## 2026-09-24 — Piece 34 (lean): the form fills itself in
 
 **Asked for:** the next piece, with browser checks saved for the end because you were tired. You chose the lean version (PDFs' own text only, with no OCR, no Gemini and no new installs), and chose to refuse a real Aadhaar that can't be blacked out.

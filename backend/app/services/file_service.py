@@ -47,6 +47,7 @@ from PIL import Image, ImageDraw, ImageStat
 
 from app.domain import rules
 from app.services import document_reader, storage
+from app.services.pdfium_lock import PDFIUM_LOCK
 from app.services.errors import RuleViolation
 
 logger = structlog.get_logger()
@@ -168,14 +169,18 @@ def _pdf_text_layer(raw: bytes) -> str:
     just treated as having no text layer, which already means "undeclared".
     """
     try:
-        pdf = pdfium.PdfDocument(raw)
-        parts = []
-        for page in pdf:
-            textpage = page.get_textpage()
-            parts.append(textpage.get_text_range(0, -1))
-            textpage.close()
-            page.close()
-        pdf.close()
+        # PDFium isn't thread-safe: only one call at a time (see pdfium_lock.py).
+        with PDFIUM_LOCK:
+            pdf = pdfium.PdfDocument(raw)
+            try:
+                parts = []
+                for page in pdf:
+                    textpage = page.get_textpage()
+                    parts.append(textpage.get_text_range(0, -1))
+                    textpage.close()
+                    page.close()
+            finally:
+                pdf.close()
         return "\n".join(parts)
     except Exception as e:                                             # noqa: BLE001
         logger.warning("pdf_text_layer_failed", error=str(e))
@@ -353,32 +358,43 @@ def rebuild_pdf(raw: bytes, doc_type: str, redact: dict[int, list[tuple]] | None
     min_pages, max_pages = standard["min_pages"], standard["max_pages"]
     per_page_cap = standard.get("max_bytes_per_pdf_page")
 
-    try:
-        pdf = pdfium.PdfDocument(raw)
-        page_count = len(pdf)
-    except Exception as e:
-        raise RuleViolation("This PDF could not be opened — it may be damaged") from e
+    scale = standard["pdf_dpi"] / 72
 
-    if page_count < min_pages:
-        raise RuleViolation(f"This document needs at least {min_pages} page(s)")
-    if page_count > max_pages:
-        raise RuleViolation(f"This document has too many pages (the limit is {max_pages})")
+    # Step 1, with PDFium: draw every page as a picture. PDFium isn't
+    # thread-safe, so this runs under the lock (see pdfium_lock.py), and every
+    # PDFium object is closed here, inside it, rather than left for Python to
+    # free later from outside the lock.
+    rendered: list[tuple[Image.Image, float]] = []     # (picture, page height in points)
+    with PDFIUM_LOCK:
+        try:
+            pdf = pdfium.PdfDocument(raw)
+        except Exception as e:
+            raise RuleViolation("This PDF could not be opened — it may be damaged") from e
+        try:
+            page_count = len(pdf)
+            if page_count < min_pages:
+                raise RuleViolation(f"This document needs at least {min_pages} page(s)")
+            if page_count > max_pages:
+                raise RuleViolation(f"This document has too many pages (the limit is {max_pages})")
+            for i in range(page_count):
+                page = pdf[i]
+                bitmap = page.render(scale=scale)
+                # convert() makes a copy, so the picture no longer needs PDFium.
+                rendered.append((bitmap.to_pil().convert("RGB"), page.get_height()))
+                bitmap.close()
+                page.close()
+        finally:
+            pdf.close()
 
+    # Step 2, plain pictures, no PDFium: black out, check, and compress.
     pages_as_images: list[Image.Image] = []
-    for i in range(page_count):
-        page = pdf[i]
-        scale = standard["pdf_dpi"] / 72
-        bitmap = page.render(scale=scale)
-        img = bitmap.to_pil().convert("RGB")
-        page_height = page.get_height()
-        page.close()
+    for i, (img, page_height) in enumerate(rendered):
         _black_out(img, (redact or {}).get(i, []), scale, page_height)
         _blank_check(img, f"Page {i + 1}")
         # Compress this one page to its own cap before it goes into the PDF,
         # so a single busy page can't blow the whole file past the limit.
         data = _encode_jpeg_within(img, None, per_page_cap)
         pages_as_images.append(Image.open(io.BytesIO(data)))
-    pdf.close()
 
     buf = io.BytesIO()
     pages_as_images[0].save(

@@ -167,6 +167,13 @@ the bank keeps**. If the number can't be found on the file to black it out
 (a photo or a scan, for example), the upload is refused: download your
 **masked Aadhaar** from myAadhaar (UIDAI's website), which already hides
 those digits, and upload that instead.
+
+You can also upload **up to 3 documents at once**: click **Upload several at
+once**, choose the files, check the document type the app has guessed for
+each one, and click **Upload all**. Each file is checked on its own, so if one
+is refused the others still go through, and each shows its own result. The
+documents that have details then appear together, and **Confirm all**
+confirms them in one go, telling you which ones still need something.
 Nothing you type in these details changes your profile. If a name or date of
 birth doesn't match your profile, the form shows a note, and staff will look
 at it.

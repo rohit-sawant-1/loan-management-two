@@ -7,67 +7,18 @@
 // copy of them. Every check is done by the server too; its message for each
 // field is shown right under that field's box.
 //
-// A masked field (the Aadhaar number) comes back as "XXXX XXXX 1234" and is
-// never sent back unless it's typed again: the full number only exists in
-// the box while it's being typed.
-//
-// Piece 38 reuses this inside the chat, so it only needs a document row and
-// a couple of callbacks.
+// The table of fields itself lives in DetailsTable.jsx (Piece 35), shared
+// with the several-at-once cards. This file is the pop-up around it: loading,
+// saving, confirming, and starting again.
 
 import { useEffect, useState } from "react";
 import { api, errorMessage } from "../api/client";
+import DetailsTable from "./DetailsTable";
 import ErrorBanner from "./ErrorBanner";
-import TestBadge from "./TestBadge";
 import Button from "./ui/Button";
 import Modal from "./ui/Modal";
-import { kindsForType } from "../utils/documentKinds";
+import { kindsForType, recheckValues } from "../utils/documentKinds";
 import { label } from "../utils/format";
-
-const STATE_TEXT = {
-  missing: "Missing",
-  user_entered: "You entered",
-  user_corrected: "You corrected",
-  extracted: "Read from document",   // Piece 34
-  uncertain: "Please check",         // Piece 34
-};
-
-function FieldInput({ field, value, onChange, disabled }) {
-  const common = { value, disabled, onChange: (e) => onChange(e.target.value) };
-  switch (field.check) {
-    case "date_of_birth":
-    case "past_date":
-      return <input type="date" {...common} />;
-    case "month":
-      return <input type="month" {...common} />;
-    case "money":
-      return <input inputMode="decimal" placeholder="52000" {...common} />;
-    case "gender":
-      return (
-        <select {...common}>
-          <option value="">Choose…</option>
-          <option>Female</option><option>Male</option><option>Transgender</option>
-        </select>
-      );
-    case "address":
-      return <textarea rows={2} maxLength={300} {...common} />;
-    case "aadhaar":
-      return (
-        <input inputMode="numeric" maxLength={14} autoComplete="off"
-          placeholder={field.value ? `${field.value}. Type again to change` : "12 digits"} {...common} />
-      );
-    case "pan":
-      return (
-        <input maxLength={10} placeholder="ABCPE1234F" style={{ textTransform: "uppercase" }} {...common} />
-      );
-    case "account":
-      return (
-        <input inputMode="numeric" maxLength={18} autoComplete="off"
-          placeholder={field.value ? `${field.value}. Type again to change` : "9 to 18 digits"} {...common} />
-      );
-    default:
-      return <input maxLength={150} {...common} />;
-  }
-}
 
 export default function DocumentReviewForm({ applicationId, doc, canEdit, onClose, onChanged }) {
   const [data, setData] = useState(null);             // the server's view of the details
@@ -133,14 +84,8 @@ export default function DocumentReviewForm({ applicationId, doc, canEdit, onClos
   async function confirm() {
     setBusy(true);
     try {
-      // Piece 34: a value read from the file that failed its check ("Please
-      // check") is sent again as it now stands in its box, so the server
-      // checks it once more. Fixed or confirmed as right, it stops blocking.
-      const recheck = {};
-      for (const f of data.fields) {
-        if (f.state === "uncertain" && f.value) recheck[f.key] = f.value;
-      }
-      if (!(await save(recheck))) return;
+      // "Please check" values are sent again so the server re-checks them.
+      if (!(await save(recheckValues(data)))) return;
       await api.post(`/extractions/${data.id}/confirm`);
       onChanged?.();
       onClose();
@@ -162,11 +107,6 @@ export default function DocumentReviewForm({ applicationId, doc, canEdit, onClos
     } finally {
       setBusy(false);
     }
-  }
-
-  function valueFor(field) {
-    if (field.key in edits) return edits[field.key];
-    return field.masked ? "" : (field.value || "");
   }
 
   // --- No details yet: first say which document this is ----------------------
@@ -219,52 +159,16 @@ export default function DocumentReviewForm({ applicationId, doc, canEdit, onClos
       {!data ? (
         <p className="muted">Loading…</p>
       ) : (
-        <>
-          <p className="muted" style={{ marginTop: 0 }}>
-            {doc.nature === "test" && <><TestBadge />{" "}</>}
-            {data.status === "confirmed"
-              ? `Confirmed by ${data.confirmed_by}. The format checks passed; that doesn't prove the document is genuine.`
-              : data.read_automatically
-                ? "Filled in from the document's own text. Check every value against the document before confirming. Fields marked * are required."
-                : "This file couldn't be read automatically (a photo or a scan). Type what the document says. Fields marked * are required."}
-          </p>
-          {/* Piece 34: what the text looked like, only when it disagrees. Never switched for them. */}
-          {data.detected_kind && data.detected_kind !== data.kind && (
-            <div className="banner banner-warn">
-              <span>
-                This looks like a <strong>{data.detected_label}</strong>, not a {data.kind_label}. If the
-                wrong kind was picked, use "Wrong document? Start again".
-              </span>
-            </div>
-          )}
-          <div className="table-wrap">
-            <table>
-              <thead><tr><th>Field</th><th>Value</th><th>State</th></tr></thead>
-              <tbody>
-                {data.fields.map((f) => (
-                  <tr key={f.key}>
-                    <td>{f.label}{f.required && " *"}</td>
-                    <td>
-                      {editable ? (
-                        <FieldInput field={f} value={valueFor(f)} disabled={busy}
-                          onChange={(v) => setEdits((prev) => ({ ...prev, [f.key]: v }))} />
-                      ) : (
-                        <span className="mono">{f.value || "—"}</span>
-                      )}
-                      {fieldErrors[f.key] && <span className="field-error">{fieldErrors[f.key]}</span>}
-                      {f.check_note && <span className="hint" style={{ color: "var(--warn-ink)" }}>{f.check_note}</span>}
-                    </td>
-                    <td>
-                      <span className={`pill ${f.state === "missing" && f.required ? "pill-warn" : ""}`}>
-                        {STATE_TEXT[f.state] || f.state}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </>
+        <DetailsTable
+          data={data}
+          doc={doc}
+          editable={editable}
+          edits={edits}
+          onEdit={(key, v) => setEdits((prev) => ({ ...prev, [key]: v }))}
+          fieldErrors={fieldErrors}
+          busy={busy}
+          restartHint='use "Wrong document? Start again"'
+        />
       )}
     </Modal>
   );
