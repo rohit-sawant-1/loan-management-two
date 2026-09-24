@@ -32,8 +32,9 @@ function DetailValue({ name, value }) {
   if (name === "fields" && Array.isArray(value)) {
     return value.map((f) => FIELD_LABELS[f] || label(f)).join(", ");
   }
-  // A whole stored eligibility assessment keeps its line breaks.
-  if (name === "previous_eligibility_summary") {
+  // A whole stored eligibility assessment keeps its line breaks, and so does
+  // the chatbot answer excerpt in the audit trail (a review answer is several lines).
+  if (name === "previous_eligibility_summary" || name === "answer") {
     return <pre className="eligibility-summary" style={{ margin: 0 }}>{value}</pre>;
   }
   if (Array.isArray(value)) {

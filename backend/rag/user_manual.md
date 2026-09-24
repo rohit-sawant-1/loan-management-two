@@ -390,7 +390,11 @@ ever retrieve their own applications, their own documents and their own profile.
 
 Every status change and every significant action is written to an audit log
 recording who did it, what they did, when, and why. The branch manager and the
-system administrator can review this log at any time.
+system administrator can review this log at any time. This includes the
+Assistant: each question is recorded as a short excerpt (its first 200
+characters, and the first 500 characters of the answer), with how it was
+answered and any action taken. Your full saved conversations are not in the
+audit log; only you can open those.
 
 ---
 
@@ -482,9 +486,20 @@ the branch manager.
 
 **Does the Assistant keep my conversations?**
 Yes. Your chats are saved, and the list on the left of the Assistant page lets
-you reopen one and carry on, even after you close the app. **Only you can see
-your chats**: not the loan officers, not the branch manager, and not the system
-administrator. Click **New chat** to start a fresh one, or the × next to a chat
+you reopen one and carry on, even after you close the app.
+
+- **Your saved conversations are private to you.** Only you can open them in
+  the Assistant. Other customers, the loan officers, the branch manager and
+  the system administrator can't open them there.
+- **Chatbot activity is recorded for auditing.** For every question you ask,
+  the bank's audit log keeps **short excerpts**, not the conversation: the
+  first 200 characters of your question and the first 500 characters of the
+  Assistant's answer, together with how it was answered, which tools it used,
+  whether the AI worked, and any action taken on an application. The branch
+  manager and the system administrator can review this audit log. The full
+  conversation exists only in your saved chat.
+
+Click **New chat** to start a fresh one, or the × next to a chat
 to archive it. The Assistant answers each question on its own; it doesn't read
 back through the earlier messages in a chat, so include the details it needs
 (an application number, for example) in each question.

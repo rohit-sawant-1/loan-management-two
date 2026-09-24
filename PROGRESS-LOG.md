@@ -4,10 +4,20 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Piece 36 correction: the chatbot's audit trail
+
+**Asked for:** an assessment of Piece 36 against your requirements, then a complete audit trail of the chatbot, described honestly.
+**Built:** the audit row for each chat now keeps the answer's first 500 characters next to the question's first 200 (a review's answer too). The manual now separates two things: your saved conversation, which only you can open, and the audit log, which keeps short excerpts the branch manager and admin can review. v2.20.1.
+**Found:** Piece 36's manual line "only you can see your chats" wasn't true. Questions were already in the audit log, and the answer was in no log at all, so "what did the chatbot say?" couldn't be audited.
+**Realised:** "private" has to name the thing that's private. Here that's the saved conversation, not every trace of it.
+**Next:** Piece 37, documents in the chatbot.
+
+---
+
 ## 2026-09-24 — Piece 36: the Assistant keeps your chats
 
 **Asked for:** plan Piece 36, then build it. You also spotted that the Done table seemed to stop at 32d.
-**Built:** chats are saved on the server, with a list on the left of the Assistant page. You can reopen one and carry on, even after a refresh, because the chat's number is in the address. Only the owner can see a chat, not staff and not the admin. The AI still answers each question on its own. v2.20.0.
+**Built:** chats are saved on the server, with a list on the left of the Assistant page. You can reopen one and carry on, even after a refresh, because the chat's number is in the address. Only the owner can open a saved chat; staff and the admin can't (the audit log keeps short excerpts separately, see the entry above). The AI still answers each question on its own. v2.20.0.
 **Found:** the Done table's rows were all there, but row 35 had ended up last. It's reordered. My first guard (a new chat drops a waiting YES) broke four tests and missed switching to an old chat, so a YES now only works in the chat it was proposed in (T-133).
 **Realised:** saving a chat is cheap; sending the history to the AI is what would be slow. That's why it's history for people, not memory for the AI.
 **Next:** Piece 37, documents in the chatbot.

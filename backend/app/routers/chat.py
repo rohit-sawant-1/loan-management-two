@@ -462,6 +462,10 @@ def _answer(body: ChatRequest, request: Request, db: Session, user: User) -> Cha
                 "compliance_passed": (state.get("compliance_check") or {}).get("compliance_passed"),
                 "agents_run": [m.get("agent") for m in state.get("messages", [])],
                 "errors": state.get("errors", [])[:2],
+                # The audit trail keeps a bounded excerpt of what the chat said,
+                # not the conversation (Rohit, 2026-09-24). The full answer is
+                # only in the person's own saved chat.
+                "answer": answer[:500],
             },
             **activity_service.request_meta(request),
         )
@@ -545,7 +549,11 @@ def _answer(body: ChatRequest, request: Request, db: Session, user: User) -> Cha
         # dash, which is honest. Claiming a type with no number behind it is
         # what printed "Chat #null" (T-91).
         entity_type=None,
-        details={"question": question[:200], "mode": mode,
+        # A complete audit trail of the chatbot (Rohit, 2026-09-24), kept as
+        # bounded excerpts: the first 200 characters of the question and the
+        # first 500 of the answer. The full conversation is only in the
+        # person's own saved chat (Piece 36), which nobody else can open.
+        details={"question": question[:200], "answer": answer[:500], "mode": mode,
                  "sources": len(sources),
                  "tools": [c.tool for c in tools_used],
                  "ai_status": ai_status},

@@ -54,7 +54,7 @@ export const DETAIL_LABELS = {
   // an upload_blocked row's reason is why it was refused, same idea.
   size_before: "Size before", size_after: "Size after", nature: "Classified as",
   eligible: "Passed eligibility", problem_count: "Rules not met", email: "Email",
-  question: "Question asked", tool: "What was done", worked: "Went through",
+  question: "Question asked (first 200 characters)", answer: "Answer given (first 500 characters)", tool: "What was done", worked: "Went through",
   outcome: "Result", new_status: "Changed to", mode: "Answered by",
   ai_status: "AI status", arguments: "Details", tools: "Steps taken",
   applicant_id: "Applicant", amount_requested: "Amount", purpose: "Purpose",

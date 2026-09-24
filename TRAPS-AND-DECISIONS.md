@@ -1134,6 +1134,22 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 
 # Settled
 
+### 2026-09-24 · The chatbot's privacy and audit model (Rohit)
+- **Saved conversations (Piece 36):** the full conversation, openable only by
+  its owner. Other customers, staff and the admin get "not found".
+- **Audit log:** a complete trail of the chatbot, kept as **bounded excerpts,
+  never the conversation**. Each chat message records who, when, the question's
+  first 200 characters, the answer's first 500, the mode, the source count, the
+  tools, and the AI status. A review also records its decision, risk score,
+  compliance and agents. A confirmed action records its tool, arguments and
+  outcome. The branch manager and admin can read it (`require_audit_view`); loan
+  officers can't.
+- **Server logs are unchanged:** `chat_answered`, `chat_agent_failed`,
+  `chat_all_brains_failed`, and the RAG and agent logs the trainer's
+  observability guide requires, all keep the question's first 200 characters.
+- Every document must describe the audit trail as excerpts. Never write "only
+  you can see anything about your chats".
+
 ### 2026-09-24 · D-31, D-32, D-33 — decided by reasoning, at Rohit's request
 Rohit: "use logical thinking to find the best options for each yourself and go
 ahead." Built together as `v2.19.2`. The full reasoning is in `BUILD-PLAN.md`

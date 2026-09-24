@@ -62,3 +62,34 @@ def test_nobody_else_can_open_or_add_to_a_chat(client, monkeypatch):
                             headers=_headers(other)).status_code == 404
         assert _ask(client, other, "Let me in", str(session_id)).status_code == 404
         assert client.get("/api/v1/chat/sessions", headers=_headers(other)).json() == []
+
+
+def test_the_audit_row_keeps_bounded_excerpts_of_question_and_answer(client, auth_token, monkeypatch):
+    """
+    Rohit, 2026-09-24: a complete audit trail of the chatbot, kept as bounded
+    excerpts (the first 200 characters of the question and the first 500 of the
+    answer), while the full conversation stays in the owner's saved chat.
+    The real answering code runs here; only the agent itself is faked.
+    """
+    import json
+
+    import agent.agent as agent_module
+    from app.models.activity_log import ActivityLog
+    from tests.conftest import TestingSessionLocal
+
+    long_answer = "The manual says: " + "x" * 800
+    monkeypatch.setattr(agent_module, "run_agent",
+                        lambda question, executor=None: {"output": long_answer, "intermediate_steps": []})
+    monkeypatch.setattr(chat_router, "get_agent", lambda role=None: None)
+    monkeypatch.setattr(chat_router, "_policy_sources", lambda calls: [])
+
+    question = "What documents do I need? " + "y" * 300
+    assert _ask(client, auth_token, question).status_code == 200
+
+    db = TestingSessionLocal()
+    row = db.query(ActivityLog).filter(ActivityLog.action == "chat_message").order_by(ActivityLog.id.desc()).first()
+    db.close()
+    details = json.loads(row.details)
+    assert details["question"] == question[:200]           # an excerpt, not the whole question
+    assert details["answer"] == long_answer[:500]           # an excerpt, not the whole answer
+    assert details["mode"] == "agent" and details["ai_status"] == "ai_ok"
