@@ -16,7 +16,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import { api, errorMessage } from "../api/client";
+import { api, CHAT_TIMEOUT_MS, errorMessage } from "../api/client";
 import { label, rupees, whole } from "../utils/format";
 import Button from "./ui/Button";
 import Icon from "./ui/Icon";
@@ -30,7 +30,9 @@ export default function MorningBriefing() {
   const load = useCallback(async ({ isRefresh = false } = {}) => {
     if (isRefresh) setLoading(true);
     try {
-      const res = await api.get("/briefing");
+      // The briefing waits on the AI, like a chat answer, so it gets the
+      // chat's limit instead of the app-wide 15 seconds (T-137).
+      const res = await api.get("/briefing", { timeout: CHAT_TIMEOUT_MS });
       setBriefing(res.data);
       setError("");
     } catch (err) {

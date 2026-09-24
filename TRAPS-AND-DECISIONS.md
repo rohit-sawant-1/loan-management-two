@@ -219,6 +219,13 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-137 · The Morning Briefing still used the app-wide 15-second limit.** Found
+capturing the ADH screenshots (2026-09-25, after midnight, Gemini slow): Anita's
+dashboard showed a timeout instead of the briefing. The briefing waits on the AI
+just like a chat answer, which T-95 already gave 90 seconds. **Fixed (v2.21.2):**
+it now uses `CHAT_TIMEOUT_MS`. The chat, uploads and briefing are the three calls
+that wait on Gemini; any new one needs its own limit too.
+
 **T-136 · A proposed change is labelled "Changed an application's status".** Found
 capturing the ADH screenshots (2026-09-25). In the chat's "how this was worked
 out" list, the write tool's step reads as if the change happened, but the tool
