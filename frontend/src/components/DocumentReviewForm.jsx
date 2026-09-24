@@ -106,11 +106,13 @@ export default function DocumentReviewForm({ applicationId, doc, canEdit, onClos
     }
   }
 
-  // Sends only what changed. Returns false if the server refused something.
-  async function save() {
-    if (Object.keys(edits).length === 0) return true;
+  // Sends only what changed, plus any `extra` values. Returns false if the
+  // server refused something.
+  async function save(extra = {}) {
+    const values = { ...extra, ...edits };
+    if (Object.keys(values).length === 0) return true;
     try {
-      const res = await api.patch(`/extractions/${data.id}/fields`, { values: edits });
+      const res = await api.patch(`/extractions/${data.id}/fields`, { values });
       setData(res.data);
       setEdits({});
       setFieldErrors({});
@@ -131,7 +133,14 @@ export default function DocumentReviewForm({ applicationId, doc, canEdit, onClos
   async function confirm() {
     setBusy(true);
     try {
-      if (!(await save())) return;
+      // Piece 34: a value read from the file that failed its check ("Please
+      // check") is sent again as it now stands in its box, so the server
+      // checks it once more. Fixed or confirmed as right, it stops blocking.
+      const recheck = {};
+      for (const f of data.fields) {
+        if (f.state === "uncertain" && f.value) recheck[f.key] = f.value;
+      }
+      if (!(await save(recheck))) return;
       await api.post(`/extractions/${data.id}/confirm`);
       onChanged?.();
       onClose();
@@ -215,8 +224,19 @@ export default function DocumentReviewForm({ applicationId, doc, canEdit, onClos
             {doc.nature === "test" && <><TestBadge />{" "}</>}
             {data.status === "confirmed"
               ? `Confirmed by ${data.confirmed_by}. The format checks passed; that doesn't prove the document is genuine.`
-              : "Type what the document says. Fields marked * are required."}
+              : data.read_automatically
+                ? "Filled in from the document's own text. Check every value against the document before confirming. Fields marked * are required."
+                : "This file couldn't be read automatically (a photo or a scan). Type what the document says. Fields marked * are required."}
           </p>
+          {/* Piece 34: what the text looked like, only when it disagrees. Never switched for them. */}
+          {data.detected_kind && data.detected_kind !== data.kind && (
+            <div className="banner banner-warn">
+              <span>
+                This looks like a <strong>{data.detected_label}</strong>, not a {data.kind_label}. If the
+                wrong kind was picked, use "Wrong document? Start again".
+              </span>
+            </div>
+          )}
           <div className="table-wrap">
             <table>
               <thead><tr><th>Field</th><th>Value</th><th>State</th></tr></thead>

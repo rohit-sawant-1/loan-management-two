@@ -57,6 +57,9 @@ class ExtractionResponse(BaseModel):
     nature: str | None = None
     status: str
     verification_level: str
+    detected_kind: str | None = None        # Piece 34
+    detected_label: str | None = None
+    read_automatically: bool = False
     confirmed_by: str | None = None
     confirmed_at: UtcDateTime | None = None
     fields: list[ExtractionFieldOut]

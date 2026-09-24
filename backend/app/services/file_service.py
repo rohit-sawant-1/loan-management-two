@@ -8,7 +8,11 @@ sentence the moment something is wrong; nothing later runs.
     3. check_allowed_for   — is this type accepted for this kind of document?
     4. scan_pdf_markers    — refuse anything a PDF can use to run code or reach out
     5. classify_nature     — is this confidently demo material, on the ORIGINAL bytes
-    6. rebuild_image/_pdf  — re-encode from scratch (CDR): nothing hidden survives
+    5b. read (Piece 34)    — only when the uploader said which kind it is: read its
+                             details from the PDF's own text, and find the Aadhaar
+                             digits to black out. Also on the ORIGINAL bytes.
+    6. rebuild_image/_pdf  — re-encode from scratch (CDR): nothing hidden survives,
+                             and the Aadhaar digits found in 5b are drawn over in black
     7. apply_standard      — resize, page count, blank-page check, target size
     8. encrypt_and_store   — write the final bytes, encrypted, to the right folder
     9. sha256              — a fingerprint of the original, for duplicate detection later
@@ -39,10 +43,10 @@ import filetype
 import pypdf
 import pypdfium2 as pdfium
 import structlog
-from PIL import Image, ImageStat
+from PIL import Image, ImageDraw, ImageStat
 
 from app.domain import rules
-from app.services import storage
+from app.services import document_reader, storage
 from app.services.errors import RuleViolation
 
 logger = structlog.get_logger()
@@ -72,6 +76,8 @@ class ProcessedUpload:
     sha256: str                # of the ORIGINAL bytes — see classify below
     nature: str                # test / real / undeclared
     storage_zone: str          # safe / sensitive
+    # Piece 34: the details read from the file, when a kind was given.
+    reading: document_reader.DocumentReading | None = None
 
 
 # ---------------------------------------------------------------------------
@@ -332,12 +338,16 @@ def rebuild_image(raw: bytes, doc_type: str) -> tuple[bytes, int, int]:
     return data, final.width, final.height
 
 
-def rebuild_pdf(raw: bytes, doc_type: str) -> tuple[bytes, int]:
+def rebuild_pdf(raw: bytes, doc_type: str, redact: dict[int, list[tuple]] | None = None) -> tuple[bytes, int]:
     """
     Redraw every page as a picture at 150 DPI and rebuild the PDF from
     those pictures — this is the step that destroys a PDF's original text
     layer, which is exactly why classification runs before it. Returns
     (bytes, page_count).
+
+    `redact` (Piece 34): page index → character boxes in PDF points, drawn
+    over in solid black on the redrawn page, before it is encoded. The
+    stored copy never contains what was under them.
     """
     standard = rules.upload_standard(doc_type)
     min_pages, max_pages = standard["min_pages"], standard["max_pages"]
@@ -357,9 +367,12 @@ def rebuild_pdf(raw: bytes, doc_type: str) -> tuple[bytes, int]:
     pages_as_images: list[Image.Image] = []
     for i in range(page_count):
         page = pdf[i]
-        bitmap = page.render(scale=standard["pdf_dpi"] / 72)
+        scale = standard["pdf_dpi"] / 72
+        bitmap = page.render(scale=scale)
         img = bitmap.to_pil().convert("RGB")
+        page_height = page.get_height()
         page.close()
+        _black_out(img, (redact or {}).get(i, []), scale, page_height)
         _blank_check(img, f"Page {i + 1}")
         # Compress this one page to its own cap before it goes into the PDF,
         # so a single busy page can't blow the whole file past the limit.
@@ -372,6 +385,22 @@ def rebuild_pdf(raw: bytes, doc_type: str) -> tuple[bytes, int]:
         buf, format="PDF", save_all=True, append_images=pages_as_images[1:]
     )
     return buf.getvalue(), page_count
+
+
+def _black_out(img: Image.Image, boxes: list[tuple], scale: float, page_height: float) -> None:
+    """
+    Draw a solid black rectangle over each character box. A PDF measures
+    from the bottom-left corner in points; an image from the top-left in
+    pixels, so each box is flipped and scaled. Two pixels of padding make
+    sure no edge of a digit peeks out.
+    """
+    draw = ImageDraw.Draw(img)
+    for left, bottom, right, top in boxes:
+        draw.rectangle(
+            [left * scale - 2, (page_height - top) * scale - 2,
+             right * scale + 2, (page_height - bottom) * scale + 2],
+            fill="black",
+        )
 
 
 # ---------------------------------------------------------------------------
@@ -423,12 +452,44 @@ def sha256_of(raw: bytes) -> str:
 # The whole pipeline, in order
 # ---------------------------------------------------------------------------
 
-def process_upload(doc_type: str, source) -> tuple[ProcessedUpload, str]:
+def read_details(kind: str, raw: bytes, content_type: str, nature: str) -> document_reader.DocumentReading:
+    """
+    Stage 5b (Piece 34). Reads the declared kind's details and enforces the
+    Aadhaar rule: a stored Aadhaar must have its first 8 digits blacked out
+    (UIDAI, T-114). If they can't be found to black out, a TEST document is
+    stored with a note, and anything else is refused (Rohit, 2026-09-24).
+    """
+    try:
+        reading = document_reader.read_upload(kind, raw, content_type)
+    except Exception as e:                                             # noqa: BLE001
+        # Reading must never be why an ordinary upload fails. An empty reading
+        # is the cautious outcome: nothing filled in, and for an Aadhaar,
+        # "not found", which the rule below then treats as it should.
+        logger.warning("read_details_failed", error=str(e))
+        reading = document_reader.read_upload(kind, b"", "image/jpeg")
+
+    if kind == "aadhaar" and reading.aadhaar_status == "not_found":
+        if nature != "test":
+            raise RuleViolation(
+                "We couldn't find the Aadhaar number on this file to black it out, and an "
+                "Aadhaar can't be stored with its full number showing. Please download your "
+                "masked Aadhaar from myAadhaar (UIDAI) and upload that instead."
+            )
+        number = reading.fields.get("aadhaar_number")
+        if number is not None:
+            number.note = "Not blacked out on the stored copy (TEST document)"
+    return reading
+
+
+def process_upload(doc_type: str, source, kind: str | None = None) -> tuple[ProcessedUpload, str]:
     """
     Runs every stage above in order and returns `(result, stored_name)`,
     ready for `document_service.add_uploaded_document` to record. Raises
     `RuleViolation` the moment any stage refuses the file; nothing after
     that stage runs, and nothing is written to disk.
+
+    `kind` (Piece 33/34): which document this is. When given, its details
+    are read (stage 5b) and returned on the result.
     """
     raw = read_capped(source)
     content_type = detect_type(raw)
@@ -438,8 +499,10 @@ def process_upload(doc_type: str, source) -> tuple[ProcessedUpload, str]:
     nature = classify_nature(raw, content_type)
     zone = storage_zone_for(nature)
 
+    reading = read_details(kind, raw, content_type, nature) if kind else None
+
     if content_type == "application/pdf":
-        rebuilt, pages = rebuild_pdf(raw, doc_type)
+        rebuilt, pages = rebuild_pdf(raw, doc_type, redact=reading.redactions if reading else None)
         width = height = None
     else:
         rebuilt, width, height = rebuild_image(raw, doc_type)
@@ -460,5 +523,6 @@ def process_upload(doc_type: str, source) -> tuple[ProcessedUpload, str]:
         sha256=sha256_of(raw),
         nature=nature,
         storage_zone=zone,
+        reading=reading,
     )
     return result, stored_name

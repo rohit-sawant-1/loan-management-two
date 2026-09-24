@@ -155,6 +155,18 @@ are checked for their format, for example that an Aadhaar number is valid and
 a PAN looks like a real PAN. This does not prove a document is genuine. Staff
 still check it. **Only the last 4 digits of your Aadhaar number are kept**,
 as UIDAI rules require, and the same goes for your bank account number.
+
+If the file is a PDF with its own text in it (most documents downloaded from
+a bank, an employer or DigiLocker are), the form **fills itself in** from that
+text as soon as it's uploaded. Check every value against the document before
+you confirm. A value that was found but doesn't pass its check is marked
+"Please check" and must be corrected first. A photo or a scanned copy can't
+be read automatically, so its details are typed in by hand. When an Aadhaar
+is uploaded, **the first 8 digits of the number are blacked out on the copy
+the bank keeps**. If the number can't be found on the file to black it out
+(a photo or a scan, for example), the upload is refused: download your
+**masked Aadhaar** from myAadhaar (UIDAI's website), which already hides
+those digits, and upload that instead.
 Nothing you type in these details changes your profile. If a name or date of
 birth doesn't match your profile, the form shows a note, and staff will look
 at it.

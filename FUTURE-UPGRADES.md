@@ -152,3 +152,16 @@ Deliberately left out of Pieces 27–38, which build only what the demo needs. T
 | A real rate limiter (Redis, or a proper token bucket) instead of a plain count query before each upload | Fine at this scale; two uploads landing at exactly the same instant could both pass the check before either commits — a real bank's traffic would need something atomic | Medium |
 | Per-environment encryption keys instead of one shared `UPLOAD_ENCRYPTION_KEY` | Only sound because of the "always use dummy data" rule (Piece 31); a real bank needs a different key per environment, in a vault, never checked into `.env.example` | Medium |
 | Widen the local specimen check beyond a PDF's text layer to images and scanned PDFs, using Piece 34's OCR | Piece 31 has no OCR yet, so an image can never be classified `test` today — it always falls to the cautious folder | Rolls into Piece 34 |
+
+## Around Piece 34 — reading documents (cut from the lean version, 2026-09-24)
+
+Rohit chose the lean Piece 34: read only a PDF's own text. These were in the original plan and wait until the demo is done.
+
+| Idea | Why it waits | Size |
+|---|---|---|
+| **OCR for photos and scans** (RapidOCR on onnxruntime, about 60 MB with OpenCV), with background processing and the form polling | Not needed for the demo kit; a new library, plus a background job | Large |
+| **Blacking out Aadhaar on photos and scans**, using OCR positions | Needs OCR first. Until then, a real Aadhaar photo is refused and the customer is pointed to UIDAI's masked Aadhaar | Medium |
+| **Gemini reading TEST payslips and bank statements**, on masked text, with a grounding check | Rules read the demo kit completely; Gemini adds quota use for little gain | Medium |
+| **UIDAI Secure QR check** (decode with zxing-cpp, verify UIDAI's signature) → "cryptographically verified" | Needs UIDAI's certificate and a QR library; a specimen can't have a real QR anyway | Medium |
+| **The other 7 document kinds** (passport with MRZ check digits, driving licence, Form 16, ITR, property document, employment letter, vehicle quotation) | The demo set of 4 covers every loan's base documents | Medium |
+| **Keeping the original text for "start again"** after a discard (today the text is gone after the rebuild, so a restart is typed by hand) | It would mean storing the text, which holds the full Aadhaar number, so it needs masking-before-storing first | Small |

@@ -39,11 +39,15 @@ def check_kind_fits(kind: str, doc_type: str) -> document_kinds.DocumentKind:
     return found
 
 
-def create_extraction(db: Session, document: Document, kind: str, *, user: User) -> DocumentExtraction:
+def create_extraction(
+    db: Session, document: Document, kind: str, *, user: User, reading=None,
+) -> DocumentExtraction:
     """
-    A fresh, empty set of details for a document: every field starts as
-    "missing". Doesn't commit, so an upload can create the document and its
-    details in one commit (Piece 33, decision 4).
+    A fresh set of details for a document. Every field starts as "missing",
+    unless `reading` (Piece 34) found it in the file's own text, in which
+    case it starts filled in, as "extracted" or, if it failed its check,
+    "uncertain". Doesn't commit, so an upload can create the document and
+    its details in one commit (Piece 33, decision 4).
     """
     doc_type = getattr(document.doc_type, "value", document.doc_type)
     found = check_kind_fits(kind, doc_type)
@@ -51,9 +55,27 @@ def create_extraction(db: Session, document: Document, kind: str, *, user: User)
         document_id=document.id, application_id=document.application_id,
         declared_kind=found.key, status="needs_input", created_by=user.email,
     )
-    extraction.fields = [ExtractedField(field_key=f.key, state="missing") for f in found.fields]
+    rows = []
+    for f in found.fields:
+        read = reading.fields.get(f.key) if reading else None
+        if read is None:
+            rows.append(ExtractedField(field_key=f.key, state="missing"))
+            continue
+        rows.append(ExtractedField(
+            field_key=f.key, value=read.value,
+            # What the machine read is kept, so typing over it later is
+            # recorded as a correction rather than a first entry.
+            machine_value=read.value,
+            source="text_layer" if read.value else None,
+            confidence=read.confidence, state=read.state, check_note=read.note,
+        ))
+    extraction.fields = rows
+    if reading is not None:
+        extraction.detected_kind = reading.detected_kind
+        extraction.detection_score = reading.detection_score
     db.add(extraction)
     db.flush()
+    _profile_notes(db, extraction)
     return extraction
 
 
@@ -125,6 +147,14 @@ def to_response(extraction: DocumentExtraction) -> dict:
         "nature": document.nature,
         "status": extraction.status,
         "verification_level": extraction.verification_level,
+        # Piece 34: what the text looked like, shown only if it disagrees.
+        "detected_kind": extraction.detected_kind,
+        "detected_label": (document_kinds.get_kind(extraction.detected_kind).label
+                           if extraction.detected_kind else None),
+        # Was any text found to read? False for a photo, a scan, or details
+        # started again after a discard (the text is gone after the rebuild).
+        "read_automatically": extraction.detected_kind is not None
+        or any(f.source == "text_layer" for f in extraction.fields),
         "confirmed_by": extraction.confirmed_by,
         "confirmed_at": extraction.confirmed_at,
         "fields": [
@@ -163,15 +193,21 @@ def _profile_notes(db: Session, extraction: DocumentExtraction) -> None:
     application = db.query(LoanApplication).filter(LoanApplication.id == extraction.application_id).first()
     applicant = application.applicant if application else None
     for row in extraction.fields:
+        # Only name and date-of-birth notes are ours to set. Any other note
+        # (a Piece 34 reading note, say) is left alone, and so is a value
+        # still waiting to be checked: its note says what's wrong with it.
+        is_name = row.field_key in document_kinds.NAME_FIELDS
+        is_dob = row.field_key == "date_of_birth"
+        if not (is_name or is_dob) or row.state == "uncertain":
+            continue
         row.check_note = None
         if applicant is None or row.value is None:
             continue
-        if row.field_key in document_kinds.NAME_FIELDS:
+        if is_name:
             if validators.name_similarity(row.value, applicant.name) < validators.NAME_MATCH_THRESHOLD:
                 row.check_note = "Doesn't match the name on the profile"
-        elif row.field_key == "date_of_birth" and applicant.date_of_birth:
-            if row.value != applicant.date_of_birth.isoformat():
-                row.check_note = "Doesn't match the date of birth on the profile"
+        elif applicant.date_of_birth and row.value != applicant.date_of_birth.isoformat():
+            row.check_note = "Doesn't match the date of birth on the profile"
 
 
 def update_fields(
@@ -209,6 +245,8 @@ def update_fields(
     for key, value in cleaned.items():
         row = rows[key]
         row.value = value
+        if row.field_key not in document_kinds.NAME_FIELDS and row.field_key != "date_of_birth":
+            row.check_note = None     # a new value replaces whatever the old note was about
         if value is None:
             row.state, row.source = "missing", None
         else:
@@ -243,6 +281,11 @@ def confirm(db: Session, extraction_id: int, *, user: User, meta: dict | None = 
     values = {f.field_key: f.value for f in extraction.fields}
 
     problems = {f.key: "Required" for f in kind.fields if f.required and not values.get(f.key)}
+    # Piece 34: a value read from the file that failed its check has to be
+    # looked at and typed again before the details can be confirmed.
+    for row in extraction.fields:
+        if row.state == "uncertain":
+            problems[row.field_key] = row.check_note or "Please check this value and type it again"
     problems.update(_cross_field_problems(values))
     if problems:
         raise FieldProblems("Some details are missing or need fixing", problems)

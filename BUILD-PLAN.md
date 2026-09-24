@@ -1283,7 +1283,7 @@ before it's added.
 
 # DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
 
-Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 33, plus 32d (Replace)** (see Done at the bottom); 34 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 34, plus 32d (Replace)** (see Done at the bottom); 35 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
 
 ## Build order
 
@@ -1311,7 +1311,7 @@ Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 33, 
 4. Run `pytest tests/ours tests/phase1 -q`, plus the non-AI Phase 3 and 4 tests (`tests/phase3/test_context.py`, the offline tests in `tests/phase3/test_tools.py`, and `tests/phase4/test_mcp_server.py`). Then `npm run build` and `npm run lint` in `frontend/`.
 5. Update `user_manual.md` if any rule changed (Rule 12), and re-ingest.
 6. Log it, commit it, and tag it (middle digit: v2.10.0, v2.11.0, and so on).
-7. Check it in the browser with the demo logins, **before** starting the next piece.
+7. ~~Check it in the browser with the demo logins, **before** starting the next piece.~~ **Changed 2026-09-24 (Rohit):** browser checks are batched. Each piece still writes its browser check, but they're all run together once the programme's pieces are built. Pending so far: Piece 32d (Replace), Piece 33 (details form), Piece 34 (upload each demo-kit PDF; the Aadhaar's stored copy shows the digits blacked out).
 
 ## Decisions that apply to every piece (settled 2026-09-22)
 
@@ -2138,6 +2138,40 @@ Priya uploads a TEST Aadhaar → picks "Aadhaar card" → the form shows Name, D
 
 # PIECE 34 — Reading documents: OCR, identification, extraction
 
+## The lean version, decided 2026-09-24. This replaces the plan below it.
+
+**Status: built 2026-09-24, tag `v2.18.0`.** Built as written below. Core tests: an Aadhaar PDF is read, stored masked, and the stored copy's pixels are black where the first 8 digits were; an Aadhaar photo is refused and a TEST one without a number is stored; the database refuses a full number. 148 tests (Phase 1 + every upload-related file) pass. One small find: PDFs turn a typed ' into a curly ’, so labels like "Father's Name" accept both. The demo kit is in `backend/demo_documents/`, made by `scripts/make_specimen_docs.py`, and matches Priya's seed details. Browser check batched.
+
+**Rohit's two answers:** (1) **Lean, PDFs only.** Read the text a PDF already has inside it, with no OCR, no Gemini, no QR, and no new libraries. (2) **An Aadhaar that can't be blacked out is refused if it's real or undeclared**, with a pointer to UIDAI's masked Aadhaar. A TEST one is stored with a warning. The rest of the old plan goes to `FUTURE-UPGRADES.md`: RapidOCR for photos and scans, Gemini reading TEST payslips, UIDAI Secure QR signature checks, passport MRZ.
+
+**Why it lives inside the upload pipeline.** The rebuild (stage 6 in `file_service`) redraws every page as a picture, and that destroys the PDF's text. So the reading has to happen before it, just like classification does, and the blacking-out has to happen *during* it, on the redrawn page. Reading a text layer takes milliseconds, so the upload stays one quick request, with no background job and no polling.
+
+**Flow, when an upload comes with a `kind` (Piece 33):**
+1. `file_service.process_upload(doc_type, source, kind=None)`. For a PDF, a new step between classify and rebuild reads each page's text **with each character's position** (pypdfium2 `get_charbox`).
+2. `document_reader.read(kind, pages)` finds the fields with plain rules: labels like "Name", "DOB", "Net Pay", and patterns like the 12-digit Aadhaar and the PAN shape. Every value goes through Piece 33's `validators`. A value that passes is `extracted` (source `text_layer`, confidence 0.95). One that is found but fails a check is `uncertain`, with the check's message as the note, and it must be retyped before Confirm. Nothing found means `missing`. **Nothing is ever invented.**
+3. **Blacking out:** for every Aadhaar-like number on a page (it can appear more than once), the first 8 digits' boxes become black rectangles, drawn on the redrawn page before it's encoded. The stored copy never has them. The number itself leaves the reader already masked (`XXXX XXXX 1234`).
+4. **If an Aadhaar can't be blacked out** (a photo, a scan, or a PDF whose text has no Aadhaar number): an already-masked Aadhaar (text shows `XXXX XXXX 1234`) is fine. Otherwise, **TEST** is stored with a note on the number field ("not blacked out on the stored copy, TEST document"), and **real or undeclared is refused**: "We couldn't find the Aadhaar number to black it out. Please upload UIDAI's masked Aadhaar (from myAadhaar) instead."
+5. **Identification:** keyword scoring ("Unique Identification Authority", "Income Tax Department", "Salary Slip", "Statement of Account"…) sets `detected_kind` and `detection_score`. If it disagrees with the declared kind, the form shows a warning. It's **never switched automatically**.
+6. `add_uploaded_document` hands the reading to `extraction_service.create_extraction(…, reading=…)`, which fills the fields in the same commit as before.
+
+**Limits, said plainly:** a photo, a scan, or starting details again after a discard can't be read (the text is gone after the rebuild), so those fields are typed by hand. The form says "Not read automatically". Reading is identification, never authenticity.
+
+**Code:** `app/services/document_reader.py` (new: text with positions, the rules per kind, identification, Aadhaar boxes); `file_service.py` (the reading step, `rebuild_pdf` takes boxes to black out, and the refusal); `document_service.py` and `extraction_service.py` (pass the reading through); `ExtractionResponse` gains `detected_kind`, `detected_label` and `read_automatically`; `DocumentReviewForm.jsx` shows the automatic-fill line, the mismatch warning, and the "please check" state. `confirm` refuses while any field is still `uncertain`.
+
+**Demo kit:** `backend/scripts/make_specimen_docs.py` writes four SPECIMEN PDFs, each with a real text layer, to `backend/demo_documents/`: an Aadhaar-style card (a fake, checksum-valid number), a PAN-style card, a payslip and a bank statement page. Each fills its form completely when uploaded.
+
+**Manual (Rule 12):** automatic filling from PDFs, the blacking-out, the refusal and what to do about it, and that photos and scans are typed by hand.
+
+**Tests (core only, per the trimmed-testing rule):** (1) an Aadhaar PDF is read and masked, and its stored copy is black where the first 8 digits were; (2) a real or undeclared Aadhaar photo is refused, and a TEST one is stored. Piece 33's masking test is adapted, since a JPEG Aadhaar is now refused. Then Phase 1 plus the touched test files.
+
+**Browser check (batched):** upload each demo-kit PDF with its kind. The form opens already filled in, and the Aadhaar's stored copy (View) shows the first 8 digits blacked out.
+
+**Tag:** `v2.18.0`.
+
+---
+
+## The original plan (2026-09-22), kept for reference
+
 **Goal:** the Piece 33 form **fills itself in** from the file. Local, non-AI processing is used first. **Gemini is used only for TEST documents**, only for fields that rules can't read, and only on masked text, never images. Nothing is invented: no evidence means the field stays missing.
 
 **Needs first:** 33. **Open decisions:**
@@ -2394,3 +2428,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 32c | Found in the browser check: "X/Y submitted" counted files, not document types (T-123) | 2026-09-24 | `v2.15.3` |
 | 32d | Replacing a document: Replace on any unverified row, the old copy kept but counting nowhere, replaced copies shown to staff only (D-30) | 2026-09-24 | `v2.16.0` |
 | 33 | Document kinds and their details: Aadhaar, PAN, salary slip, bank statement; typed in, checked, confirmed; only confirmed real files count | 2026-09-24 | `v2.17.0` |
+| 34 | Reading documents, lean: a PDF's own text fills the form; Aadhaar digits blacked out on the stored copy; an Aadhaar that can't be blacked out is refused unless TEST; SPECIMEN demo kit | 2026-09-24 | `v2.18.0` |

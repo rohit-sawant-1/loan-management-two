@@ -253,7 +253,7 @@ def add_uploaded_document(
         raise RuleViolation(str(e)) from e
 
     try:
-        result, stored_name = file_service.process_upload(doc_type.value, file_bytes)
+        result, stored_name = file_service.process_upload(doc_type.value, file_bytes, kind=kind)
     except RuleViolation as e:
         # A blocked upload is worth recording even though nothing was
         # stored — an auditor asking "why did this fail" deserves the
@@ -319,7 +319,7 @@ def add_uploaded_document(
     if replaces is not None:
         _mark_replaced(db, replaces, document, user=user, meta=meta)
     if kind is not None:
-        extraction_service.create_extraction(db, document, kind, user=user)
+        extraction_service.create_extraction(db, document, kind, user=user, reading=result.reading)
 
     db.commit()
     db.refresh(document)

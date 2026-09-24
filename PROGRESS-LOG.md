@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Piece 34 (lean): the form fills itself in
+
+**Asked for:** the next piece, with browser checks saved for the end because you were tired. You chose the lean version (PDFs' own text only, with no OCR, no Gemini and no new installs), and chose to refuse a real Aadhaar that can't be blacked out.
+**Built:** when a PDF is uploaded with its kind, the app reads the text already inside it and fills the details form, before the file is rebuilt (after that, the text is gone). For an Aadhaar, it finds every copy of the number on the page and draws black boxes over the first 8 digits on the copy the bank keeps. A real Aadhaar photo is refused, with a pointer to UIDAI's masked Aadhaar. A demo kit of four SPECIMEN PDFs, matching Priya's seed details, fills every field. v2.18.0.
+**Found:** RapidOCR was never actually installed (the old plan only meant onnxruntime). Also, PDFs turn a typed apostrophe into a curly one, which quietly broke "Father's Name" until the label accepted both.
+**Realised:** the upload pipeline's order matters more than it looks. Classification and reading both have to happen on the original file, because the rebuild that makes it safe also wipes its text.
+**Next:** Piece 35, several documents at once.
+
+---
+
 ## 2026-09-24 — Piece 33: what a document actually is, and its details
 
 **Asked for:** the next piece, planned first. You picked the demo set of 4 kinds, counting only once confirmed, an optional address on Aadhaar, and the kind picked in the upload form. Partway through, you asked to cut testing to speed things up.

@@ -219,6 +219,14 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-126 · Anything that needs a PDF's text must run before the rebuild.** The
+rebuild (stage 6 in `file_service`) redraws every page as a picture, so a stored
+file has no text at all. Classification (Piece 31) and reading details (Piece 34)
+both run on the original bytes for this reason. It also means details started
+again after a discard can't be read automatically, only typed. Note too that a
+PDF may turn a typed `'` into a curly `’`, so any label rule that has an
+apostrophe must accept both.
+
 **T-125 · A document's details decide whether it counts, so check `needs_details` anywhere documents are counted.**
 From Piece 33 on, a real file of a type with kinds doesn't count until its details
 are confirmed. The rule lives in `document_service.counts_towards_checklist`,
@@ -1068,6 +1076,17 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 ---
 
 # Settled
+
+### 2026-09-24 · Piece 34 — lean, and the Aadhaar refusal
+- **Lean:** read only a PDF's own text. No OCR, no Gemini, no QR, no new
+  libraries. The rest is in `FUTURE-UPGRADES.md` ("Around Piece 34").
+- **An Aadhaar that can't be blacked out:** refused if real or undeclared, with
+  a pointer to UIDAI's masked Aadhaar. A TEST one is stored with a note.
+
+### 2026-09-24 · Browser checks are batched until the programme is built
+**Rohit:** too tired to check each piece by hand; the browser checks happen
+after all the pieces are built. Each piece still writes its browser check in
+`BUILD-PLAN.md`, and they're run together at the end. Pending: 32d, 33.
 
 ### 2026-09-24 · Testing trimmed for speed, from Piece 33 on
 **Rohit asked:** can we skip testing to speed up building? **Applied as:** no
