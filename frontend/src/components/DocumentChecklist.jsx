@@ -8,7 +8,7 @@
 // ticks its box once they're confirmed.
 
 import { useState } from "react";
-import { api, errorMessage } from "../api/client";
+import { api, errorMessage, UPLOAD_TIMEOUT_MS } from "../api/client";
 import { useAuth } from "../auth/AuthContext";
 import { useSettings } from "../settings/useSettings";
 import DocumentReviewForm from "./DocumentReviewForm";
@@ -135,7 +135,8 @@ function RealUploadForm({ applicationId, onChange, onUploaded, setError }) {
       // No explicit Content-Type here: axios sets multipart/form-data with
       // the correct boundary itself when it sees a FormData body. Setting
       // it by hand would strip the boundary and break the upload.
-      const res = await api.post(`/applications/${applicationId}/documents/upload`, body);
+      const res = await api.post(`/applications/${applicationId}/documents/upload`, body,
+        { timeout: UPLOAD_TIMEOUT_MS });
       setFile(null);
       setConsent(false);
       onChange?.();
@@ -211,7 +212,7 @@ function ReplaceModal({ applicationId, doc, realUploads, onClose, onDone }) {
         body.append("consent", "true");
         body.append("file", file);
         if (kind) body.append("kind", kind);
-        const res = await api.post(`${base}/upload`, body);
+        const res = await api.post(`${base}/upload`, body, { timeout: UPLOAD_TIMEOUT_MS });
         onDone(res.data);
       } else {
         await api.post(base, { file_name: fileName.trim() });

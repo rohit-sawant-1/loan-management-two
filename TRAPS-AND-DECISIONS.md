@@ -219,6 +219,15 @@ version.
 
 No decision needed. These break something quietly if forgotten.
 
+**T-128 · Uploads used the app-wide 15-second limit.** Found by Rohit
+(2026-09-24). A SPECIMEN upload waits for Gemini to confirm it, which can take far
+longer, so the screen could report a failure for a file the server then stored.
+Uploads and Replace now use `UPLOAD_TIMEOUT_MS` (2 minutes) in `api/client.js`,
+like the chat's own 90 seconds. **Any new call that waits on Gemini, or handles
+several files, needs its own limit too:** the 15-second default is only for
+plain database work. The Gemini call itself has no server-side time limit (the
+key ladder retries), so an extreme quota day could still run past 2 minutes.
+
 **T-127 · Git would have rewritten line endings inside the demo PDFs.** The demo
 kit's PDFs are plain text inside, so git treated them as text, and with
 `core.autocrlf` on, a Windows checkout (the Wipro laptop) would have rewritten

@@ -26,6 +26,15 @@ export const api = axios.create({
 // letting a genuinely stuck request spin forever.
 export const CHAT_TIMEOUT_MS = 90000;
 
+// How long to wait on a real file upload or Replace (Pieces 31–34). The file
+// work itself is quick (a second or two), but a document with SPECIMEN wording
+// waits for Gemini to confirm it, and Gemini can be slow: T-119 measured a
+// chat answer at 75 seconds late at night, against 15 in the afternoon. The
+// app-wide 15 seconds cut uploads off before the server had finished, so the
+// file was stored but the screen said it failed. Two minutes covers that worst
+// measurement with room to spare.
+export const UPLOAD_TIMEOUT_MS = 120000;
+
 api.interceptors.request.use((config) => {
   const token = localStorage.getItem("token");
   if (token) config.headers.Authorization = `Bearer ${token}`;
