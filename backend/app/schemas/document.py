@@ -49,6 +49,20 @@ class DocumentResponse(BaseModel):
     original_size_bytes: int | None = None
     content_type: str | None = None
     nature: str | None = None
+    # Piece 32d. Both None for a current document; set once a newer copy
+    # has replaced it.
+    replaced_by_id: int | None = None
+    replaced_at: UtcDateTime | None = None
+
+
+class DocumentReplaceBody(BaseModel):
+    """
+    Piece 32d, the name-only replace. No doc_type here on purpose: a
+    replacement always keeps the type of the document it replaces.
+    """
+    file_name: str = Field(..., min_length=1, max_length=255)
+
+    _check_file_name = field_validator("file_name")(check_file_name)
 
 
 class DocumentListResponse(BaseModel):
@@ -58,6 +72,9 @@ class DocumentListResponse(BaseModel):
     missing: list[str]      # what has not been uploaded yet
     test_count: int = 0     # Piece 32: how many uploaded documents are TEST
     real_count: int = 0     # how many are REAL (undeclared counts as neither)
+    # Piece 32d: earlier copies that were replaced. Staff and the admin only;
+    # always empty for a customer. None of these count towards anything above.
+    replaced: list[DocumentResponse] = []
 
 
 class UnverifiedDocumentsResponse(BaseModel):

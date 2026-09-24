@@ -11,7 +11,8 @@ from app.dependencies import get_current_user, require_business_actor, require_s
 from app.models.document import DocumentType
 from app.models.user import User
 from app.schemas.document import (
-    CreateDocumentSchema, DocumentListResponse, DocumentResponse, DocumentUploadBody,
+    CreateDocumentSchema, DocumentListResponse, DocumentReplaceBody, DocumentResponse,
+    DocumentUploadBody,
 )
 from app.services import document_service, settings_service
 from app.services.activity_service import request_meta
@@ -99,9 +100,10 @@ def list_documents(
         raise _http(e)
     test_count = sum(1 for d in items if d.nature == "test")
     real_count = sum(1 for d in items if d.nature == "real")
+    replaced = document_service.replaced_documents(db, application_id, viewer=user)
     return DocumentListResponse(
         items=items, required=required, missing=missing,
-        test_count=test_count, real_count=real_count,
+        test_count=test_count, real_count=real_count, replaced=replaced,
     )
 
 
@@ -117,5 +119,62 @@ def verify_document(
         return document_service.verify_document(
             db, application_id, document_id, user=user, meta=request_meta(request)
         )
-    except (NotFound, Forbidden) as e:
+    except (NotFound, Forbidden, RuleViolation) as e:
+        raise _http(e)
+
+
+# ---------------------------------------------------------------------------
+# Piece 32d: replacing a document with a newer copy
+# ---------------------------------------------------------------------------
+
+@router.post(
+    "/{application_id}/documents/{document_id}/replace",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def replace_document(
+    application_id: int,
+    document_id: int,
+    body: DocumentReplaceBody,
+    request: Request,
+    db: Session = Depends(get_db),
+    user: User = Depends(require_business_actor),
+):
+    """By name, like the trainer's add route, so it works whatever the switch says."""
+    try:
+        return document_service.replace_document(
+            db, application_id, document_id, body.file_name,
+            user=user, meta=request_meta(request),
+        )
+    except (NotFound, Forbidden, RuleViolation) as e:
+        raise _http(e)
+
+
+@router.post(
+    "/{application_id}/documents/{document_id}/replace/upload",
+    response_model=DocumentResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def replace_with_upload(
+    application_id: int,
+    document_id: int,
+    request: Request,
+    consent: bool = Form(...),
+    file: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    user: User = Depends(require_business_actor),
+):
+    """A real file. No doc_type in the form: the replacement keeps the old one's type."""
+    if not settings_service.get(db, "real_uploads_enabled"):
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail="Real document uploads are switched off. Replace this document by name instead.",
+        )
+    try:
+        return document_service.replace_with_upload(
+            db, application_id, document_id,
+            consent=consent, raw_filename=file.filename or "", file_bytes=file.file,
+            user=user, meta=request_meta(request),
+        )
+    except (NotFound, Forbidden, RuleViolation) as e:
         raise _http(e)

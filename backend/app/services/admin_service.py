@@ -43,6 +43,16 @@ def purge_test_documents(db: Session, *, user, meta: dict | None = None) -> int:
     count = len(stored_files)
 
     for stored in stored_files:
+        # Piece 32d: if a purged TEST document had replaced an older copy,
+        # the older copy takes over the purged one's place. That means it
+        # becomes current again, or, if the TEST copy had itself been
+        # replaced later, it points at that newer copy instead.
+        for purged in db.query(Document).filter(Document.file_id == stored.id).all():
+            for older in db.query(Document).filter(Document.replaced_by_id == purged.id).all():
+                older.replaced_by_id = purged.replaced_by_id
+                if purged.replaced_by_id is None:
+                    older.replaced_at = None
+        db.flush()
         db.query(Document).filter(Document.file_id == stored.id).delete()
         storage.delete(stored.storage_zone.value, stored.stored_name)
         db.delete(stored)

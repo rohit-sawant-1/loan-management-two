@@ -67,6 +67,14 @@ class ApplicationResponse(BaseModel):
     status_history: list[StatusHistoryResponse] = []
     documents: list[DocumentResponse] = []
 
+    # Piece 32d: a replaced document stays on record, but it is no longer part
+    # of the application, so it is left out here. This is what Phase 4's MCP
+    # tool and Phase 5's compliance checker read, so they skip it too.
+    @field_validator("documents", mode="before")
+    @classmethod
+    def _current_documents_only(cls, documents):
+        return [d for d in documents or [] if getattr(d, "replaced_by_id", None) is None]
+
     # Piece 19: the server's own eligibility assessment, taken at submission.
     eligibility_passed: bool | None = None
     eligibility_summary: str | None = None

@@ -1283,7 +1283,7 @@ before it's added.
 
 # DOCUMENT INTELLIGENCE PROGRAMME — Pieces 27 to 38
 
-Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 32** (see Done at the bottom); 33 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
+Planned 2026-09-22 with Rohit, across several rounds. **Built so far: 27 to 32, plus 32d (Replace)** (see Done at the bottom); 33 is next. Rohit implements these himself, **one piece at a time, in the order below**. Each piece is finished, tested and checked in the browser before the next one starts. The full reasoning, with the research sources, is in `~/.claude/plans/trainer-himself-said-to-kind-breeze.md`. The decisions are also recorded in `TRAPS-AND-DECISIONS.md` (Settled, 2026-09-22).
 
 ## Build order
 
@@ -1971,6 +1971,62 @@ settled as D-29: keep both.
 
 ---
 
+# PIECE 32d — Replacing a document
+
+**Status: built 2026-09-24, tag `v2.16.0`, 15 new tests; 144 passing across the new file, uploads, notifications, admin and Phase 1, plus 13 in Phase 3 context and Phase 4 MCP.** Built as planned. One addition: the purge handles a chain. If the purged TEST copy had itself been replaced later, the older copy points at that newest copy rather than coming back as current. Browser check still to do.
+
+**Why now:** D-30 (2026-09-24). The manual has always told customers a document can be replaced until it is verified, but the app had no way to do it, so the chatbot was promising something the app couldn't do. Rohit asked for the Replace button now, ahead of Piece 33.
+
+**What real lenders do, and so what the manual says:** a customer-facing FAQ says a document can be re-uploaded or replaced until it has been checked. It does *not* tell customers that old copies are kept; that's internal record-keeping. So the manual's existing wording stays true, and it only gains *how* to do it. (Search, 2026-09-24: lenders talk about "resubmission" of unclear or mismatched documents, and nothing more.)
+
+### Rules
+- Only a **current, unverified** document can be replaced. A verified one is part of the permanent record (422). An already-replaced one can't be replaced again (422).
+- The replacement **keeps the old one's type**. The request doesn't carry a type at all, so it can't be changed.
+- **Who can:** anyone who can add a document today (`require_business_actor`), which means the customer who owns the application, a loan officer, or the manager. The admin can't (view only, Piece 27).
+- The new copy goes through **exactly the same path** as a normal add. On the name route that's the name only. On the upload route it's the full safety, rebuild and classification pipeline, the switch, the rate limits, and the TEST notification.
+- **Nothing is deleted.** The old row stays, marked `replaced_by_id` (the new row's id) and `replaced_at`. Its encrypted file stays too, and staff can still view it.
+- **A replaced document stops counting everywhere:** the checklist, the TEST/REAL counts, Documents to check, the Morning Briefing, and the application detail. The application detail is what Phase 4's MCP tool and Phase 5's compliance checker read, so they stop counting it too.
+- **Who sees replaced copies:** staff and the admin see them in a "Replaced copies" list under the documents. The customer doesn't, which matches what real lenders show.
+- **The purge:** if a TEST document that replaced an older one is purged, the older one becomes current again (its `replaced_by_id` is cleared). The purge takes away demo clutter and puts back what was there before.
+- An activity row `document_replaced` records the old id, the new id and the type. There's **no new notification**, because the three triggers are settled.
+
+### Data
+- `documents` gains `replaced_by_id` (INTEGER, nullable) and `replaced_at` (DATETIME, nullable), added to old databases by `_add_missing_columns`, the same way Piece 31 added `file_id`.
+
+### Addresses
+- `POST /api/v1/applications/{id}/documents/{doc_id}/replace`, with body `{file_name}`. This is the name-only route, which works whatever the switch says, like the trainer's add route.
+- `POST /api/v1/applications/{id}/documents/{doc_id}/replace/upload`, as multipart `consent` + `file`. It returns 409 when real uploads are off, like the upload route.
+- `GET .../documents` gains `replaced: [...]`, which is always empty for a customer. `items` holds current documents only.
+
+### Code
+- `document_service.add_document` and `add_uploaded_document` each gain an optional `replaces=` argument. When it's given, the old row is marked in the **same commit** as the new one, so there's never a half-replaced document. `replace_document(...)` checks the rules above and then calls one of them.
+- `verify_document` refuses a replaced document.
+- `ApplicationDetail.documents` leaves out replaced rows (one validator in the schema).
+- `unverified_documents` and the briefing leave out replaced rows.
+- `admin_service.purge_test_documents` restores whatever a purged document had replaced.
+
+### Screens
+- In the uploaded table, an unverified row gets a **Replace** button, for everyone except the admin. It opens a pop-up with the same controls as the upload form: a file and the consent tick when real uploads are on, or a file name when they're off.
+- A collapsed **"Replaced copies (n)"** section appears under the table, for staff and the admin only, showing when each one was replaced, with View where there's a file.
+- Streamlit isn't changed (it's the trainer-check front end, and it lists documents only).
+
+### Manual
+The FAQ "Can I replace a document I have already uploaded?" and the paragraph in the documents section gain the *how*: "use **Replace** next to it; the new copy takes its place and is checked again." There's no mention of what the bank keeps internally. Then re-ingest.
+
+### Tests (`tests/ours/test_document_replace.py`, offline)
+- Replace by name, and replace by upload. The new document is current, and the old one has `replaced_by_id`.
+- A verified document is refused, a replaced one is refused, another customer gets 403, and the admin gets 403.
+- The old one is gone from `items`, from Documents to check, and from the application detail, and the checklist is still correct.
+- `replaced` is empty for the customer and has one entry for staff.
+- Verifying a replaced document is refused.
+- The activity row is written.
+- Purging a TEST replacement brings the old one back.
+- The trainer's Phase 1 tests are unchanged: nothing about the existing routes changes unless Replace is used.
+
+**Tag:** `v2.16.0` (middle digit: an ordinary new feature).
+
+---
+
 # PIECE 33 — Document kinds, their fields, and manual entry
 
 **Goal:** after uploading, the user says **which document it is** (Aadhaar, PAN, payslip…), and a **form with that document's fields** appears, grouped per document. The user types the values. Required fields stay required. Each value records **where it came from**. **No AI and no OCR in this piece.** Piece 34 adds automatic filling into the same structure.
@@ -2322,3 +2378,4 @@ Priya attaches the SPECIMEN Aadhaar (the DOB is deliberately unreadable) and PAN
 | 32a | Found in the browser check: typing in any pop-up lost focus after every key (T-124) | 2026-09-24 | `v2.15.1` |
 | 32b | Found in the browser check: green banners pushed the tick and the message to opposite edges | 2026-09-24 | `v2.15.2` |
 | 32c | Found in the browser check: "X/Y submitted" counted files, not document types (T-123) | 2026-09-24 | `v2.15.3` |
+| 32d | Replacing a document: Replace on any unverified row, the old copy kept but counting nowhere, replaced copies shown to staff only (D-30) | 2026-09-24 | `v2.16.0` |

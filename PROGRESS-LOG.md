@@ -4,6 +4,16 @@ Newest entries at the top. Short on purpose.
 
 ---
 
+## 2026-09-24 — Piece 32d: the Replace button
+
+**Asked for:** you spotted that "every copy is kept" isn't something real banks tell customers, and asked for a real Replace button instead of rewording the manual.
+**Built:** Replace on any unverified document, for the customer and for staff but not the admin, working in both upload modes. The old copy is never deleted. It's marked as replaced and stops counting everywhere: the checklist, Documents to check, the Morning Briefing, and the application detail that Phase 4 and 5 read. Staff see a collapsed "Replaced copies" list; the customer just sees the current copy. Purging a TEST replacement puts the older copy back. The manual now says how to replace, and it's re-ingested (62 chunks). 15 new tests, v2.16.0.
+**Found:** the manual had promised Replace since before Piece 31, while the app never had it (D-30), so the chatbot would have said yes to something the app couldn't do.
+**Realised:** what a bank keeps and what it tells the customer are two different things. The manual speaks to customers, so it only says what they can do.
+**Next:** a browser check of Replace, as Priya and as Rajan.
+
+---
+
 ## 2026-09-24 — Piece 32 browser check: passed, with three bugs found on the way
 
 **Asked for:** the Piece 32 browser check, step by step, before anything else.

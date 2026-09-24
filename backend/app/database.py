@@ -82,6 +82,11 @@ def _add_missing_columns() -> None:
         existing_doc_cols = {row[1] for row in conn.execute(text("PRAGMA table_info(documents)"))}
         if "file_id" not in existing_doc_cols:
             conn.execute(text("ALTER TABLE documents ADD COLUMN file_id INTEGER"))
+        # Piece 32d: a replaced document points at the copy that replaced it.
+        if "replaced_by_id" not in existing_doc_cols:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN replaced_by_id INTEGER"))
+        if "replaced_at" not in existing_doc_cols:
+            conn.execute(text("ALTER TABLE documents ADD COLUMN replaced_at DATETIME"))
         conn.commit()
 
 

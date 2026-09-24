@@ -50,6 +50,11 @@ class Document(Base):
     # declaring it here is for clarity and the relationship below, not
     # enforcement.
     file_id = Column(Integer, ForeignKey("stored_files.id"), nullable=True)
+    # Piece 32d. Set when a newer copy replaces this one. The row is never
+    # deleted — it simply stops counting anywhere (checklist, Documents to
+    # check, the application detail). Both empty means "current".
+    replaced_by_id = Column(Integer, ForeignKey("documents.id"), nullable=True)
+    replaced_at = Column(DateTime(timezone=True), nullable=True)
 
     application = relationship("LoanApplication", back_populates="documents")
     stored_file = relationship("StoredFile")

@@ -136,9 +136,13 @@ looks like demonstration or specimen material rather than a genuine
 document — nobody is asked to say which it is. This only decides how
 carefully the file is kept; it never means the system has checked whether
 a document is a genuine, authentic one. The same document type may be
-uploaded more than once; every copy is kept. Only documents that have **not
-yet been verified** may be replaced. Once a loan officer has verified a
-document, it is fixed as part of the record.
+uploaded more than once, for example an Aadhaar card and a PAN card as
+two identity proofs. Only documents that have **not yet been verified** may
+be replaced: use **Replace** next to the document on the application page
+and choose the newer copy. The new copy keeps the same document type, takes
+the old one's place in the checklist, and is checked again by staff. Once a
+loan officer has verified a document, it is fixed as part of the record and
+can no longer be replaced.
 
 A document the system recognises as demonstration or specimen material is
 marked TEST and shown with a TEST badge wherever it appears, and the
@@ -381,8 +385,11 @@ For salaried applicants, by salary slips and Form 16. For self-employed
 applicants, by 2 years of income tax returns.
 
 **Can I replace a document I have already uploaded?**
-Only if it has not yet been verified. Once a loan officer marks a document as
-verified, it becomes part of the permanent record.
+Yes, as long as it has not yet been verified. Open your application, find the
+document, click **Replace**, and choose the newer copy. The new copy takes the
+old one's place and is checked again by staff. Once a loan officer marks a
+document as verified, it becomes part of the permanent record and cannot be
+replaced.
 
 **Can I add a co-applicant?**
 A co-applicant must be added **at the time of submission**. A co-applicant cannot

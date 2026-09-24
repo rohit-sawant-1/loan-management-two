@@ -129,7 +129,8 @@ def gather_facts(db: Session) -> dict:
     if waiting_ids:
         doc_rows = (
             db.query(Document.application_id, Document.doc_type)
-            .filter(Document.application_id.in_(waiting_ids))
+            # A replaced copy (Piece 32d) no longer counts; its replacement does.
+            .filter(Document.application_id.in_(waiting_ids), Document.replaced_by_id.is_(None))
             .all()
         )
         uploaded: dict[int, set[str]] = {}

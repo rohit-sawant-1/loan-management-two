@@ -32,11 +32,16 @@ def _application_for(db: Session, application_id: int, viewer: User) -> LoanAppl
 
 
 def add_document(
-    db: Session, data: CreateDocumentSchema, *, user: User, meta: dict | None = None
+    db: Session, data: CreateDocumentSchema, *, user: User, meta: dict | None = None,
+    replaces: Document | None = None,
 ) -> Document:
     """
     Record a document. The same type may be added more than once; both are
     kept (user story 05). New documents start unverified.
+
+    `replaces` (Piece 32d) is the older document this one takes the place
+    of. It is marked in the same commit, so a replace either fully happens
+    or does not happen at all.
     """
     application = _application_for(db, data.application_id, user)
 
@@ -57,6 +62,8 @@ def add_document(
                  "file_name": data.file_name},
         **(meta or {}),
     )
+    if replaces is not None:
+        _mark_replaced(db, replaces, document, user=user, meta=meta)
     db.commit()
     db.refresh(document)
     logger.info("document_added", application_id=application.id, document_id=document.id,
@@ -67,17 +74,94 @@ def add_document(
 def list_documents(
     db: Session, application_id: int, *, viewer: User
 ) -> tuple[list[Document], list[str], list[str]]:
-    """The documents on an application, what the loan type requires, and what is still missing."""
+    """
+    The current documents on an application, what the loan type requires,
+    and what is still missing. A replaced document (Piece 32d) is not
+    current, so it is left out and counts towards nothing.
+    """
     application = _application_for(db, application_id, viewer)
     documents = (
         db.query(Document)
-        .filter(Document.application_id == application.id)
+        .filter(Document.application_id == application.id, Document.replaced_by_id.is_(None))
         .order_by(Document.uploaded_at, Document.id)
         .all()
     )
     required = sorted(rules.required_documents(application.loan_type))
     missing = rules.missing_documents(application.loan_type, [d.doc_type for d in documents])
     return documents, required, missing
+
+
+def replaced_documents(db: Session, application_id: int, *, viewer: User) -> list[Document]:
+    """
+    Earlier copies that were replaced, most recently replaced first. Staff
+    and the admin only: a customer sees just the current copy, the way a
+    real lender's portal shows it, so for them this is always empty.
+    """
+    application = _application_for(db, application_id, viewer)
+    if viewer.role == UserRole.applicant:
+        return []
+    return (
+        db.query(Document)
+        .filter(Document.application_id == application.id, Document.replaced_by_id.isnot(None))
+        .order_by(Document.replaced_at.desc(), Document.id.desc())
+        .all()
+    )
+
+
+def _replaceable(db: Session, application_id: int, document_id: int, user: User) -> Document:
+    """The document to be replaced, once the rules say it may be. Raises otherwise."""
+    application = _application_for(db, application_id, user)
+    document = (
+        db.query(Document)
+        .filter(Document.id == document_id, Document.application_id == application.id)
+        .first()
+    )
+    if document is None:
+        raise NotFound(f"Document {document_id} not found on application {application_id}")
+    if document.replaced_by_id is not None:
+        raise RuleViolation("This document has already been replaced by a newer copy")
+    if document.verified:
+        raise RuleViolation(
+            "A verified document cannot be replaced. It is part of the application's permanent record"
+        )
+    return document
+
+
+def _mark_replaced(db: Session, old: Document, new: Document, *, user: User, meta: dict | None) -> None:
+    """Point the old copy at the new one, and log it. The caller commits."""
+    old.replaced_by_id = new.id
+    old.replaced_at = datetime.now(timezone.utc)
+    activity_service.record(
+        db, action="document_replaced",
+        actor_id=user.email, actor_role=user.role.value,
+        entity_type="document", entity_id=new.id,
+        details={"application_id": old.application_id, "doc_type": old.doc_type.value,
+                 "replaced_document_id": old.id},
+        **(meta or {}),
+    )
+
+
+def replace_document(
+    db: Session, application_id: int, document_id: int, file_name: str,
+    *, user: User, meta: dict | None = None,
+) -> Document:
+    """Piece 32d, by name: a new name-only copy of the same type takes the old one's place."""
+    old = _replaceable(db, application_id, document_id, user)
+    data = CreateDocumentSchema(application_id=application_id, doc_type=old.doc_type, file_name=file_name)
+    return add_document(db, data, user=user, meta=meta, replaces=old)
+
+
+def replace_with_upload(
+    db: Session, application_id: int, document_id: int,
+    *, consent: bool, raw_filename: str, file_bytes, user: User, meta: dict | None = None,
+) -> Document:
+    """Piece 32d, with a real file: the whole upload pipeline, then the old copy is marked replaced."""
+    old = _replaceable(db, application_id, document_id, user)
+    return add_uploaded_document(
+        db, application_id, old.doc_type,
+        consent=consent, raw_filename=raw_filename, file_bytes=file_bytes,
+        user=user, meta=meta, replaces=old,
+    )
 
 
 def _check_rate_limits(db: Session, application: LoanApplication, user: User) -> None:
@@ -114,6 +198,7 @@ def add_uploaded_document(
     file_bytes,
     user: User,
     meta: dict | None = None,
+    replaces: Document | None = None,
 ) -> Document:
     """
     A real file, run through `file_service`'s whole safety and
@@ -125,6 +210,9 @@ def add_uploaded_document(
     `nature` and `storage_zone` are never taken from the caller — they are
     whatever `file_service.process_upload` decided, and nothing here can
     override that.
+
+    `replaces` (Piece 32d) is the older document this one takes the place
+    of, marked in the same commit as everything else.
     """
     application = _application_for(db, application_id, user)
     if not consent:
@@ -200,6 +288,9 @@ def add_uploaded_document(
             db, document, applicant_name=application.applicant.name,
         )
 
+    if replaces is not None:
+        _mark_replaced(db, replaces, document, user=user, meta=meta)
+
     db.commit()
     db.refresh(document)
     logger.info("document_uploaded", application_id=application.id, document_id=document.id,
@@ -211,7 +302,12 @@ def unverified_documents(
     db: Session, *, page: int = 1, limit: int = 20
 ) -> tuple[list[Document], int]:
     """Every unverified document across every application, newest first — the "Documents to check" page."""
-    query = db.query(Document).filter(Document.verified.is_(False)).order_by(Document.uploaded_at.desc())
+    # A replaced copy (Piece 32d) no longer needs checking; its replacement does.
+    query = (
+        db.query(Document)
+        .filter(Document.verified.is_(False), Document.replaced_by_id.is_(None))
+        .order_by(Document.uploaded_at.desc())
+    )
     total = query.count()
     items = query.offset((page - 1) * limit).limit(limit).all()
     return items, total
@@ -266,6 +362,8 @@ def verify_document(
     )
     if document is None:
         raise NotFound(f"Document {document_id} not found on application {application_id}")
+    if document.replaced_by_id is not None:
+        raise RuleViolation("This copy has been replaced. Verify the newer copy instead")
 
     document.verified = True
     activity_service.record(

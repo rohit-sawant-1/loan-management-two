@@ -16,28 +16,6 @@ each with an ID, so he can review and overturn any of them afterwards.
 
 ---
 
-### D-30 · The manual promises customers they can replace a document, and the app can't
-
-**What's wrong:** `backend/rag/user_manual.md` says twice (in the documents
-section, and in the FAQ "Can I replace a document I have already uploaded?")
-that a document may be replaced until a loan officer verifies it. No Replace
-function exists anywhere in the app. A customer can only add another file.
-Found 2026-09-24 while checking Rule 12 after D-29.
-
-**Why it matters:** the chatbot reads the manual. If a customer, or someone
-watching the demo, asks "can I replace my payslip?", the chatbot will say yes,
-and the app will have no button for it. This is exactly the contradiction
-Rule 12 exists to stop.
-
-**My recommendation:** change the manual now to say what's true ("upload the
-newer copy; every copy is kept, and staff check the latest one"), and re-ingest.
-If Piece 33 then adds a Replace button, the manual changes back with it. This
-is a words-only change, so no trainer test is affected.
-
-**Your answer:**
-
----
-
 ### D-22 · The eligibility timestamp is removed from the stored text, not converted
 
 **What's wrong:** the Application Detail card showed the same event at two times
@@ -1083,6 +1061,14 @@ A suffixed name fails both instantly. **Fix: Gemini, the default, uses the bare 
 ---
 
 # Settled
+
+### 2026-09-24 · D-30 — The manual's promise of Replace is now true: Replace was built (Piece 32d)
+**Rohit's answer:** don't reword the manual to "every copy is kept", because real
+lenders don't say that to customers, and build the Replace button instead. A
+search backed him up: customer-facing lender pages talk about resubmitting an
+unclear or mismatched document, never about what the bank keeps internally. So the
+manual's existing promise stayed, and gained the *how*. Built as Piece 32d,
+v2.16.0. Replaced copies are shown to staff only.
 
 ### 2026-09-24 · D-29 — Same-type uploads sit side by side, never replace automatically
 **Rohit's answer:** keep both, as now. Some types really do hold several files:
